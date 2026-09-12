@@ -1,0 +1,9 @@
+.playwright-mcp/
+__pycache__/
+*.pyc
+
+# Build outputs. The compressed GLB is committed so the model is usable from a
+# clone; the .blend and per-part STLs are regenerated with `make`.
+build/*
+!build/rcjet.glb
+!build/parts.csv

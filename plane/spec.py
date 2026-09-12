@@ -1,0 +1,341 @@
+"""
+RC jet — master specification.
+
+ALL dimensions are millimetres, angles degrees, masses grams.
+Nose at x = 0, aft is +x. +z is up, +y is right. Same convention as the engine.
+
+Every other module consumes this file. No geometry module contains a literal
+dimension; if a number describes the aircraft, it lives here.
+
+BRIEF
+-----
+Fit inside 500 x 300 mm in plan. Single engine, reusing the F110-GE-129 model
+from the sibling project, scaled down. Everything else was chosen here.
+
+CONFIGURATION (chosen, not derived)
+-----------------------------------
+A cropped-delta single-engine fighter — the layout that goes with the engine we
+already have, and the one that survives a 300 mm span: a delta keeps enough
+area and root chord to be stable at this size where a straight wing would not.
+Scale is set by the span limit: 1:33 of a notional 15.05 m / 9.90 m fighter
+gives 456 mm length on a 300 mm span, inside the envelope on both axes.
+
+Chin inlet, bubble canopy, all-moving stabilators, single swept fin, tricycle
+gear. Flaperons for roll and pitch trim, stabilators for pitch, rudder for yaw.
+"""
+
+# --------------------------------------------------------------------------
+# Envelope and scale
+# --------------------------------------------------------------------------
+
+ENVELOPE_LENGTH = 500.0        # hard limit, plan view
+ENVELOPE_SPAN   = 300.0        # hard limit, plan view
+
+SCALE = 1.0 / 33.0             # of the notional full-size fighter
+LENGTH = 440.3      # body ends at 438; the nozzle protrudes to 440.3
+SPAN   = 300.0
+
+# The engine is the sibling project's F110-GE-129, scaled by the same factor.
+ENGINE_SCALE = SCALE           # 4630 mm -> 140.3 mm long, 1180 mm fan -> 35.8 mm
+ENGINE_X = 300.0               # station of the engine's inlet flange
+ENGINE_Z = -1.0                # thrust line, below the fuselage datum
+
+# --------------------------------------------------------------------------
+# Fuselage loft (chosen)
+# Sections are superellipses: |y/w|^n + |z/h|^n = 1, centred at zc.
+# n rises to ~3 through the mid body, which is what gives a fighter its flat-
+# sided, slab-cheeked look rather than a round tube.
+# (x, half_width, half_height, z_centre, exponent)
+# --------------------------------------------------------------------------
+
+FUSELAGE = [
+    (  0.0,  1.8,  1.8,  0.0, 2.2),
+    ( 18.0,  8.5,  7.5,  0.5, 2.2),
+    ( 42.0, 16.0, 14.0,  1.2, 2.4),
+    ( 68.0, 23.0, 19.5,  2.0, 2.6),
+    ( 98.0, 28.5, 23.5,  2.0, 2.8),
+    (138.0, 31.0, 26.5,  1.2, 3.0),
+    (180.0, 32.0, 29.0,  0.0, 3.0),
+    (230.0, 32.0, 30.0, -1.0, 3.0),
+    (280.0, 30.0, 29.0, -1.0, 2.8),
+    (330.0, 27.0, 27.0, -1.0, 2.6),
+    (380.0, 24.0, 25.0, -1.0, 2.4),
+    (410.0, 19.5, 20.5, -1.0, 2.2),
+    (438.0, 15.5, 16.0, -1.0, 2.0),
+]
+
+FUSELAGE_SKIN = 1.2            # foam/skin thickness for the shelled body
+
+# --------------------------------------------------------------------------
+# Wing — cropped delta (chosen)
+# --------------------------------------------------------------------------
+
+WING = {
+    "x_root_le":   175.0,
+    "z_root":       -6.0,       # mid-low mounted
+    "root_chord":  185.0,
+    "tip_chord":    58.0,
+    "semi_span":   150.0,       # 300 mm total, the envelope limit
+    "sweep_le":     40.0,
+    "dihedral":      0.0,
+    "incidence":     0.0,
+    "thickness":     0.065,     # t/c — thin, as a jet wing should be
+    "camber":        0.0,       # symmetric
+    "washout":       1.5,       # deg, tip trailing edge up: tip stalls last
+    "le_root_ext":  28.0,       # leading-edge root extension (strake)
+    "tip_rail":     True,
+}
+
+FLAPERON = {
+    "span_in":       0.38,      # fraction of semi-span
+    "span_out":      0.94,
+    "chord_frac":    0.26,      # of local chord
+    "gap":           1.2,
+    "deflect":     -12.0,       # modelled deflection, deg
+}
+
+# --------------------------------------------------------------------------
+# Tail (chosen)
+# --------------------------------------------------------------------------
+
+HTAIL = {
+    "x_root_le":   352.0,
+    "z_root":       -3.0,
+    "root_chord":   72.0,
+    "tip_chord":    31.0,
+    "semi_span":    62.0,
+    "sweep_le":     34.0,
+    "thickness":     0.055,
+    "anhedral":     -6.0,
+    "deflect":      -4.0,       # all-moving stabilator, modelled position
+}
+
+VTAIL = {
+    "x_root_le":   330.0,
+    "root_chord":  106.0,
+    "tip_chord":    46.0,
+    "height":       78.0,
+    "sweep_le":     42.0,
+    "thickness":     0.055,
+    "rudder_chord":  0.28,
+    "rudder_span":   0.86,
+    "deflect":       6.0,
+}
+
+VENTRAL = {
+    "x_le":        372.0,
+    "chord":        56.0,
+    "depth":        20.0,
+    "sweep":        38.0,
+    "cant":         22.0,        # deg outboard
+    "thickness":     4.0,
+}
+
+# --------------------------------------------------------------------------
+# Inlet and duct (chosen) — chin inlet, as on the engine's real airframe
+# --------------------------------------------------------------------------
+
+INTAKE = {
+    "x_lip":        52.0,
+    "x_throat":     86.0,
+    "x_duct_end":  300.0,       # meets the engine face
+    "lip_width":    40.0,
+    "lip_height":   19.0,
+    "z_lip":       -17.0,
+    "lip_radius":    2.6,
+    "duct_r_end":   19.5,       # wraps the 17.9 mm fan radius with clearance
+    "splitter_gap":  3.0,       # boundary-layer diverter standoff
+    "wall":          1.1,
+}
+
+# --------------------------------------------------------------------------
+# Canopy (chosen)
+# --------------------------------------------------------------------------
+
+CANOPY = {
+    "x_front":      78.0,
+    "x_rear":      178.0,
+    "z_base":       22.0,
+    "height":       19.0,
+    "half_width":   16.0,
+    "frame":         1.6,
+    "windscreen_x": 96.0,
+}
+
+# --------------------------------------------------------------------------
+# Landing gear (chosen) — tricycle, fixed, modelled down
+# --------------------------------------------------------------------------
+
+GEAR = {
+    "nose_x":      112.0,
+    "nose_leg":     34.0,
+    "nose_wheel_r":  9.0,
+    "nose_wheel_w":  5.0,
+    "main_x":      278.0,
+    "main_y":       44.0,
+    "main_leg":     36.0,
+    "main_wheel_r": 11.0,
+    "main_wheel_w":  6.0,
+    "strut_r":       2.2,
+}
+
+# --------------------------------------------------------------------------
+# Structure (chosen)
+# --------------------------------------------------------------------------
+
+SPAR = {
+    "x_frac":        0.30,      # of local chord
+    "outer_r":       2.0,       # 4 mm carbon tube
+    "inner_r":       1.3,
+    "span":        286.0,
+}
+
+BULKHEADS = [
+    # (name, x, thickness)
+    ("bhd_nose",     66.0, 2.0),
+    ("bhd_cockpit", 150.0, 2.0),
+    ("bhd_spar",    230.0, 2.5),
+    ("bhd_firewall",298.0, 3.0),
+    ("bhd_tail",    430.0, 2.0),
+]
+
+# --------------------------------------------------------------------------
+# RC hardware (chosen) — each a box with a real mass, used for the CG solve
+# (name, x_centre, y_centre, z_centre, length, width, height, mass_g)
+# --------------------------------------------------------------------------
+
+HARDWARE = [
+    ("lipo_3s_1300",  242.0,  0.0,  -6.0, 72.0, 35.0, 22.0, 105.0),
+    ("esc_40a",       170.0,  0.0,  14.0, 45.0, 25.0, 10.0,  28.0),
+    ("receiver",      186.0, 16.0,  12.0, 22.0, 16.0,  6.0,   7.0),
+    ("servo_ail_l",   285.0,-22.0,  -5.0, 23.0, 12.0, 22.0,   5.5),
+    ("servo_ail_r",   285.0, 22.0,  -5.0, 23.0, 12.0, 22.0,   5.5),
+    ("servo_stab",    288.0, -8.0,  12.0, 23.0, 12.0, 22.0,   5.5),
+    ("servo_rudder",  288.0,  8.0,  12.0, 23.0, 12.0, 22.0,   5.5),
+]
+
+# Distributed masses that are not discrete boxes: (name, x_centre, mass_g)
+DISTRIBUTED = [
+    ("airframe_skin",   232.0, 62.0),
+    ("wing_structure",  248.0, 18.0),
+    ("engine",          370.0, 62.0),
+    ("wiring_misc",     250.0, 12.0),
+    ("gear_assembly",   219.0, 14.0),
+]
+
+TARGET_CG_FRAC = 0.25          # of mean aerodynamic chord
+CG_TOLERANCE   = 0.03          # +/- 3 % MAC is the acceptance band
+
+# --------------------------------------------------------------------------
+# Materials: object-name prefix -> material key
+# --------------------------------------------------------------------------
+
+MATERIAL_MAP = {
+    "fuselage":   "airframe",
+    "wing":       "airframe",
+    "flaperon":   "control",
+    "htail":      "control",
+    "stabilator": "control",
+    "vtail":      "airframe",
+    "rudder":     "control",
+    "ventral":    "airframe",
+    "intake":     "duct",
+    "duct":       "duct",
+    "canopy":     "glass",
+    "frame":      "airframe",
+    "bhd":        "ply",
+    "spar":       "carbon",
+    "pushrod":    "carbon",
+    "lipo":       "lipo",
+    "esc":        "board",
+    "receiver":   "board",
+    "servo":      "servo",
+    "wheel":      "rubber",
+    "strut":      "steel",
+    "gear":       "steel",
+    "engine":     "engine",
+}
+DEFAULT_MATERIAL = "airframe"
+
+PALETTE = {
+    # name:         base colour (linear RGB),   metallic, roughness
+    "airframe":    ((0.255, 0.278, 0.302), 0.05, 0.62),
+    "control":     ((0.300, 0.322, 0.348), 0.05, 0.58),
+    "duct":        ((0.118, 0.124, 0.133), 0.10, 0.70),
+    "glass":       ((0.180, 0.240, 0.280), 0.20, 0.12),
+    "ply":         ((0.470, 0.372, 0.226), 0.00, 0.76),
+    "carbon":      ((0.055, 0.058, 0.064), 0.35, 0.34),
+    "lipo":        ((0.140, 0.170, 0.310), 0.10, 0.52),
+    "board":       ((0.060, 0.180, 0.110), 0.10, 0.60),
+    "servo":       ((0.080, 0.082, 0.086), 0.05, 0.55),
+    "rubber":      ((0.040, 0.041, 0.044), 0.00, 0.88),
+    "steel":       ((0.480, 0.492, 0.510), 1.00, 0.28),
+    "engine":      ((0.412, 0.432, 0.462), 1.00, 0.34),
+}
+
+RES = {
+    "fuse_sections":   64,   # points around one fuselage section
+    "fuse_stations":   58,   # lengthwise samples through the loft
+    "airfoil_pts":     40,
+    "wing_stations":   14,
+    "revolve":         48,
+    "small_revolve":   20,
+}
+
+
+# --------------------------------------------------------------------------
+# Derived geometry
+# --------------------------------------------------------------------------
+
+def taper_ratio():
+    return WING["tip_chord"] / WING["root_chord"]
+
+
+def mean_aero_chord():
+    """MAC of a straight-tapered wing."""
+    lam = taper_ratio()
+    return (2.0 / 3.0) * WING["root_chord"] * (1 + lam + lam * lam) / (1 + lam)
+
+
+def mac_spanwise():
+    """Spanwise station of the MAC, from the root."""
+    lam = taper_ratio()
+    return (WING["semi_span"] / 3.0) * (1 + 2 * lam) / (1 + lam)
+
+
+def mac_leading_edge_x():
+    import math
+    return WING["x_root_le"] + mac_spanwise() * math.tan(math.radians(WING["sweep_le"]))
+
+
+def target_cg_x():
+    return mac_leading_edge_x() + TARGET_CG_FRAC * mean_aero_chord()
+
+
+def wing_area_mm2():
+    """Reference (trapezoidal) wing area, both sides."""
+    return (WING["root_chord"] + WING["tip_chord"]) * WING["semi_span"]
+
+
+def all_masses():
+    """(name, x, mass) for every mass in the aircraft."""
+    out = [(n, x, m) for (n, x, m) in DISTRIBUTED]
+    out += [(h[0], h[1], h[7]) for h in HARDWARE]
+    return out
+
+
+def total_mass_g():
+    return sum(m for (_, _, m) in all_masses())
+
+
+def cg_x():
+    ms = all_masses()
+    return sum(x * m for (_, x, m) in ms) / sum(m for (_, _, m) in ms)
+
+
+def cg_frac_mac():
+    return (cg_x() - mac_leading_edge_x()) / mean_aero_chord()
+
+
+def wing_loading_g_dm2():
+    return total_mass_g() / (wing_area_mm2() / 10000.0)
