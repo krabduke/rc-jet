@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RC Jet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23101619'/%3E%3Cpath d='M4 16 L20 12 L28 16 L20 20 Z' fill='%236E93A8'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#1B2226;
+    --panel:#C9CEC6;
+    --panel-dim:#B4BAB1;
+    --ink:#161B1A;
+    --ink-soft:#5C645E;
+    --rule:#9BA298;
+    --focus:#2E6B7A;
+    --good:#3E7D52;
+    --rail-h:132px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--void); color:var(--panel);
+    font-family:Archivo,system-ui,-apple-system,sans-serif; font-size:14px;
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  canvas{display:block; touch-action:none}
+  #stage{position:fixed; inset:0 0 var(--rail-h) 0}
+
+  #title{position:fixed; top:20px; left:22px; z-index:5; pointer-events:none;
+         text-shadow:0 1px 14px rgba(0,0,0,.7)}
+  #title h1{margin:0; font-size:20px; font-weight:600; letter-spacing:-.015em}
+  #title p{margin:2px 0 0; font-size:12.5px; color:#94A09B}
+
+  #spec{position:fixed; top:20px; right:22px; z-index:5; pointer-events:none;
+        text-align:right; display:grid; gap:1px;
+        text-shadow:0 1px 14px rgba(0,0,0,.7)}
+  #spec div{font-size:12.5px; color:#94A09B; font-variant-numeric:tabular-nums}
+  #spec b{color:var(--panel); font-weight:600}
+
+  /* balance is the number that decides whether an aeroplane flies, so it gets
+     its own readout rather than being buried in a list */
+  #bal{
+    position:fixed; left:22px; bottom:calc(var(--rail-h) + 18px); z-index:5;
+    pointer-events:none; width:238px;
+  }
+  #bal .cap{font-size:11px; color:#9AA6A1; margin-bottom:6px}
+  #bal .track{position:relative; height:26px; background:#2B3439; border:1px solid #3A454A}
+  #bal .band{position:absolute; top:0; bottom:0; background:rgba(62,125,82,.42);
+             border-left:1px solid #58A06F; border-right:1px solid #58A06F}
+  #bal .cg{position:absolute; top:-4px; bottom:-4px; width:2px; background:#E8B26A}
+  #bal .lbl{display:flex; justify-content:space-between; margin-top:5px;
+            font-size:10.5px; color:#8C9894; font-variant-numeric:tabular-nums}
+  #bal .val{color:#E8B26A; font-weight:600}
+
+  #probe{
+    position:fixed; right:22px; bottom:calc(var(--rail-h) + 18px); z-index:5;
+    min-width:200px; max-width:min(300px,44vw); padding:10px 12px;
+    background:rgba(16,22,25,.88); backdrop-filter:blur(7px);
+    border:1px solid #2E393D; border-left:3px solid var(--pa,#6E93A8);
+    opacity:0; transition:opacity .12s ease; pointer-events:none;
+  }
+  #probe.on{opacity:1}
+  #probe .nm{font-size:14px; font-weight:600; color:#E6EAE4; word-break:break-word}
+  #probe .md{font-size:12px; color:#8C9894; margin-top:1px}
+  #probe dl{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; margin:8px 0 0;
+            font-size:12px; font-variant-numeric:tabular-nums}
+  #probe dt{color:#78847F} #probe dd{margin:0; text-align:right; color:#C9CEC6}
+
+  #rail{
+    position:fixed; left:0; right:0; bottom:0; z-index:6; height:var(--rail-h);
+    background:var(--panel); color:var(--ink);
+    box-shadow:0 -16px 38px rgba(0,0,0,.45);
+    display:grid; grid-template-rows:auto auto 1fr;
+  }
+  #railhead{display:flex; align-items:baseline; justify-content:space-between;
+            gap:14px; padding:9px 22px 0}
+  #railhead h2{margin:0; font-size:12.5px; font-weight:600}
+  #railhead span{font-size:11.5px; color:var(--ink-soft)}
+
+  #groups{display:flex; flex-wrap:wrap; gap:6px; padding:9px 22px 0}
+  .grp{
+    border:1px solid var(--rule); background:transparent; color:var(--ink);
+    font:inherit; font-size:11.5px; font-weight:500; padding:4px 10px;
+    cursor:pointer; outline-offset:2px; transition:background .13s ease;
+  }
+  .grp:hover{background:var(--panel-dim)}
+  .grp:focus-visible{outline:2px solid var(--focus)}
+  .grp[aria-pressed="false"]{color:#8E958C; border-color:#BEC4BA}
+  .grp .sw{display:inline-block; width:8px; height:8px; margin-right:6px;
+           background:var(--c); vertical-align:baseline}
+  .grp[aria-pressed="false"] .sw{background:#BEC4BA}
+  .grp .ct{color:var(--ink-soft); margin-left:5px; font-weight:400}
+
+  #controls{display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+            padding:0 22px 11px; margin-top:8px}
+  .btn{
+    border:1px solid var(--rule); background:transparent; color:var(--ink);
+    font:inherit; font-size:11.5px; font-weight:500; padding:4px 11px;
+    cursor:pointer; outline-offset:2px;
+  }
+  .btn:hover{background:var(--panel-dim)}
+  .btn:focus-visible{outline:2px solid var(--focus)}
+  .btn[aria-pressed="true"]{background:var(--ink); color:var(--panel)}
+
+  #load{position:fixed; inset:0; z-index:9; display:grid; place-content:center;
+        gap:12px; background:var(--void); text-align:center; transition:opacity .4s ease}
+  #load.done{opacity:0; pointer-events:none}
+  #load p{margin:0; font-size:13px; color:#8C9894; font-variant-numeric:tabular-nums}
+  #bar{width:200px; height:2px; background:#2A3337; overflow:hidden}
+  #bar i{display:block; height:100%; width:0%; background:#6E93A8; transition:width .2s}
+  #err{color:#D08A6A; font-size:12.5px; max-width:320px; line-height:1.5}
+
+  @media (max-width:760px){
+    :root{--rail-h:168px}
+    #title h1{font-size:17px}
+    #spec div:nth-child(n+3){display:none}
+    #bal{display:none}
+    #probe{left:16px; right:16px; max-width:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="title">
+  <h1>RC Jet</h1>
+  <p>Cropped-delta · F110 turbofan at 1:33</p>
+</div>
+
+<div id="spec">
+  <div><b id="s-dim">—</b> mm</div>
+  <div><b id="s-mass">—</b> g all-up</div>
+  <div><b id="s-load">—</b> g/dm²</div>
+  <div><b id="s-parts">—</b> parts</div>
+</div>
+
+<div id="bal">
+  <div class="cap">Centre of gravity, % of mean aerodynamic chord</div>
+  <div class="track"><div class="band" id="b-band"></div><div class="cg" id="b-cg"></div></div>
+  <div class="lbl"><span>0 %</span><span class="val" id="b-val">—</span><span>50 %</span></div>
+</div>
+
+<div id="probe" aria-live="polite">
+  <div class="nm" id="p-name"></div>
+  <div class="md" id="p-grp"></div>
+  <dl>
+    <dt>Station</dt><dd id="p-sta"></dd>
+    <dt>Material</dt><dd id="p-mat"></dd>
+  </dl>
+</div>
+
+<div id="rail">
+  <div id="railhead">
+    <h2>Assemblies</h2>
+    <span id="note">Click an assembly to hide it. Drag to orbit.</span>
+  </div>
+  <div id="groups"></div>
+  <div id="controls">
+    <button class="btn" id="skin" type="button" aria-pressed="false">Show internals</button>
+    <button class="btn" id="spin" type="button" aria-pressed="false">Spin</button>
+    <button class="btn" id="reset" type="button">Reset view</button>
+  </div>
+</div>
+
+<div id="load">
+  <p id="loadtxt">Loading aircraft…</p>
+  <div id="bar"><i></i></div>
+  <p id="err"></p>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
+
+const MM = 0.001;
+const $ = s => document.querySelector(s);
+
+// Hiding the skin is how you look inside. No clipping planes: discarding
+// fragments turned out to be far more trouble than toggling visibility.
+const SKIN = ['fuselage_skin', 'canopy_glass'];
+
+let scene, camera, renderer, controls, root, raycaster, clock;
+let data, byGroup = new Map(), info = new Map(), pickable = [];
+let hidden = new Set(), hovered = null, corners = [], viewDir, spinning = false;
+
+init();
+
+async function init(){
+  const stage = $('#stage');
+  renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(stage.clientWidth, stage.clientHeight);
+  renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  stage.appendChild(renderer.domElement);
+  clock = new THREE.Clock();
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1B2226);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromEquirectangular(studioEnv()).texture;
+  scene.environmentIntensity = 1.0;
+
+  camera = new THREE.PerspectiveCamera(30, stage.clientWidth/stage.clientHeight, 0.02, 60);
+
+  // Lit from several directions on purpose: a single key leaves the underside
+  // of a fuselage black, and there is nothing to see in a black fuselage.
+  scene.add(
+    dir(0xFFF4E8, 1.45, -2.2, 3.4, 2.6),
+    dir(0xC9DCE6, 0.85,  2.6,-1.8,-2.0),
+    dir(0xFFFFFF, 0.70,  2.0, 1.6,-2.8),
+    new THREE.HemisphereLight(0xE4EDF0, 0x97A0A6, 1.15),
+    new THREE.AmbientLight(0xC4CED4, 0.40),
+  );
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.075;
+  controls.minDistance = 0.20;
+  controls.maxDistance = 6;
+  raycaster = new THREE.Raycaster();
+
+  try{
+    data = await (await fetch('parts.json')).json();
+  }catch(e){
+    return fail('Could not read <code>parts.json</code>. Serve this folder over HTTP: '
+              + 'run <code>make viewer</code> from the project root.');
+  }
+  fillSpec();
+  buildRail();
+
+  const draco = new DRACOLoader().setDecoderPath(
+    'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/draco/gltf/');
+  new GLTFLoader().setDRACOLoader(draco).load('../build/rcjet.glb',
+    g => ready(g.scene),
+    ev => {
+      if(!ev.total) return;
+      const p = Math.round(ev.loaded/ev.total*100);
+      $('#bar i').style.width = p + '%';
+      $('#loadtxt').textContent = `Loading aircraft… ${p}%`;
+    },
+    () => fail('Could not load <code>build/rcjet.glb</code>. Run <code>make export</code>.'));
+}
+
+function dir(colour, intensity, x, y, z){
+  const l = new THREE.DirectionalLight(colour, intensity);
+  l.position.set(x, y, z);
+  return l;
+}
+
+function studioEnv(){
+  const w = 1024, h = 512;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0.00, '#E8EEF1');
+  grad.addColorStop(0.42, '#C2CBD1');
+  grad.addColorStop(0.58, '#A6AFB5');
+  grad.addColorStop(1.00, '#8E969C');
+  g.fillStyle = grad; g.fillRect(0, 0, w, h);
+  const key = g.createRadialGradient(w*0.3, h*0.24, 0, w*0.3, h*0.24, w*0.2);
+  key.addColorStop(0, 'rgba(255,251,244,0.45)');
+  key.addColorStop(1, 'rgba(255,251,244,0)');
+  g.fillStyle = key; g.fillRect(0, 0, w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function fail(html){
+  $('#loadtxt').textContent = 'Nothing to show yet';
+  $('#bar').style.display = 'none';
+  $('#err').innerHTML = html;
+}
+
+function fillSpec(){
+  $('#s-dim').textContent = `${Math.round(data.length)} × ${Math.round(data.span)}`;
+  $('#s-mass').textContent = Math.round(data.mass_g);
+  $('#s-load').textContent = data.wing_loading.toFixed(1);
+  $('#s-parts').textContent = Object.keys(data.parts).length;
+
+  const pct = data.cg_frac * 100, lo = (data.cg_target - data.cg_tol) * 100,
+        hi = (data.cg_target + data.cg_tol) * 100;
+  const toX = v => Math.max(0, Math.min(100, v / 50 * 100));
+  $('#b-band').style.left = toX(lo) + '%';
+  $('#b-band').style.width = (toX(hi) - toX(lo)) + '%';
+  $('#b-cg').style.left = toX(pct) + '%';
+  $('#b-val').textContent = pct.toFixed(1) + ' %';
+}
+
+function ready(model){
+  root = model;
+  root.traverse(o => {
+    if(!o.isMesh) return;
+    const nfo = data.parts[o.name];
+    if(!nfo) return;
+    o.material = o.material.clone();
+    const alloy = data.palette[nfo.mat];
+    if(alloy){
+      o.material.color.setRGB(...alloy.rgb, THREE.LinearSRGBColorSpace);
+      o.material.metalness = alloy.metal;
+      o.material.roughness = Math.max(alloy.rough, 0.28);
+    }
+    // Both sides, always. Booleans and exporters leave the odd face wound the
+    // other way, and culling those shows the dark interior through the skin.
+    o.material.side = THREE.DoubleSide;
+    if(nfo.mat === 'glass'){
+      o.material.transparent = true;
+      o.material.opacity = 0.30;
+      o.material.depthWrite = false;
+    }
+    info.set(o, nfo);
+    pickable.push(o);
+    if(!byGroup.has(nfo.g)) byGroup.set(nfo.g, []);
+    byGroup.get(nfo.g).push(o);
+  });
+
+  const box = new THREE.Box3().setFromObject(root);
+  root.position.sub(box.getCenter(new THREE.Vector3()));
+  scene.add(root);
+
+  const size = box.getSize(new THREE.Vector3());
+  corners = [];
+  for(const sx of [-.5,.5]) for(const sy of [-.5,.5]) for(const sz of [-.5,.5])
+    corners.push(new THREE.Vector3(size.x*sx, size.y*sy, size.z*sz));
+  viewDir = new THREE.Vector3(0.46, -0.34, -0.82).normalize();
+  resetView();
+
+  addEventListener('resize', onResize);
+  renderer.domElement.addEventListener('pointermove', onMove);
+  renderer.domElement.addEventListener('pointerleave', () => setProbe(null));
+  window.__dbg = {scene, camera, renderer, root, byGroup};
+  $('#load').classList.add('done');
+  renderer.setAnimationLoop(tick);
+}
+
+function fitDistance(dirv, margin = 1.03){
+  const up = new THREE.Vector3(0,1,0);
+  const right = new THREE.Vector3().crossVectors(dirv, up).normalize();
+  const camUp = new THREE.Vector3().crossVectors(right, dirv).normalize();
+  const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);
+  const th = tv * camera.aspect;
+  let d = 0;
+  for(const c of corners){
+    const depth = c.dot(dirv);
+    d = Math.max(d, Math.abs(c.dot(right))/th - depth,
+                    Math.abs(c.dot(camUp))/tv - depth);
+  }
+  return d * margin;
+}
+
+function resetView(){
+  controls.target.set(0,0,0);
+  camera.position.copy(viewDir).multiplyScalar(-fitDistance(viewDir));
+  camera.lookAt(0,0,0);
+  controls.update();
+}
+
+function onResize(){
+  const s = $('#stage');
+  camera.aspect = s.clientWidth/s.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(s.clientWidth, s.clientHeight);
+}
+
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if(spinning && root) root.rotation.y += dt * 0.35;
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+const ndc = new THREE.Vector2();
+function onMove(e){
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((e.clientX-r.left)/r.width)*2 - 1;
+  ndc.y = -((e.clientY-r.top)/r.height)*2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(pickable.filter(o => o.visible), false)[0];
+  setProbe(hit ? hit.object : null);
+}
+
+function setProbe(mesh){
+  if(mesh === hovered) return;
+  if(hovered && hovered.material.emissive) hovered.material.emissive.setHex(0x000000);
+  hovered = mesh;
+  const box = $('#probe');
+  if(!mesh){ box.classList.remove('on'); return; }
+  const nfo = info.get(mesh);
+  const grp = data.groups.find(g => g.key === nfo.g);
+  if(mesh.material.emissive) mesh.material.emissive.setHex(0x16333c);
+  $('#p-name').textContent = pretty(mesh.name);
+  $('#p-grp').textContent = grp ? grp.label : nfo.g;
+  $('#p-sta').textContent = `${Math.round(nfo.x0)} – ${Math.round(nfo.x1)} mm`;
+  $('#p-mat').textContent = nfo.mat.replace(/_/g,' ');
+  box.style.setProperty('--pa', grp ? grp.color : '#6E93A8');
+  box.classList.add('on');
+}
+
+function pretty(n){
+  return n.replace(/^engine_/,'engine · ').replace(/_/g,' ')
+          .replace(/\bl\b/,'left').replace(/\br\b/,'right')
+          .replace(/\blipo\b/,'LiPo').replace(/\besc\b/,'ESC')
+          .replace(/\bbhd\b/,'bulkhead').replace(/\bhpc\b/g,'HPC')
+          .replace(/\bhpt\b/g,'HPT').replace(/\blpt\b/g,'LPT')
+          .replace(/^./, c => c.toUpperCase());
+}
+
+function buildRail(){
+  const box = $('#groups');
+  for(const g of data.groups){
+    const el = document.createElement('button');
+    el.className = 'grp';
+    el.type = 'button';
+    el.dataset.key = g.key;
+    el.style.setProperty('--c', g.color);
+    el.setAttribute('aria-pressed','true');
+    el.innerHTML = `<span class="sw"></span>${g.label}<span class="ct">${g.parts}</span>`;
+    el.title = `${g.label} — ${g.parts} parts, station ${Math.round(g.x0)}–${Math.round(g.x1)} mm`;
+    el.addEventListener('click', () => {
+      const on = hidden.has(g.key);
+      on ? hidden.delete(g.key) : hidden.add(g.key);
+      el.setAttribute('aria-pressed', String(on));
+      (byGroup.get(g.key)||[]).forEach(o => o.visible = on);
+      if(hovered && !hovered.visible) setProbe(null);
+    });
+    box.appendChild(el);
+  }
+
+  $('#skin').addEventListener('click', () => {
+    const b = $('#skin');
+    const showing = b.getAttribute('aria-pressed') === 'true';
+    b.setAttribute('aria-pressed', String(!showing));
+    b.textContent = showing ? 'Show internals' : 'Hide internals';
+    for(const o of pickable){
+      if(SKIN.includes(o.name)) o.visible = showing;
+    }
+    $('#note').textContent = showing
+      ? 'Click an assembly to hide it. Drag to orbit.'
+      : 'Skin off — bulkheads, battery, servos, spar and engine visible.';
+  });
+
+  $('#spin').addEventListener('click', () => {
+    spinning = !spinning;
+    $('#spin').setAttribute('aria-pressed', String(spinning));
+  });
+
+  $('#reset').addEventListener('click', () => {
+    resetView();
+    if(root) root.rotation.y = 0;
+    spinning = false;
+    $('#spin').setAttribute('aria-pressed','false');
+    hidden.clear();
+    for(const list of byGroup.values()) list.forEach(o => o.visible = true);
+    for(const el of document.querySelectorAll('.grp')) el.setAttribute('aria-pressed','true');
+    const b = $('#skin');
+    b.setAttribute('aria-pressed','false');
+    b.textContent = 'Show internals';
+  });
+}
+</script>
+</body>
+</html>

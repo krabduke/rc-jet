@@ -1,0 +1,1227 @@
+{
+ "name": "RC jet",
+ "length": 440.3,
+ "span": 300.0,
+ "envelope": [
+  500.0,
+  300.0
+ ],
+ "mass_g": 330.0,
+ "wing_loading": 90.53497942386831,
+ "wing_area_cm2": 364.5,
+ "mac": 132.56241426611797,
+ "mac_le": 226.96892777455994,
+ "cg_x": 259.4818181818182,
+ "cg_frac": 0.24526477272802902,
+ "cg_target": 0.25,
+ "cg_tol": 0.03,
+ "engine_scale": 0.030303030303030304,
+ "engine_len": 140.3030303030303,
+ "engine_fan": 35.75757575757576,
+ "gear": {
+  "nose_x": 112.0,
+  "main_x": 278.0
+ },
+ "palette": {
+  "airframe": {
+   "rgb": [
+    0.255,
+    0.278,
+    0.302
+   ],
+   "metal": 0.05,
+   "rough": 0.62
+  },
+  "control": {
+   "rgb": [
+    0.3,
+    0.322,
+    0.348
+   ],
+   "metal": 0.05,
+   "rough": 0.58
+  },
+  "duct": {
+   "rgb": [
+    0.118,
+    0.124,
+    0.133
+   ],
+   "metal": 0.1,
+   "rough": 0.7
+  },
+  "glass": {
+   "rgb": [
+    0.18,
+    0.24,
+    0.28
+   ],
+   "metal": 0.2,
+   "rough": 0.12
+  },
+  "ply": {
+   "rgb": [
+    0.47,
+    0.372,
+    0.226
+   ],
+   "metal": 0.0,
+   "rough": 0.76
+  },
+  "carbon": {
+   "rgb": [
+    0.055,
+    0.058,
+    0.064
+   ],
+   "metal": 0.35,
+   "rough": 0.34
+  },
+  "lipo": {
+   "rgb": [
+    0.14,
+    0.17,
+    0.31
+   ],
+   "metal": 0.1,
+   "rough": 0.52
+  },
+  "board": {
+   "rgb": [
+    0.06,
+    0.18,
+    0.11
+   ],
+   "metal": 0.1,
+   "rough": 0.6
+  },
+  "servo": {
+   "rgb": [
+    0.08,
+    0.082,
+    0.086
+   ],
+   "metal": 0.05,
+   "rough": 0.55
+  },
+  "rubber": {
+   "rgb": [
+    0.04,
+    0.041,
+    0.044
+   ],
+   "metal": 0.0,
+   "rough": 0.88
+  },
+  "steel": {
+   "rgb": [
+    0.48,
+    0.492,
+    0.51
+   ],
+   "metal": 1.0,
+   "rough": 0.28
+  },
+  "engine": {
+   "rgb": [
+    0.412,
+    0.432,
+    0.462
+   ],
+   "metal": 1.0,
+   "rough": 0.34
+  }
+ },
+ "groups": [
+  {
+   "key": "01 Fuselage",
+   "label": "Fuselage",
+   "color": "#8A9299",
+   "parts": 2,
+   "faces": 7480,
+   "x0": 0.0,
+   "x1": 438.0
+  },
+  {
+   "key": "02 Wing",
+   "label": "Wing",
+   "color": "#6E93A8",
+   "parts": 6,
+   "faces": 1488,
+   "x0": 147.0,
+   "x1": 358.8
+  },
+  {
+   "key": "03 Tail",
+   "label": "Tail",
+   "color": "#7C86A6",
+   "parts": 6,
+   "faces": 1046,
+   "x0": 330.0,
+   "x1": 444.6
+  },
+  {
+   "key": "04 Intake and Duct",
+   "label": "Intake & duct",
+   "color": "#5E6B74",
+   "parts": 2,
+   "faces": 2304,
+   "x0": 52.0,
+   "x1": 300.0
+  },
+  {
+   "key": "05 Canopy",
+   "label": "Canopy",
+   "color": "#79A6B4",
+   "parts": 2,
+   "faces": 1630,
+   "x0": 77.4,
+   "x1": 178.0
+  },
+  {
+   "key": "06 Landing Gear",
+   "label": "Gear",
+   "color": "#6F6F72",
+   "parts": 4,
+   "faces": 960,
+   "x0": 99.5,
+   "x1": 291.4
+  },
+  {
+   "key": "07 Engine",
+   "label": "Engine",
+   "color": "#A8763E",
+   "parts": 99,
+   "faces": 311731,
+   "x0": 300.0,
+   "x1": 440.3
+  },
+  {
+   "key": "08 RC Systems",
+   "label": "RC systems",
+   "color": "#4F8A5E",
+   "parts": 8,
+   "faces": 134,
+   "x0": 147.5,
+   "x1": 306.2
+  },
+  {
+   "key": "09 Structure",
+   "label": "Structure",
+   "color": "#9A7B4A",
+   "parts": 6,
+   "faces": 1684,
+   "x0": 65.0,
+   "x1": 431.0
+  }
+ ],
+ "parts": {
+  "bhd_cockpit": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 149.0,
+   "x1": 151.0,
+   "f": 256
+  },
+  "bhd_firewall": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 296.5,
+   "x1": 299.5,
+   "f": 256
+  },
+  "bhd_nose": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 65.0,
+   "x1": 67.0,
+   "f": 256
+  },
+  "bhd_spar": {
+   "g": "09 Structure",
+   "mat": "carbon",
+   "x0": 228.8,
+   "x1": 231.3,
+   "f": 256
+  },
+  "bhd_tail": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 429.0,
+   "x1": 431.0,
+   "f": 256
+  },
+  "fuselage_skin": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 0.0,
+   "x1": 438.0,
+   "f": 7424
+  },
+  "flaperon_l": {
+   "g": "02 Wing",
+   "mat": "control",
+   "x0": 324.9,
+   "x1": 358.8,
+   "f": 192
+  },
+  "flaperon_r": {
+   "g": "02 Wing",
+   "mat": "control",
+   "x0": 324.7,
+   "x1": 358.8,
+   "f": 192
+  },
+  "spar_carbon": {
+   "g": "09 Structure",
+   "mat": "carbon",
+   "x0": 228.8,
+   "x1": 315.9,
+   "f": 404
+  },
+  "wing_l": {
+   "g": "02 Wing",
+   "mat": "airframe",
+   "x0": 175.0,
+   "x1": 343.8,
+   "f": 496
+  },
+  "wing_r": {
+   "g": "02 Wing",
+   "mat": "airframe",
+   "x0": 175.0,
+   "x1": 343.8,
+   "f": 496
+  },
+  "wing_strake_l": {
+   "g": "02 Wing",
+   "mat": "airframe",
+   "x0": 147.0,
+   "x1": 221.0,
+   "f": 56
+  },
+  "wing_strake_r": {
+   "g": "02 Wing",
+   "mat": "airframe",
+   "x0": 147.0,
+   "x1": 221.0,
+   "f": 56
+  },
+  "rudder": {
+   "g": "03 Tail",
+   "mat": "control",
+   "x0": 409.3,
+   "x1": 444.6,
+   "f": 192
+  },
+  "stabilator_l": {
+   "g": "03 Tail",
+   "mat": "control",
+   "x0": 352.0,
+   "x1": 424.2,
+   "f": 268
+  },
+  "stabilator_r": {
+   "g": "03 Tail",
+   "mat": "control",
+   "x0": 352.0,
+   "x1": 424.2,
+   "f": 268
+  },
+  "ventral_l": {
+   "g": "03 Tail",
+   "mat": "airframe",
+   "x0": 372.0,
+   "x1": 428.0,
+   "f": 6
+  },
+  "ventral_r": {
+   "g": "03 Tail",
+   "mat": "airframe",
+   "x0": 372.0,
+   "x1": 428.0,
+   "f": 6
+  },
+  "vtail_fin": {
+   "g": "03 Tail",
+   "mat": "airframe",
+   "x0": 330.0,
+   "x1": 433.4,
+   "f": 306
+  },
+  "duct_inlet": {
+   "g": "04 Intake and Duct",
+   "mat": "duct",
+   "x0": 86.0,
+   "x1": 300.0,
+   "f": 2112
+  },
+  "intake_lip": {
+   "g": "04 Intake and Duct",
+   "mat": "duct",
+   "x0": 52.0,
+   "x1": 60.3,
+   "f": 192
+  },
+  "canopy_frame": {
+   "g": "05 Canopy",
+   "mat": "glass",
+   "x0": 77.4,
+   "x1": 178.0,
+   "f": 630
+  },
+  "canopy_glass": {
+   "g": "05 Canopy",
+   "mat": "glass",
+   "x0": 78.0,
+   "x1": 178.0,
+   "f": 1000
+  },
+  "gear_main_struts": {
+   "g": "06 Landing Gear",
+   "mat": "steel",
+   "x0": 275.8,
+   "x1": 282.7,
+   "f": 24
+  },
+  "gear_nose_strut": {
+   "g": "06 Landing Gear",
+   "mat": "steel",
+   "x0": 106.3,
+   "x1": 114.2,
+   "f": 12
+  },
+  "wheel_main": {
+   "g": "06 Landing Gear",
+   "mat": "rubber",
+   "x0": 269.6,
+   "x1": 291.4,
+   "f": 616
+  },
+  "wheel_nose": {
+   "g": "06 Landing Gear",
+   "mat": "rubber",
+   "x0": 99.5,
+   "x1": 117.4,
+   "f": 308
+  },
+  "esc_40a": {
+   "g": "08 RC Systems",
+   "mat": "board",
+   "x0": 147.5,
+   "x1": 192.5,
+   "f": 6
+  },
+  "lipo_3s_1300": {
+   "g": "08 RC Systems",
+   "mat": "lipo",
+   "x0": 206.0,
+   "x1": 278.0,
+   "f": 6
+  },
+  "pushrods": {
+   "g": "01 Fuselage",
+   "mat": "carbon",
+   "x0": 296.3,
+   "x1": 402.5,
+   "f": 56
+  },
+  "receiver": {
+   "g": "08 RC Systems",
+   "mat": "board",
+   "x0": 175.0,
+   "x1": 197.0,
+   "f": 6
+  },
+  "servo_ail_l": {
+   "g": "08 RC Systems",
+   "mat": "servo",
+   "x0": 273.5,
+   "x1": 296.5,
+   "f": 6
+  },
+  "servo_ail_r": {
+   "g": "08 RC Systems",
+   "mat": "servo",
+   "x0": 273.5,
+   "x1": 296.5,
+   "f": 6
+  },
+  "servo_rudder": {
+   "g": "08 RC Systems",
+   "mat": "control",
+   "x0": 276.5,
+   "x1": 299.5,
+   "f": 6
+  },
+  "servo_stab": {
+   "g": "08 RC Systems",
+   "mat": "servo",
+   "x0": 276.5,
+   "x1": 299.5,
+   "f": 6
+  },
+  "wiring": {
+   "g": "08 RC Systems",
+   "mat": "airframe",
+   "x0": 169.4,
+   "x1": 306.2,
+   "f": 92
+  },
+  "engine_augmentor_liner": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 395.8,
+   "x1": 423.0,
+   "f": 9898
+  },
+  "engine_blades_fan_r1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 312.8,
+   "x1": 318.8,
+   "f": 2016
+  },
+  "engine_blades_fan_r2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 321.8,
+   "x1": 326.0,
+   "f": 2772
+  },
+  "engine_blades_fan_r3": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 328.2,
+   "x1": 331.5,
+   "f": 3276
+  },
+  "engine_blades_hpc_r1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 336.5,
+   "x1": 338.9,
+   "f": 2394
+  },
+  "engine_blades_hpc_r2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 340.6,
+   "x1": 342.7,
+   "f": 2772
+  },
+  "engine_blades_hpc_r3": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 344.3,
+   "x1": 346.2,
+   "f": 3150
+  },
+  "engine_blades_hpc_r4": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 347.7,
+   "x1": 349.3,
+   "f": 3528
+  },
+  "engine_blades_hpc_r5": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 350.7,
+   "x1": 352.1,
+   "f": 3906
+  },
+  "engine_blades_hpc_r6": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 353.3,
+   "x1": 354.6,
+   "f": 4284
+  },
+  "engine_blades_hpc_r7": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 355.7,
+   "x1": 356.9,
+   "f": 4662
+  },
+  "engine_blades_hpc_r8": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 357.9,
+   "x1": 358.8,
+   "f": 5040
+  },
+  "engine_blades_hpc_r9": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 359.7,
+   "x1": 360.6,
+   "f": 5418
+  },
+  "engine_blades_hpt_ngv": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 372.0,
+   "x1": 374.8,
+   "f": 7360
+  },
+  "engine_blades_hpt_r1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 374.9,
+   "x1": 376.6,
+   "f": 10296
+  },
+  "engine_blades_lpt_r1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 379.2,
+   "x1": 380.7,
+   "f": 7832
+  },
+  "engine_blades_lpt_r2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 382.4,
+   "x1": 383.8,
+   "f": 8544
+  },
+  "engine_blades_lpt_s1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 377.4,
+   "x1": 379.1,
+   "f": 23684
+  },
+  "engine_blades_lpt_s2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 380.8,
+   "x1": 382.3,
+   "f": 6720
+  },
+  "engine_brg_1_lp_thrust": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 310.2,
+   "x1": 311.6,
+   "f": 5112
+  },
+  "engine_brg_2_lp_roller": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 333.1,
+   "x1": 334.2,
+   "f": 2606
+  },
+  "engine_brg_3_hp_thrust": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 334.6,
+   "x1": 336.0,
+   "f": 5112
+  },
+  "engine_brg_4_hp_roller": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 376.6,
+   "x1": 377.8,
+   "f": 2606
+  },
+  "engine_brg_5_lp_roller": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 385.2,
+   "x1": 386.3,
+   "f": 2256
+  },
+  "engine_bypass_inner_wall": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 330.3,
+   "x1": 389.1,
+   "f": 128
+  },
+  "engine_bypass_struts": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 331.8,
+   "x1": 337.2,
+   "f": 820
+  },
+  "engine_casing_augmentor": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 389.1,
+   "x1": 423.0,
+   "f": 128
+  },
+  "engine_casing_bypass": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 330.3,
+   "x1": 389.1,
+   "f": 128
+  },
+  "engine_casing_combustor": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 361.2,
+   "x1": 373.0,
+   "f": 128
+  },
+  "engine_casing_fan": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 312.7,
+   "x1": 330.3,
+   "f": 128
+  },
+  "engine_casing_hpc": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 335.8,
+   "x1": 361.2,
+   "f": 128
+  },
+  "engine_casing_inlet": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 300.0,
+   "x1": 312.7,
+   "f": 128
+  },
+  "engine_casing_turbine": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 373.0,
+   "x1": 389.1,
+   "f": 128
+  },
+  "engine_combustor_dome": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 359.9,
+   "x1": 362.6,
+   "f": 608
+  },
+  "engine_combustor_liner_inner": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 361.8,
+   "x1": 372.7,
+   "f": 2984
+  },
+  "engine_combustor_liner_outer": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 361.8,
+   "x1": 372.7,
+   "f": 1765
+  },
+  "engine_combustor_swirlers": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 361.3,
+   "x1": 362.3,
+   "f": 2400
+  },
+  "engine_diffuser": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 359.4,
+   "x1": 362.4,
+   "f": 400
+  },
+  "engine_fan_disc_assembly": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 309.1,
+   "x1": 331.3,
+   "f": 2688
+  },
+  "engine_fan_frame_hub": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 331.2,
+   "x1": 336.7,
+   "f": 256
+  },
+  "engine_fan_frame_struts": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 332.1,
+   "x1": 336.7,
+   "f": 656
+  },
+  "engine_fan_interstage_seals": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 319.1,
+   "x1": 328.1,
+   "f": 1280
+  },
+  "engine_flameholder": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 398.9,
+   "x1": 400.0,
+   "f": 660
+  },
+  "engine_flange_aug_aft": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 422.7,
+   "x1": 423.7,
+   "f": 2064
+  },
+  "engine_flange_comb_aft": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 372.6,
+   "x1": 373.9,
+   "f": 2304
+  },
+  "engine_flange_fan_rear": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 330.0,
+   "x1": 331.0,
+   "f": 2544
+  },
+  "engine_flange_hpc_aft": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 360.8,
+   "x1": 362.0,
+   "f": 2184
+  },
+  "engine_flange_hpc_fwd": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 335.5,
+   "x1": 336.4,
+   "f": 2184
+  },
+  "engine_flange_inlet": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 312.4,
+   "x1": 313.4,
+   "f": 2544
+  },
+  "engine_flange_turb_aft": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 388.7,
+   "x1": 389.9,
+   "f": 2304
+  },
+  "engine_fuel_lines": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 340.0,
+   "x1": 360.6,
+   "f": 1576
+  },
+  "engine_fuel_manifold": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 359.4,
+   "x1": 360.2,
+   "f": 448
+  },
+  "engine_fuel_nozzles": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 359.7,
+   "x1": 362.4,
+   "f": 4760
+  },
+  "engine_gearbox": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 338.0,
+   "x1": 354.6,
+   "f": 606
+  },
+  "engine_harnesses": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 314.3,
+   "x1": 419.6,
+   "f": 576
+  },
+  "engine_hpc_drum": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 334.9,
+   "x1": 361.2,
+   "f": 704
+  },
+  "engine_hpc_front_cone": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 334.8,
+   "x1": 334.9,
+   "f": 128
+  },
+  "engine_hpc_interstage_seals": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 339.3,
+   "x1": 359.6,
+   "f": 4096
+  },
+  "engine_hpc_rear_cone": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 361.2,
+   "x1": 362.4,
+   "f": 128
+  },
+  "engine_hpt_disc": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 370.9,
+   "x1": 376.8,
+   "f": 896
+  },
+  "engine_igniters": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 363.0,
+   "x1": 364.8,
+   "f": 192
+  },
+  "engine_inlet_case": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 300.0,
+   "x1": 312.7,
+   "f": 128
+  },
+  "engine_inlet_lip": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 300.0,
+   "x1": 301.6,
+   "f": 544
+  },
+  "engine_lpt_disc_assembly": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 379.1,
+   "x1": 388.2,
+   "f": 1792
+  },
+  "engine_mixer": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 389.1,
+   "x1": 396.4,
+   "f": 1152
+  },
+  "engine_mount_trunnions": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 332.5,
+   "x1": 390.5,
+   "f": 400
+  },
+  "engine_nozzle_actuator_ring": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 420.9,
+   "x1": 422.1,
+   "f": 448
+  },
+  "engine_nozzle_actuators": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 413.2,
+   "x1": 421.5,
+   "f": 996
+  },
+  "engine_nozzle_ext_flaps": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 422.7,
+   "x1": 440.0,
+   "f": 1176
+  },
+  "engine_nozzle_flaps_convergent": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 423.0,
+   "x1": 432.6,
+   "f": 1824
+  },
+  "engine_nozzle_flaps_divergent": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 432.1,
+   "x1": 440.3,
+   "f": 984
+  },
+  "engine_nozzle_links": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 421.5,
+   "x1": 426.0,
+   "f": 144
+  },
+  "engine_nozzle_seals": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 423.0,
+   "x1": 440.3,
+   "f": 1008
+  },
+  "engine_oil_lines": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 332.7,
+   "x1": 389.1,
+   "f": 582
+  },
+  "engine_shaft_hp": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 334.8,
+   "x1": 377.0,
+   "f": 256
+  },
+  "engine_shaft_lp": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 308.5,
+   "x1": 386.1,
+   "f": 256
+  },
+  "engine_spinner": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 300.6,
+   "x1": 313.9,
+   "f": 1152
+  },
+  "engine_splitter": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 329.3,
+   "x1": 332.1,
+   "f": 480
+  },
+  "engine_spraybars": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 396.8,
+   "x1": 398.3,
+   "f": 7296
+  },
+  "engine_towershaft": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 334.8,
+   "x1": 338.5,
+   "f": 238
+  },
+  "engine_turbine_blade_outer_air_seals": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 374.7,
+   "x1": 383.9,
+   "f": 384
+  },
+  "engine_turbine_frame_hub": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 387.0,
+   "x1": 391.2,
+   "f": 256
+  },
+  "engine_turbine_frame_struts": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 387.0,
+   "x1": 392.2,
+   "f": 656
+  },
+  "engine_turbine_inner_flowpath": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 372.4,
+   "x1": 385.8,
+   "f": 128
+  },
+  "engine_turbine_interstage_seals": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 376.8,
+   "x1": 377.2,
+   "f": 512
+  },
+  "engine_vanes_fan_ogv": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 331.3,
+   "x1": 333.4,
+   "f": 7680
+  },
+  "engine_vanes_fan_s1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 319.0,
+   "x1": 321.8,
+   "f": 5760
+  },
+  "engine_vanes_fan_s2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 326.0,
+   "x1": 328.2,
+   "f": 6912
+  },
+  "engine_vanes_hpc_s1": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 338.9,
+   "x1": 340.6,
+   "f": 4992
+  },
+  "engine_vanes_hpc_s2": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 342.8,
+   "x1": 344.3,
+   "f": 5568
+  },
+  "engine_vanes_hpc_s3": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 346.2,
+   "x1": 347.6,
+   "f": 6144
+  },
+  "engine_vanes_hpc_s4": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 349.4,
+   "x1": 350.6,
+   "f": 6720
+  },
+  "engine_vanes_hpc_s5": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 352.2,
+   "x1": 353.3,
+   "f": 7296
+  },
+  "engine_vanes_hpc_s6": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 354.7,
+   "x1": 355.7,
+   "f": 7872
+  },
+  "engine_vanes_hpc_s7": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 356.9,
+   "x1": 357.8,
+   "f": 8448
+  },
+  "engine_vanes_hpc_s8": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 358.9,
+   "x1": 359.6,
+   "f": 9024
+  },
+  "engine_vanes_hpc_s9": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 360.7,
+   "x1": 361.3,
+   "f": 9600
+  },
+  "engine_vanes_igv": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 309.7,
+   "x1": 312.4,
+   "f": 2688
+  },
+  "engine_variable_vane_actuation": {
+   "g": "07 Engine",
+   "mat": "engine",
+   "x0": 310.5,
+   "x1": 347.1,
+   "f": 19212
+  }
+ },
+ "masses": [
+  {
+   "name": "lipo_3s_1300",
+   "x": 242.0,
+   "m": 105.0
+  },
+  {
+   "name": "airframe_skin",
+   "x": 232.0,
+   "m": 62.0
+  },
+  {
+   "name": "engine",
+   "x": 370.0,
+   "m": 62.0
+  },
+  {
+   "name": "esc_40a",
+   "x": 170.0,
+   "m": 28.0
+  },
+  {
+   "name": "wing_structure",
+   "x": 248.0,
+   "m": 18.0
+  },
+  {
+   "name": "gear_assembly",
+   "x": 219.0,
+   "m": 14.0
+  },
+  {
+   "name": "wiring_misc",
+   "x": 250.0,
+   "m": 12.0
+  },
+  {
+   "name": "receiver",
+   "x": 186.0,
+   "m": 7.0
+  },
+  {
+   "name": "servo_ail_l",
+   "x": 285.0,
+   "m": 5.5
+  },
+  {
+   "name": "servo_ail_r",
+   "x": 285.0,
+   "m": 5.5
+  },
+  {
+   "name": "servo_stab",
+   "x": 288.0,
+   "m": 5.5
+  },
+  {
+   "name": "servo_rudder",
+   "x": 288.0,
+   "m": 5.5
+  }
+ ]
+}

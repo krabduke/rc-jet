@@ -2,7 +2,7 @@ BLENDER := /Applications/Blender.app/Contents/MacOS/Blender
 BLEND   := build/rcjet.blend
 SAMPLES ?= 128
 
-.PHONY: all build verify render export stl clean
+.PHONY: all build verify render export stl manifest viewer clean
 
 all: build verify render export
 
@@ -23,6 +23,13 @@ export:
 
 stl:
 	$(BLENDER) -b $(BLEND) -P plane/export.py -- stl
+
+manifest:
+	python3 tools/make_manifest.py
+
+viewer: 
+	@echo "Serving http://localhost:8788/viewer/ - Ctrl-C to stop"
+	@python3 -m http.server 8788 --bind 127.0.0.1
 
 clean:
 	rm -rf build renders
