@@ -99,8 +99,8 @@ FLAPERON = {
 # --------------------------------------------------------------------------
 
 HTAIL = {
-    "x_root_le":   352.0,
-    "z_root":       -3.0,
+    "x_root_le":   392.0,   # clear of the wing TE at 360 mm
+    "z_root":      -22.0,   # below the wing wake sheet, not in it
     "root_chord":   72.0,
     "tip_chord":    31.0,
     "semi_span":    62.0,

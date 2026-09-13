@@ -1,0 +1,334 @@
+"""Vortex-lattice method.
+
+A classical three-dimensional panel solver for lifting surfaces (Katz &
+Plotkin, "Low-Speed Aerodynamics", ch. 12). Each panel carries a horseshoe
+vortex: a bound segment along the panel quarter-chord and two trailing legs
+running to far downstream. The circulations are found by enforcing flow
+tangency at each panel's three-quarter-chord collocation point, then lift comes
+from Kutta-Joukowski and induced drag from the downwash the system induces on
+itself.
+
+This is a real solve, not a coefficient lookup. What it cannot do is anything
+viscous: no boundary layer, no separation, no stall, no profile drag, and no
+compressibility. Within those limits it gives genuinely useful answers for lift
+slope, spanwise loading, induced drag, and -- the reason it is here -- the
+aerodynamic centre, which is what actually decides whether an aircraft is
+stable or where a racing car's aerodynamic balance sits.
+
+Ground effect is handled by the method of images: the whole vortex system is
+mirrored in the ground plane, which makes the ground a streamline exactly.
+"""
+
+import math
+
+import numpy as np
+
+RHO = 1.225
+FAR = 1.0e4          # how far downstream the trailing legs run, in metres
+
+
+# --------------------------------------------------------------------------
+# Geometry
+# --------------------------------------------------------------------------
+
+class Surface:
+    """One lifting surface, discretised into a chordwise x spanwise lattice.
+
+    Corner points are supplied as functions of (spanwise fraction) so that
+    taper, sweep, twist, dihedral and ground clearance are all expressible.
+    """
+
+    def __init__(self, name, le_root, chord_root, le_tip, chord_tip,
+                 n_span=12, n_chord=4, twist_root=0.0, twist_tip=0.0,
+                 mirror=True, symmetric_pair=True):
+        self.name = name
+        self.le_root = np.asarray(le_root, dtype=float)
+        self.le_tip = np.asarray(le_tip, dtype=float)
+        self.chord_root = float(chord_root)
+        self.chord_tip = float(chord_tip)
+        self.n_span = int(n_span)
+        self.n_chord = int(n_chord)
+        self.twist_root = math.radians(twist_root)
+        self.twist_tip = math.radians(twist_tip)
+        self.mirror = mirror
+        self.symmetric_pair = symmetric_pair
+
+    def _station(self, f):
+        le = self.le_root + (self.le_tip - self.le_root) * f
+        c = self.chord_root + (self.chord_tip - self.chord_root) * f
+        tw = self.twist_root + (self.twist_tip - self.twist_root) * f
+        return le, c, tw
+
+    def _point(self, f, xc):
+        """A point at spanwise fraction f and chord fraction xc, with twist
+        applied about the quarter-chord."""
+        le, c, tw = self._station(f)
+        dx = (xc - 0.25) * c
+        ct, st = math.cos(tw), math.sin(tw)
+        return np.array([le[0] + 0.25 * c + dx * ct,
+                         le[1],
+                         le[2] - dx * st])
+
+    def panels(self):
+        """Yield (A, B, C, D, collocation, normal, area, y_mid) per panel.
+
+        A-B is the leading edge of the panel strip, D-C the trailing edge,
+        following the usual VLM convention.
+        """
+        out = []
+        sides = [1.0, -1.0] if (self.mirror and self.symmetric_pair) else [1.0]
+        for sgn in sides:
+            for i in range(self.n_span):
+                f0 = i / self.n_span
+                f1 = (i + 1) / self.n_span
+                for j in range(self.n_chord):
+                    x0 = j / self.n_chord
+                    x1 = (j + 1) / self.n_chord
+                    p00 = self._point(f0, x0)
+                    p10 = self._point(f1, x0)
+                    p01 = self._point(f0, x1)
+                    p11 = self._point(f1, x1)
+                    for p in (p00, p10, p01, p11):
+                        p[1] *= sgn
+                    if sgn < 0:
+                        # Negating y reverses the panel winding. Swapping the
+                        # inboard/outboard corners restores it, so the normal
+                        # comes out consistently and the bound-segment
+                        # direction still agrees with it. Without this the
+                        # mirrored half contributes force with the wrong sign
+                        # and induced drag comes out negative.
+                        p00, p10 = p10, p00
+                        p01, p11 = p11, p01
+                    # bound vortex at the panel quarter chord
+                    a = p00 + 0.25 * (p01 - p00)
+                    b = p10 + 0.25 * (p11 - p10)
+                    # collocation at three-quarter chord, mid span
+                    c_pt = 0.5 * ((p00 + 0.75 * (p01 - p00))
+                                  + (p10 + 0.75 * (p11 - p10)))
+                    n = np.cross(p11 - p00, p10 - p01)
+                    area = 0.5 * np.linalg.norm(n)
+                    nn = np.linalg.norm(n)
+                    n = n / nn if nn > 1e-12 else np.array([0.0, 0.0, 1.0])
+                    if n[2] < 0:      # guard; should not trigger now
+                        n = -n
+                    out.append(dict(a=a, b=b, col=c_pt, n=n, area=area,
+                                    y=0.5 * (a[1] + b[1]),
+                                    dy=abs(b[1] - a[1]),
+                                    surface=self.name))
+        return out
+
+
+# --------------------------------------------------------------------------
+# Biot-Savart
+# --------------------------------------------------------------------------
+
+def _seg_velocity(p, a, b, core=1e-10):
+    """Velocity at p induced by a straight vortex segment a->b of unit strength.
+
+    The singular-core cutoff is RELATIVE to the local geometry. An absolute
+    threshold silently zeroes real contributions on any model smaller than a
+    metre or so -- which is how a 0.15 m wing came out with its aerodynamic
+    centre ahead of its own nose while a 4 m wing solved correctly.
+    """
+    r1 = p - a
+    r2 = p - b
+    cr = np.cross(r1, r2)
+    cr2 = float(np.dot(cr, cr))
+    r1n = float(np.linalg.norm(r1))
+    r2n = float(np.linalg.norm(r2))
+    r0 = b - a
+    scale = float(np.dot(r0, r0)) * max(r1n * r1n, r2n * r2n)
+    if cr2 < core * max(scale, 1e-30):
+        return np.zeros(3)
+    if r1n < 1e-12 or r2n < 1e-12:
+        return np.zeros(3)
+    k = (float(np.dot(r0, r1)) / r1n - float(np.dot(r0, r2)) / r2n)
+    return cr * (k / (4.0 * math.pi * cr2))
+
+
+def _horseshoe_velocity(p, a, b, wake_dir):
+    """Velocity at p from a unit horseshoe: trailing leg in, bound, trailing out."""
+    a_inf = a + wake_dir * FAR
+    b_inf = b + wake_dir * FAR
+    return (_seg_velocity(p, a_inf, a)
+            + _seg_velocity(p, a, b)
+            + _seg_velocity(p, b, b_inf))
+
+
+def _mirror(v):
+    m = v.copy()
+    m[2] = -m[2]
+    return m
+
+
+# --------------------------------------------------------------------------
+# Solver
+# --------------------------------------------------------------------------
+
+class Solution:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+def trefftz_drag(panels, gamma, v_inf, s_ref):
+    """Induced drag from the Trefftz plane.
+
+    Near-field Kutta-Joukowski drag is unreliable on swept wings: the bound
+    vortex is no longer normal to the freestream and the velocity it induces
+    at its own midpoint contaminates the streamwise force, which showed up
+    here as a swept wing producing negative induced drag. The Trefftz plane
+    avoids that entirely by working in the far wake, where the flow is
+    two-dimensional and only the shed vorticity matters.
+    """
+    strips = {}
+    for p, g in zip(panels, gamma):
+        key = (round(float(p["a"][1]), 9), round(float(p["b"][1]), 9))
+        s = strips.setdefault(key, {"G": 0.0,
+                                    "yl": float(p["a"][1]),
+                                    "yr": float(p["b"][1])})
+        s["G"] += float(g)
+    items = list(strips.values())
+    for s in items:
+        s["ym"] = 0.5 * (s["yl"] + s["yr"])
+        s["dy"] = abs(s["yr"] - s["yl"])
+
+    d = 0.0
+    for si in items:
+        w = 0.0
+        for sj in items:
+            for (y_end, sign) in ((sj["yr"], -1.0), (sj["yl"], 1.0)):
+                dy = si["ym"] - y_end
+                if abs(dy) < 1e-12:
+                    continue
+                w += sign * sj["G"] / (2.0 * math.pi * dy)
+        d += 0.5 * RHO * si["G"] * w * si["dy"]
+    return d / (0.5 * RHO * v_inf * v_inf * s_ref)
+
+
+def solve(surfaces, alpha_deg, v_inf, s_ref, c_ref, b_ref,
+          ground=False, x_ref=0.0):
+    """Solve the lattice and return forces and moments.
+
+    `ground` mirrors the entire vortex system in the plane z = 0, which makes
+    the ground a streamline and is what produces ground effect.
+    """
+    panels = []
+    for s in surfaces:
+        panels.extend(s.panels())
+    n = len(panels)
+
+    # Non-dimensionalise on the reference chord before solving. The influence
+    # matrix is built from cross products of position differences, so on a
+    # 0.15 m model those quantities are ~1e-4 and the conditioning degrades
+    # badly -- the same aircraft solved at metre scale and at model scale gave
+    # different aerodynamic centres. Working in chords removes the dependence.
+    L = c_ref if c_ref > 0 else 1.0
+    for p in panels:
+        p["a"] = p["a"] / L
+        p["b"] = p["b"] / L
+        p["col"] = p["col"] / L
+        p["y"] = p["y"] / L
+        p["dy"] = p["dy"] / L
+    s_ref_n = s_ref / (L * L)
+    b_ref_n = b_ref / L
+    c_ref_n = 1.0
+    x_ref_n = x_ref / L
+
+    a = math.radians(alpha_deg)
+    v_vec = np.array([math.cos(a), 0.0, math.sin(a)]) * v_inf
+    wake = np.array([1.0, 0.0, 0.0])
+
+    A = np.zeros((n, n))
+    rhs = np.zeros(n)
+    for i, pi in enumerate(panels):
+        col, nrm = pi["col"], pi["n"]
+        for j, pj in enumerate(panels):
+            v = _horseshoe_velocity(col, pj["a"], pj["b"], wake)
+            if ground:
+                # the image system: mirrored geometry, traversed b->a so the
+                # induced normal velocity cancels at the wall
+                v = v + _horseshoe_velocity(col, _mirror(pj["b"]),
+                                            _mirror(pj["a"]), wake)
+            A[i, j] = float(np.dot(v, nrm))
+        rhs[i] = -float(np.dot(v_vec, nrm))
+
+    gamma = np.linalg.solve(A, rhs)
+
+    # Kutta-Joukowski on each bound segment, using the local total velocity
+    F = np.zeros(3)
+    M_y = 0.0
+    strips = {}
+    for i, pi in enumerate(panels):
+        mid = 0.5 * (pi["a"] + pi["b"])
+        # Include the panel's own horseshoe. Its bound segment contributes
+        # nothing at its own midpoint (the Biot-Savart kernel returns zero for
+        # a collinear point), but its two trailing legs induce a large part of
+        # the downwash -- and omitting them makes induced drag come out
+        # negative, which is how this was caught.
+        v_ind = np.zeros(3)
+        for j, pj in enumerate(panels):
+            v_ind += gamma[j] * _horseshoe_velocity(mid, pj["a"], pj["b"], wake)
+            if ground:
+                v_ind += gamma[j] * _horseshoe_velocity(
+                    mid, _mirror(pj["b"]), _mirror(pj["a"]), wake)
+        v_tot = v_vec + v_ind
+        dl = pi["b"] - pi["a"]
+        df = RHO * gamma[i] * np.cross(v_tot, dl)
+        F += df
+        M_y += -(mid[0] - x_ref_n) * df[2] + (mid[2]) * df[0]
+        key = round(pi["y"], 6)
+        strips.setdefault(key, 0.0)
+        strips[key] += float(df[2])
+
+    q = 0.5 * RHO * v_inf * v_inf
+    lift = F[2] * math.cos(a) - F[0] * math.sin(a)
+    cdi = trefftz_drag(panels, gamma, v_inf, s_ref_n)
+    drag = cdi * q * s_ref_n
+
+    return Solution(
+        panels=n,
+        gamma=gamma,
+        alpha=alpha_deg,
+        CL=lift / (q * s_ref_n),
+        CDi=cdi,
+        Cm=M_y / (q * s_ref_n * c_ref_n),
+        lift_N=lift,
+        drag_N=drag,
+        strips=dict(sorted(strips.items())),
+        s_ref=s_ref_n, c_ref=c_ref_n, b_ref=b_ref_n,
+    )
+
+
+def lift_slope(surfaces, v_inf, s_ref, c_ref, b_ref, ground=False, x_ref=0.0,
+               a1=0.0, a2=4.0):
+    """dCL/dalpha per radian, from two solves."""
+    s1 = solve(surfaces, a1, v_inf, s_ref, c_ref, b_ref, ground, x_ref)
+    s2 = solve(surfaces, a2, v_inf, s_ref, c_ref, b_ref, ground, x_ref)
+    return (s2.CL - s1.CL) / math.radians(a2 - a1), s1, s2
+
+
+def neutral_point(surfaces, v_inf, s_ref, c_ref, b_ref, x_le_mac,
+                  ground=False, a1=0.0, a2=4.0):
+    """Longitudinal neutral point, as a fraction of the mean aerodynamic chord.
+
+    Moments are referenced to the quarter-chord of the mean aerodynamic chord,
+    not to the origin. Referencing to the origin makes Cm a small difference
+    between large numbers and the answer becomes lattice-dependent noise.
+    """
+    x_ref = x_le_mac + 0.25 * c_ref
+    s1 = solve(surfaces, a1, v_inf, s_ref, c_ref, b_ref, ground, x_ref=x_ref)
+    s2 = solve(surfaces, a2, v_inf, s_ref, c_ref, b_ref, ground, x_ref=x_ref)
+    dcl = s2.CL - s1.CL
+    if abs(dcl) < 1e-9:
+        return float("nan"), s1, s2
+    dcm_dcl = (s2.Cm - s1.Cm) / dcl
+    x_np = x_ref - dcm_dcl * c_ref
+    return (x_np - x_le_mac) / c_ref, s1, s2
+
+
+def efficiency(sol):
+    """Span efficiency e, from CDi = CL^2 / (pi AR e)."""
+    ar = sol.b_ref ** 2 / sol.s_ref
+    if abs(sol.CDi) < 1e-12:
+        return float("nan")
+    return sol.CL ** 2 / (math.pi * ar * sol.CDi)
