@@ -229,8 +229,8 @@
    "color": "#6E93A8",
    "parts": 6,
    "faces": 1488,
-   "x0": 0.7,
-   "x1": 343.8
+   "x0": 147.0,
+   "x1": 358.8
   },
   {
    "key": "03 Tail",
@@ -238,8 +238,8 @@
    "color": "#7C86A6",
    "parts": 6,
    "faces": 1046,
-   "x0": -18.0,
-   "x1": 433.4
+   "x0": 330.0,
+   "x1": 464.2
   },
   {
    "key": "04 Intake and Duct",
@@ -360,8 +360,8 @@
   "flaperon_l": {
    "g": "02 Wing",
    "mat": "control",
-   "x0": 0.9,
-   "x1": 34.8,
+   "x0": 324.9,
+   "x1": 358.8,
    "f": 192,
    "pivot": {
     "p": [
@@ -381,8 +381,8 @@
   "flaperon_r": {
    "g": "02 Wing",
    "mat": "control",
-   "x0": 0.7,
-   "x1": 34.8,
+   "x0": 324.7,
+   "x1": 358.8,
    "f": 192,
    "pivot": {
     "p": [
@@ -437,8 +437,8 @@
   "rudder": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 3.0,
-   "x1": 38.3,
+   "x0": 409.3,
+   "x1": 444.6,
    "f": 192,
    "pivot": {
     "p": [
@@ -458,8 +458,8 @@
   "stabilator_l": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": -18.0,
-   "x1": 54.2,
+   "x0": 392.0,
+   "x1": 464.2,
    "f": 268,
    "pivot": {
     "p": [
@@ -479,8 +479,8 @@
   "stabilator_r": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": -18.0,
-   "x1": 54.2,
+   "x0": 392.0,
+   "x1": 464.2,
    "f": 268,
    "pivot": {
     "p": [
@@ -649,84 +649,252 @@
    "mat": "engine",
    "x0": 312.8,
    "x1": 318.8,
-   "f": 2016
+   "f": 2016,
+   "pivot": {
+    "p": [
+     315.8,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_blades_fan_r2": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 321.8,
    "x1": 326.0,
-   "f": 2772
+   "f": 2772,
+   "pivot": {
+    "p": [
+     323.9,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_blades_fan_r3": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 328.2,
    "x1": 331.5,
-   "f": 3276
+   "f": 3276,
+   "pivot": {
+    "p": [
+     329.8,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_blades_hpc_r1": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 336.5,
    "x1": 338.9,
-   "f": 2394
+   "f": 2394,
+   "pivot": {
+    "p": [
+     337.7,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r2": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 340.6,
    "x1": 342.7,
-   "f": 2772
+   "f": 2772,
+   "pivot": {
+    "p": [
+     341.7,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r3": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 344.3,
    "x1": 346.2,
-   "f": 3150
+   "f": 3150,
+   "pivot": {
+    "p": [
+     345.3,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r4": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 347.7,
    "x1": 349.3,
-   "f": 3528
+   "f": 3528,
+   "pivot": {
+    "p": [
+     348.5,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r5": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 350.7,
    "x1": 352.1,
-   "f": 3906
+   "f": 3906,
+   "pivot": {
+    "p": [
+     351.4,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r6": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 353.3,
    "x1": 354.6,
-   "f": 4284
+   "f": 4284,
+   "pivot": {
+    "p": [
+     354.0,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r7": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 355.7,
    "x1": 356.9,
-   "f": 4662
+   "f": 4662,
+   "pivot": {
+    "p": [
+     356.3,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r8": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 357.9,
    "x1": 358.8,
-   "f": 5040
+   "f": 5040,
+   "pivot": {
+    "p": [
+     358.3,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpc_r9": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 359.7,
    "x1": 360.6,
-   "f": 5418
+   "f": 5418,
+   "pivot": {
+    "p": [
+     360.2,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_hpt_ngv": {
    "g": "07 Engine",
@@ -740,21 +908,63 @@
    "mat": "engine",
    "x0": 374.9,
    "x1": 376.6,
-   "f": 10296
+   "f": 10296,
+   "pivot": {
+    "p": [
+     375.7,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_blades_lpt_r1": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 379.2,
    "x1": 380.7,
-   "f": 7832
+   "f": 7832,
+   "pivot": {
+    "p": [
+     380.0,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_blades_lpt_r2": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 382.4,
    "x1": 383.8,
-   "f": 8544
+   "f": 8544,
+   "pivot": {
+    "p": [
+     383.1,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_blades_lpt_s1": {
    "g": "07 Engine",
@@ -908,7 +1118,21 @@
    "mat": "engine",
    "x0": 309.1,
    "x1": 331.3,
-   "f": 2688
+   "f": 2688,
+   "pivot": {
+    "p": [
+     320.2,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_fan_frame_hub": {
    "g": "07 Engine",
@@ -1027,14 +1251,42 @@
    "mat": "engine",
    "x0": 334.9,
    "x1": 361.2,
-   "f": 704
+   "f": 704,
+   "pivot": {
+    "p": [
+     348.0,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_hpc_front_cone": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 334.8,
    "x1": 334.9,
-   "f": 128
+   "f": 128,
+   "pivot": {
+    "p": [
+     334.9,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_hpc_interstage_seals": {
    "g": "07 Engine",
@@ -1048,14 +1300,42 @@
    "mat": "engine",
    "x0": 361.2,
    "x1": 362.4,
-   "f": 128
+   "f": 128,
+   "pivot": {
+    "p": [
+     361.8,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_hpt_disc": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 370.9,
    "x1": 376.8,
-   "f": 896
+   "f": 896,
+   "pivot": {
+    "p": [
+     373.8,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_igniters": {
    "g": "07 Engine",
@@ -1083,7 +1363,21 @@
    "mat": "engine",
    "x0": 379.1,
    "x1": 388.2,
-   "f": 1792
+   "f": 1792,
+   "pivot": {
+    "p": [
+     383.6,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_mixer": {
    "g": "07 Engine",
@@ -1160,21 +1454,63 @@
    "mat": "engine",
    "x0": 334.8,
    "x1": 377.0,
-   "f": 256
+   "f": 256,
+   "pivot": {
+    "p": [
+     355.9,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": -1.6,
+    "role": "spool_hp"
+   }
   },
   "engine_shaft_lp": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 308.5,
    "x1": 386.1,
-   "f": 256
+   "f": 256,
+   "pivot": {
+    "p": [
+     347.3,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_spinner": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 300.6,
    "x1": 313.9,
-   "f": 1152
+   "f": 1152,
+   "pivot": {
+    "p": [
+     307.3,
+     0.0,
+     -1.0
+    ],
+    "axis": [
+     1.0,
+     0.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "spool_lp"
+   }
   },
   "engine_splitter": {
    "g": "07 Engine",

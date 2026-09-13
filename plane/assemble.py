@@ -233,8 +233,16 @@ def main():
             spec_p = piv.get(name)
             if spec_p:
                 set_pivot(ob, spec_p[0])
-            wm = ob.matrix_world
-            bb = meshlib.bbox([tuple(wm @ x.co) for x in ob.data.vertices])
+            # World-space bounds. Read them through matrix_world and you get
+            # whatever Blender last evaluated -- which, for an object whose
+            # origin was moved after it was linked, is the state before the
+            # move. Every pivoted part then reports local coordinates and the
+            # dimension checks measure the wrong aeroplane. The transform here
+            # is a pure translation, so applying it directly is both exact and
+            # free.
+            lx, ly, lz = ob.location
+            bb = meshlib.bbox([(x.co.x + lx, x.co.y + ly, x.co.z + lz)
+                               for x in ob.data.vertices])
             ax = spec_p[1] if spec_p else ("", "", "")
             rows.append({
                 "name": name, "collection": cname, "material": mname,

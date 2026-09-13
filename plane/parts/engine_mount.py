@@ -81,3 +81,39 @@ def build():
         ARRAYS[f"engine_{name}"] = count
 
     return out
+
+
+# Which of the engine's parts turn with which spool. The fan and the low
+# turbine share the LP shaft; the compressor and the high turbine share the
+# HP shaft, which turns faster and the other way. Everything else is static.
+LP_PARTS = ("blades_fan_", "fan_disc_assembly", "spinner", "shaft_lp",
+            "lpt_disc_assembly", "blades_lpt_r")
+HP_PARTS = ("blades_hpc_", "hpc_drum", "hpc_front_cone", "hpc_rear_cone",
+            "shaft_hp", "hpt_disc", "blades_hpt_r")
+
+
+def pivots():
+    """The rotating assemblies, about the engine's own centreline.
+
+    The engine axis is x, at y = 0 and the thrust line in z. Giving each rotor
+    that pivot means the viewer can spool the engine up without the parts
+    orbiting the middle of the aeroplane.
+    """
+    built, _, espec = _load_engine()
+    s = spec.ENGINE_SCALE
+    dx = spec.ENGINE_X - espec.STATION["inlet_lip"] * s
+    out = {}
+    for name in built:
+        if name.startswith("cut:"):
+            continue
+        lp = any(name.startswith(p) for p in LP_PARTS)
+        hp = any(name.startswith(p) for p in HP_PARTS)
+        if not (lp or hp):
+            continue
+        # pivot on the axis at the part's own mid-station, so the origin sits
+        # inside the part rather than out at the inlet
+        xs = [v[0] for v in built[name][0]]
+        xm = (min(xs) + max(xs)) / 2 * s + dx
+        out[f"engine_{name}"] = ((xm, 0.0, spec.ENGINE_Z), (1.0, 0.0, 0.0),
+                                 1.0 if lp else -1.6, "spool_lp" if lp else "spool_hp")
+    return out

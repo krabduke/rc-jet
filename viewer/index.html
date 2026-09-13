@@ -167,6 +167,20 @@
   #t-span{width:100%; height:76px; display:block}
   .tnote{font-size:10.5px; line-height:1.45; color:#7C8A92; margin:9px 0 0}
   .tnote.warn{color:#E0A05A}
+
+  /* --- throttle --------------------------------------------------------- */
+  #thr{display:flex; gap:0; margin-right:8px}
+  #thr button{
+    font:inherit; font-size:11.5px; padding:5px 10px; cursor:pointer;
+    background:var(--panel); color:var(--ink-dim);
+    border:1px solid #2C383E; border-right:0;
+  }
+  #thr button:first-child{border-radius:3px 0 0 3px}
+  #thr button:last-child{border-right:1px solid #2C383E; border-radius:0 3px 3px 0}
+  #thr button[aria-pressed="true"]{background:#D9E4EA; color:#101619; font-weight:600}
+  #thr button:focus-visible{outline:2px solid var(--focus); outline-offset:2px; z-index:1}
+  #n1box{font-size:11px; color:#7C8A92; font-variant-numeric:tabular-nums;
+         align-self:center; margin-right:10px; min-width:78px}
 </style>
 </head>
 <body>
@@ -207,6 +221,13 @@
   </div>
   <div id="groups"></div>
   <div id="controls">
+    <div id="thr" role="group" aria-label="Throttle">
+      <button type="button" data-d="0" aria-pressed="true">Off</button>
+      <button type="button" data-d="1" aria-pressed="false">Idle</button>
+      <button type="button" data-d="2" aria-pressed="false">Mil</button>
+      <button type="button" data-d="3" aria-pressed="false">Max A/B</button>
+    </div>
+    <span id="n1box">N1 <b id="n1">0</b> %</span>
     <button class="btn" id="tunnel-btn" type="button" aria-pressed="false">Wind tunnel</button>
     <button class="btn" id="skin" type="button" aria-pressed="false">Show internals</button>
     <button class="btn" id="spin" type="button" aria-pressed="false">Spin</button>
@@ -248,6 +269,11 @@ let scene, camera, renderer, controls, root, raycaster, clock;
 let data, byGroup = new Map(), info = new Map(), pickable = [];
 let hidden = new Set(), hovered = null, corners = [], viewDir, spinning = false;
 let tunnel = null, panel = null, byName = new Map();
+let spoolLP = [], spoolHP = [], plume = null, plumeMat = null, plumeLight = null;
+// N1 is a state, not a switch: a turbine takes seconds to spool, and the
+// afterburner only lights once the core is already up.
+const DETENT = [{n1:0, ab:0}, {n1:0.62, ab:0}, {n1:1.0, ab:0}, {n1:1.0, ab:1}];
+let detent = 0, rpm = {n1:0, ab:0};
 
 init();
 
@@ -387,6 +413,8 @@ function ready(model){
     }
     info.set(o, nfo);
     byName.set(o.name, o);
+    if(nfo.pivot && nfo.pivot.role === 'spool_lp') spoolLP.push({o, s:nfo.pivot.spin});
+    if(nfo.pivot && nfo.pivot.role === 'spool_hp') spoolHP.push({o, s:nfo.pivot.spin});
     pickable.push(o);
     if(!byGroup.has(nfo.g)) byGroup.set(nfo.g, []);
     byGroup.get(nfo.g).push(o);
@@ -406,6 +434,7 @@ function ready(model){
   addEventListener('resize', onResize);
   renderer.domElement.addEventListener('pointermove', onMove);
   renderer.domElement.addEventListener('pointerleave', () => setProbe(null));
+  buildPlume();
   buildTunnel(box);
   window.__dbg = {scene, camera, renderer, root, byGroup, tunnel};
   $('#load').classList.add('done');
@@ -439,6 +468,65 @@ function onResize(){
   camera.aspect = s.clientWidth/s.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(s.clientWidth, s.clientHeight);
+}
+
+/* The afterburner. A cone of additively blended shells behind the tailpipe,
+ * shaded from the near-white shock core out to the deep blue-violet edge that
+ * a real augmenter actually produces -- it is not orange, and the shock
+ * diamonds are the standing wave pattern in the supersonic exhaust. */
+function buildPlume(){
+  const tp = byName.get('tailpipe_shroud');
+  if(!tp) return;
+  const b = new THREE.Box3().setFromObject(tp);
+  const r = Math.max((b.max.y - b.min.y), (b.max.z - b.min.z)) * 0.42;
+  const x = b.max.x;
+  plume = new THREE.Group();
+  plumeMat = [];
+  for(let i = 0; i < 3; i++){
+    const len = r * (16 + i*7);
+    const g = new THREE.ConeGeometry(r * (1.0 - i*0.22), len, 22, 1, true);
+    g.rotateZ(-Math.PI/2);
+    g.translate(len/2, 0, 0);
+    const m = new THREE.ShaderMaterial({
+      transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+      side:THREE.DoubleSide,
+      uniforms:{uTime:{value:0}, uAb:{value:0}, uLayer:{value:i}},
+      vertexShader:`varying vec2 vUv; varying float vX;
+        void main(){ vUv = uv; vX = position.x;
+          gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader:`
+        uniform float uTime, uAb, uLayer; varying vec2 vUv; varying float vX;
+        void main(){
+          float t = clamp(vUv.y, 0.0, 1.0);
+          // shock diamonds: a standing wave, so they sit still while the
+          // flow through them does not
+          float d = 0.5 + 0.5*sin(t*46.0 - 1.2);
+          float core = pow(1.0 - t, 2.2);
+          vec3 hot  = vec3(0.92, 0.86, 1.00);
+          vec3 blue = vec3(0.36, 0.44, 0.98);
+          vec3 deep = vec3(0.20, 0.13, 0.46);
+          vec3 c = mix(mix(deep, blue, core), hot, core*core*d);
+          float a = uAb * core * (0.30 - uLayer*0.07) * (0.65 + 0.35*d);
+          gl_FragColor = vec4(c, a);
+        }`,
+    });
+    plumeMat.push(m);
+    plume.add(new THREE.Mesh(g, m));
+  }
+  plume.position.set(x, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
+  plume.visible = false;
+  plume.raycast = () => {};
+  root.add(plume);
+
+  plumeLight = new THREE.PointLight(0x7A86FF, 0, 0.9, 2);
+  plumeLight.position.set(x + r*6, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
+  root.add(plumeLight);
+}
+
+function setDetent(i){
+  detent = i;
+  for(const b of document.querySelectorAll('#thr button'))
+    b.setAttribute('aria-pressed', String(+b.dataset.d === i));
 }
 
 function buildTunnel(box){
@@ -483,6 +571,22 @@ function setTunnel(on){
 
 function tick(){
   const dt = Math.min(clock.getDelta(), 0.05);
+
+  // spool lag: N1 chases the detent, and the augmenter only lights behind it
+  const want = DETENT[detent];
+  rpm.n1 += (want.n1 - rpm.n1) * Math.min(1, dt * (want.n1 > rpm.n1 ? 0.9 : 1.6));
+  rpm.ab += (want.ab * (rpm.n1 > 0.93 ? 1 : 0) - rpm.ab) * Math.min(1, dt * 2.4);
+  if(spoolLP.length){
+    for(const s2 of spoolLP) s2.o.rotation.x += dt * rpm.n1 * 16.0 * s2.s;
+    for(const s2 of spoolHP) s2.o.rotation.x += dt * rpm.n1 * 16.0 * s2.s;
+  }
+  if(plume){
+    plume.visible = rpm.ab > 0.004;
+    for(const m of plumeMat){ m.uniforms.uTime.value += dt; m.uniforms.uAb.value = rpm.ab; }
+    plumeLight.intensity = rpm.ab * 5.0;
+  }
+  $('#n1').textContent = Math.round(rpm.n1 * 100);
+
   if(tunnel) tunnel.update(dt);
   if(spinning && root) root.rotation.y += dt * 0.35;
   controls.update();
@@ -545,6 +649,9 @@ function buildRail(){
     });
     box.appendChild(el);
   }
+
+  for(const b of document.querySelectorAll('#thr button'))
+    b.addEventListener('click', () => setDetent(+b.dataset.d));
 
   $('#tunnel-btn').addEventListener('click', () => {
     setTunnel($('#tunnel-btn').getAttribute('aria-pressed') !== 'true');
