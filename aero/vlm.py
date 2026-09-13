@@ -40,7 +40,7 @@ class Surface:
 
     def __init__(self, name, le_root, chord_root, le_tip, chord_tip,
                  n_span=12, n_chord=4, twist_root=0.0, twist_tip=0.0,
-                 mirror=True, symmetric_pair=True):
+                 mirror=True, symmetric_pair=True, planform=None):
         self.name = name
         self.le_root = np.asarray(le_root, dtype=float)
         self.le_tip = np.asarray(le_tip, dtype=float)
@@ -52,10 +52,29 @@ class Surface:
         self.twist_tip = math.radians(twist_tip)
         self.mirror = mirror
         self.symmetric_pair = symmetric_pair
+        # (span fraction, leading-edge x, chord) -- overrides the linear taper
+        # so the lattice follows a curved leading edge exactly as the geometry
+        # does. Without it the solver describes a different wing.
+        self.planform = planform
 
     def _station(self, f):
         le = self.le_root + (self.le_tip - self.le_root) * f
         c = self.chord_root + (self.chord_tip - self.chord_root) * f
+        if self.planform:
+            t = self.planform
+            if f <= t[0][0]:
+                x_le, c = t[0][1], t[0][2]
+            elif f >= t[-1][0]:
+                x_le, c = t[-1][1], t[-1][2]
+            else:
+                x_le, c = t[-1][1], t[-1][2]
+                for i in range(len(t) - 1):
+                    if t[i][0] <= f <= t[i + 1][0]:
+                        u = (f - t[i][0]) / (t[i + 1][0] - t[i][0])
+                        x_le = t[i][1] + (t[i + 1][1] - t[i][1]) * u
+                        c = t[i][2] + (t[i + 1][2] - t[i][2]) * u
+                        break
+            le = np.array([x_le, le[1], le[2]])
         tw = self.twist_root + (self.twist_tip - self.twist_root) * f
         return le, c, tw
 

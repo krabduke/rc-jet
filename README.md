@@ -5,7 +5,7 @@ specification file, built to fit inside **500 × 300 mm**. The engine is the
 [F110-GE-129](https://github.com/krabduke/f110-turbofan) model from the sibling
 project, scaled 1:33 and installed — not re-modelled.
 
-**221 objects · 492 × 295 mm · 330 g all-up · CG at 24.5 % MAC · 13.1 % static margin · builds in ~20 s**
+**221 objects · 492 × 300 mm · 330 g all-up · 66 g/dm² · CG at 22.3 % MAC · 9.9 % static margin · builds in ~20 s**
 
 ![hero](renders/01_hero.png)
 
@@ -140,11 +140,11 @@ ground effect reproduced correctly.
 
 | | |
 |---|---|
-| Lift slope | 3.53 per rad (0.062 per degree) |
+| Lift slope | 2.83 per rad (0.049 per degree) |
 | Trim α at 22 m/s | 6.3° |
-| Neutral point | 37.6 % MAC |
-| Centre of gravity | 24.5 % MAC |
-| **Static margin** | **13.1 % MAC — stable, comfortable** |
+| Neutral point | 32.2 % MAC |
+| Centre of gravity | 22.3 % MAC |
+| **Static margin** | **9.9 % MAC — stable, comfortable** |
 
 The solve changed the aircraft. The first stabilator position sat in the wing's
 wake sheet and too far forward; the solver put the neutral point barely ahead

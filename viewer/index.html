@@ -234,6 +234,7 @@
       <button type="button" data-d="3" aria-pressed="false">Max A/B</button>
     </div>
     <span id="n1box">N1 <b id="n1">0</b> %</span>
+    <button class="btn" id="gear" type="button" aria-pressed="false">Gear down</button>
     <button class="btn" id="tunnel-btn" type="button" aria-pressed="false">Wind tunnel</button>
     <button class="btn" id="skin" type="button" aria-pressed="false">Show internals</button>
     <button class="btn" id="spin" type="button" aria-pressed="false">Spin</button>
@@ -272,10 +273,15 @@ const $ = s => document.querySelector(s);
 // fragments turned out to be far more trouble than toggling visibility.
 const SKIN = ['fuselage_skin', 'canopy_glass'];
 
+// The gear is up unless you ask for it. This aircraft spends its life with
+// the wheels retracted, and a model shown sitting on its gear reads as a
+// model on a bench rather than an aeroplane.
+const GEAR_GROUP = '06 Landing Gear';
+
 let scene, camera, renderer, controls, root, raycaster, clock;
 let data, byGroup = new Map(), info = new Map(), pickable = [];
 let hidden = new Set(), hovered = null, corners = [], viewDir, spinning = false;
-let tunnel = null, panel = null, byName = new Map();
+let tunnel = null, panel = null, byName = new Map(), gearDown = false;
 let spoolLP = [], spoolHP = [], plume = null, plumeMat = null, plumeLight = null;
 // N1 is a state, not a switch: a turbine takes seconds to spool, and the
 // afterburner only lights once the core is already up.
@@ -443,6 +449,7 @@ function ready(model){
   renderer.domElement.addEventListener('pointerleave', () => setProbe(null));
   buildPlume();
   buildTunnel(box);
+  setGear(false);
   window.__dbg = {scene, camera, renderer, root, byGroup, tunnel};
   $('#load').classList.add('done');
   renderer.setAnimationLoop(tick);
@@ -481,52 +488,87 @@ function onResize(){
  * shaded from the near-white shock core out to the deep blue-violet edge that
  * a real augmenter actually produces -- it is not orange, and the shock
  * diamonds are the standing wave pattern in the supersonic exhaust. */
+/* The afterburner, built the same way as the F110 viewer's.
+ *
+ * A lathed plume with a neck just aft of the nozzle, shaded from a near-white
+ * core through blue to a deep violet tail, with standing shock cells and an
+ * edge-on brightening -- a ray that crosses the plume tangentially passes
+ * through more of it, which is why the silhouette burns brightest. Three
+ * nested shells at different gains give it depth.
+ */
+function plumeShell(rScale, lScale, gain, seed){
+  const pts = [];
+  for(let i = 0; i <= 46; i++){
+    const t = i/46;
+    const neck = 1 - 0.22*Math.exp(-Math.pow((t-0.12)/0.09, 2));
+    const r = (0.030 + 0.330*Math.pow(1-t, 1.45)) * neck * rScale;
+    pts.push(new THREE.Vector2(Math.max(r, 0.0004), t*4.2*lScale));
+  }
+  const geo = new THREE.LatheGeometry(pts, 40);
+  geo.rotateZ(-Math.PI/2);
+  const mat = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    side:THREE.DoubleSide,
+    uniforms:{
+      uTime:{value:0}, uAb:{value:0}, uGain:{value:gain}, uSeed:{value:seed},
+      uCore:{value:new THREE.Color(0xFFF4DC)},
+      uMid:{value:new THREE.Color(0x6E8CFF)},
+      uTail:{value:new THREE.Color(0x3B1D5E)},
+    },
+    vertexShader:`
+      varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+      void main(){
+        vUv = uv;
+        vN = normalize(normalMatrix * normal);
+        vec4 mv = modelViewMatrix * vec4(position,1.0);
+        vV = -mv.xyz;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader:`
+      uniform float uTime, uAb, uGain, uSeed;
+      uniform vec3 uCore, uMid, uTail;
+      varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+      void main(){
+        float t = vUv.y;
+        float reach = mix(0.22, 1.0, uAb);
+        float env = smoothstep(0.0, 0.02, t) * pow(max(0.0, 1.0 - t/reach), 1.5);
+        float d = pow(max(0.0, sin(t*30.0 - uTime*1.5 + uSeed)), 8.0)
+                * smoothstep(0.62, 0.06, t);
+        float flick = 0.90 + 0.10*sin(uTime*37.0 + t*23.0 + uSeed);
+        float edge = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.7);
+        float a = env * (0.08 + 0.92*edge) * (0.38 + 0.95*d) * flick * uAb * uGain;
+        vec3 col = mix(uCore, uMid, smoothstep(0.015, 0.28, t));
+        col = mix(col, uTail, smoothstep(0.30, 0.88, t));
+        col = mix(col, uCore, clamp(d*0.92, 0.0, 1.0));
+        gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+      }`,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.raycast = () => {};
+  return {mesh:m, mat};
+}
+
 function buildPlume(){
   const tp = byName.get('tailpipe_shroud');
   if(!tp) return;
   const b = new THREE.Box3().setFromObject(tp);
-  const r = Math.max((b.max.y - b.min.y), (b.max.z - b.min.z)) * 0.42;
-  const x = b.max.x;
+  const r = Math.max((b.max.y - b.min.y), (b.max.z - b.min.z)) * 0.5;
   plume = new THREE.Group();
   plumeMat = [];
-  for(let i = 0; i < 3; i++){
-    const len = r * (16 + i*7);
-    const g = new THREE.ConeGeometry(r * (1.0 - i*0.22), len, 22, 1, true);
-    g.rotateZ(-Math.PI/2);
-    g.translate(len/2, 0, 0);
-    const m = new THREE.ShaderMaterial({
-      transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
-      side:THREE.DoubleSide,
-      uniforms:{uTime:{value:0}, uAb:{value:0}, uLayer:{value:i}},
-      vertexShader:`varying vec2 vUv; varying float vX;
-        void main(){ vUv = uv; vX = position.x;
-          gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-      fragmentShader:`
-        uniform float uTime, uAb, uLayer; varying vec2 vUv; varying float vX;
-        void main(){
-          float t = clamp(vUv.y, 0.0, 1.0);
-          // shock diamonds: a standing wave, so they sit still while the
-          // flow through them does not
-          float d = 0.5 + 0.5*sin(t*46.0 - 1.2);
-          float core = pow(1.0 - t, 2.2);
-          vec3 hot  = vec3(0.92, 0.86, 1.00);
-          vec3 blue = vec3(0.36, 0.44, 0.98);
-          vec3 deep = vec3(0.20, 0.13, 0.46);
-          vec3 c = mix(mix(deep, blue, core), hot, core*core*d);
-          float a = uAb * core * (0.30 - uLayer*0.07) * (0.65 + 0.35*d);
-          gl_FragColor = vec4(c, a);
-        }`,
-    });
-    plumeMat.push(m);
-    plume.add(new THREE.Mesh(g, m));
+  for(const [rs, ls, g, sd] of [[1.00, 1.00, 1.00, 0.0],
+                                [0.62, 0.78, 0.85, 2.1],
+                                [1.35, 1.22, 0.34, 4.3]]){
+    const sh = plumeShell(r*rs, r*ls, g, sd);
+    plumeMat.push(sh.mat);
+    plume.add(sh.mesh);
   }
-  plume.position.set(x, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
+  plume.position.set(b.max.x, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
   plume.visible = false;
-  plume.raycast = () => {};
   root.add(plume);
 
   plumeLight = new THREE.PointLight(0x7A86FF, 0, 0.9, 2);
-  plumeLight.position.set(x + r*6, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
+  plumeLight.position.set(b.max.x + r*6, (b.max.y+b.min.y)/2,
+                          (b.max.z+b.min.z)/2);
   root.add(plumeLight);
 }
 
@@ -547,7 +589,7 @@ function buildTunnel(box){
     cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
     bounds: box.clone().translate(root.position),
     bodyPanels: data.body_panels,
-    nLines: 150,
+    nLines: 220,
     onSolve: r => {
       renderReadout($('#t-readout'), r, data.tunnel, 'plane');
       drawSpanLoad($('#t-span'), r.strips);
@@ -563,7 +605,10 @@ function buildTunnel(box){
         n.className = 'tnote';
         n.textContent = 'Inviscid solve, live: a vortex lattice for the '
           + 'lifting surfaces and source panels for the fuselage. No boundary '
-          + 'layer, no stall, no profile drag — induced drag only.';
+          + 'layer, no stall, no profile drag. Induced drag is shown but not '
+          + 'trusted — at aspect ratio 1.81 the Trefftz integral this solver '
+          + 'uses is well outside the range it was validated over. Lift, the '
+          + 'neutral point and the static margin are the reliable outputs.';
       }
       $('#t-about').textContent = ABOUT;
     },
@@ -594,6 +639,16 @@ function retrace(){
                      + `${data.body_panels.n} body panels`;
     }
   }));
+}
+
+function setGear(on){
+  gearDown = on;
+  for(const o of (byGroup.get(GEAR_GROUP) || [])) o.visible = on;
+  const b = $('#gear');
+  if(b){
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'Gear up' : 'Gear down';
+  }
 }
 
 function setTunnel(on){
@@ -692,6 +747,8 @@ function buildRail(){
 
   for(const b of document.querySelectorAll('#thr button'))
     b.addEventListener('click', () => setDetent(+b.dataset.d));
+
+  $('#gear').addEventListener('click', () => setGear(!gearDown));
 
   $('#tunnel-btn').addEventListener('click', () => {
     setTunnel($('#tunnel-btn').getAttribute('aria-pressed') !== 'true');

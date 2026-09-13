@@ -36,6 +36,7 @@ def _panels():
             root_chord=W["root_chord"], tip_chord=W["tip_chord"],
             semi_span=W["semi_span"], sweep_le=W["sweep_le"],
             dihedral=W["dihedral"], thickness=W["thickness"],
+            planform=spec.WING_PLANFORM,
             camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
             u0=0.0, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir)

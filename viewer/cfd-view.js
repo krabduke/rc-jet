@@ -35,8 +35,16 @@ export class CFDView {
 
   /* Seed from an upstream rake that spans the model's frontal area with a
      margin, so lines wrap the body rather than all missing it. */
+  /* Seed a rake big enough to contain the model at any attitude.
+   *
+   * The rake used to be sized on the body's own bounding box, so as soon as
+   * the aircraft was pitched or yawed it rotated out of the stream and half
+   * of it sat in air that had no streamlines in it at all. The domain is
+   * sized on the model's *diagonal* now -- the largest extent it can present
+   * at any angle -- with margin beyond that, so there is undisturbed
+   * freestream visible around the model as well as the flow it disturbs.
+   */
   _buildSeeds(){
-    // work in the solver's frame: x aft, y span, z up, metres
     const P = this.bodyPanels;
     let x0 = 1e9, x1 = -1e9, y1 = 0, z0 = 1e9, z1 = -1e9;
     for(let i = 0; i < P.n; i++){
@@ -45,27 +53,32 @@ export class CFDView {
       z0 = Math.min(z0, P.c[i*3+2]); z1 = Math.max(z1, P.c[i*3+2]);
     }
     this.ext = {x0, x1, y1, z0, z1};
-    const rows = Math.round(Math.sqrt(this.nLines * 0.55));
-    const cols = Math.max(3, Math.round(this.nLines / rows));
+
+    const L = x1 - x0, W = 2*y1, Hh = z1 - z0;
+    // the biggest half-extent the model can present once it is rotated
+    const diag = 0.5*Math.hypot(L, W, Hh);
+    const zc = 0.5*(z0 + z1);
+
+    const spanY = diag * 1.9;
+    const spanZ = diag * 1.7;
+    const rows = Math.max(7, Math.round(Math.sqrt(this.nLines * 0.62)));
+    const cols = Math.max(7, Math.round(this.nLines / rows));
     const seeds = [];
-    const xs = x0 - (x1 - x0) * 0.35;
+    const xs = x0 - L * 0.55;
     for(let i = 0; i < rows; i++){
       for(let j = 0; j < cols; j++){
-        const fz = (i + 0.5) / rows, fy = (j + 0.5) / cols;
-        seeds.push([
-          xs,
-          (fy * 2 - 1) * y1 * 1.45,
-          /* Seed above and below. With a ground plane the rake starts just
-             off the track, because there is nothing below it; in free air it
-             has to reach well under the model or the whole underside of the
-             aircraft is left unvisualised. */
-          this.cfg.ground
-            ? Math.max(0.015, z0 + (z1 - z0) * (fz * 1.45 - 0.05))
-            : z0 + (z1 - z0) * (fz * 2.1 - 0.55),
-        ]);
+        const fz = rows > 1 ? i/(rows - 1) : 0.5;
+        const fy = cols > 1 ? j/(cols - 1) : 0.5;
+        let z = zc + (fz - 0.5) * spanZ;
+        if(this.cfg.ground){
+          // there is nothing below a track: fill the space above it instead
+          z = 0.015 + fz * spanZ * 1.05;
+        }
+        seeds.push([xs, (fy - 0.5) * spanY, z]);
       }
     }
     this.seeds = seeds;
+    this.domain = {spanY, spanZ, xs, diag};
   }
 
   /* Couple the body to the lifting surfaces and trace.
@@ -101,7 +114,7 @@ export class CFDView {
 
     const span = this.ext.x1 - this.ext.x0;
     const ds = span / 52;
-    const xEnd = this.ext.x1 + span * 0.75;
+    const xEnd = this.ext.x1 + span * 1.05;
     /* Colour scale.
      *
      * Not the observed maximum: a point-source panel is singular at its own
@@ -124,9 +137,10 @@ export class CFDView {
     for(const s of this.seeds){
       const L = traceLine(vel, s, {
         maxSteps: TRACE_STEPS, ds, xEnd, body: this.body,
-        bounds: [-this.ext.y1*2.4, this.ext.y1*2.4,
-                 this.cfg.ground ? 0.0 : this.ext.z0 - span*0.25,
-                 this.ext.z1 + span*0.8],
+        bounds: [-this.domain.spanY*0.75, this.domain.spanY*0.75,
+                 this.cfg.ground ? 0.0
+                   : 0.5*(this.ext.z0+this.ext.z1) - this.domain.spanZ*0.75,
+                 0.5*(this.ext.z0+this.ext.z1) + this.domain.spanZ*0.75],
       });
       if(L.spd.length > 6){
         traced.push(L);

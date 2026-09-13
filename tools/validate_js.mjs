@@ -34,7 +34,7 @@ console.log(`  static margin    ${((np - cfg.cg_frac)*100).toFixed(1)} % MAC`);
 
 // The browser must reproduce the validated Python solver. These are the
 // numbers aero/analyse.py prints for the same aircraft.
-const REF = {slope: 3.533, np: 0.376};
+const REF = {slope: 2.828, np: 0.322};   // aero/analyse.py, 16x6
 const slope = t.liftSlope({v:22, controls:{...controls, flaperon:0, stabilator:0}});
 const npc = t.neutralPoint({v:22, controls:{...controls, flaperon:0, stabilator:0}});
 const dS = Math.abs(slope/REF.slope - 1)*100;

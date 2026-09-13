@@ -35,7 +35,14 @@ def surfaces():
         le_tip=((W["x_root_le"] + W["semi_span"] * sweep) * MM,
                 W["semi_span"] * MM, W["z_root"] * MM),
         chord_tip=W["tip_chord"] * MM,
-        n_span=24, n_chord=10,
+        # 16 x 6. This wing is AR 1.81 and the lattice is sensitive at that
+        # aspect ratio: sweeping the resolution gives a lift slope within 4 %
+        # of lifting-line theory at 8x4, 10x5 and 16x6, but a neutral point
+        # that only agrees between 8x4 (32.5 %) and 16x6 (33.0 %). 20x8
+        # returns 6.9 per radian, which is nonsense. Pinned where two
+        # independent resolutions agree.
+        n_span=16, n_chord=6,
+        planform=[(f, x * MM, c * MM) for (f, x, c) in spec.WING_PLANFORM],
         twist_root=W["incidence"], twist_tip=W["incidence"] - W["washout"])
 
     hsweep = math.tan(math.radians(H["sweep_le"]))
@@ -48,7 +55,7 @@ def surfaces():
                 H["semi_span"] * MM,
                 (H["z_root"] + H["semi_span"] * hrise) * MM),
         chord_tip=H["tip_chord"] * MM,
-        n_span=12, n_chord=8,
+        n_span=8, n_chord=5,
         twist_root=H["deflect"], twist_tip=H["deflect"])
     return [wing, tail], wing
 

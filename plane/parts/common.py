@@ -4,6 +4,7 @@ import math
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import spec
 import airfoil
 import mesh
 
@@ -31,15 +32,39 @@ def section_arc(n_pts, tc, mc, u0=0.0, u1=1.0):
     return loop
 
 
+def planform_at(table, f):
+    """Leading-edge station and chord at span fraction f, from a table.
+
+    Linear between entries. A table beats a root chord and a sweep angle
+    because a real delta's leading edge is a curve -- highly swept at the
+    root, unsweeping through the mid span, nearly straight at the tip -- and
+    two numbers cannot say that.
+    """
+    if f <= table[0][0]:
+        return table[0][1], table[0][2]
+    if f >= table[-1][0]:
+        return table[-1][1], table[-1][2]
+    for i in range(len(table) - 1):
+        f0, x0, c0 = table[i]
+        f1, x1, c1 = table[i + 1]
+        if f0 <= f <= f1:
+            t = (f - f0) / (f1 - f0)
+            return x0 + (x1 - x0) * t, c0 + (c1 - c0) * t
+    return table[-1][1], table[-1][2]
+
+
 def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
           dihedral=0.0, thickness=0.06, camber=0.0,
           twist_root=0.0, twist_tip=0.0, u0=0.0, u1=1.0,
           n_span=12, n_chord=40, pivot=0.25, vertical=False,
-          mirror=False):
+          mirror=False, planform=None):
     """Loft one lifting surface. Span runs +y, or +z when vertical.
 
     Twist is applied about `pivot` chord so washout does not also move the
     leading edge, which is what you want for a real wing.
+
+    `planform` overrides the linear root-to-tip taper with a station table,
+    which is how the wing gets a curved leading edge.
     """
     sect = section_arc(n_chord, thickness, camber, u0, u1)
     n_sec = len(sect)
@@ -47,8 +72,11 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
     for j in range(n_span):
         f = j / (n_span - 1)
         s = semi_span * f
-        chord = root_chord + (tip_chord - root_chord) * f
-        x_le = root_le[0] + s * math.tan(math.radians(sweep_le))
+        if planform is not None:
+            x_le, chord = planform_at(planform, f)
+        else:
+            chord = root_chord + (tip_chord - root_chord) * f
+            x_le = root_le[0] + s * math.tan(math.radians(sweep_le))
         tw = math.radians(twist_root + (twist_tip - twist_root) * f)
         ct, st = math.cos(tw), math.sin(tw)
         rise = s * math.tan(math.radians(dihedral))
@@ -107,10 +135,17 @@ def hinged_panel(deflect_deg, hinge_x, hinge_z, **kw):
 
 
 def local_chord(root_chord, tip_chord, f):
+    """Chord at span fraction f. Reads the wing's planform table when there is
+    one, so every part placed on the wing agrees with the wing's own shape."""
+    if getattr(spec, "WING_PLANFORM", None) and root_chord == spec.WING["root_chord"]:
+        return planform_at(spec.WING_PLANFORM, f)[1]
     return root_chord + (tip_chord - root_chord) * f
 
 
 def le_x_at(root_le_x, semi_span, sweep_le, f):
+    if (getattr(spec, "WING_PLANFORM", None)
+            and abs(root_le_x - spec.WING["x_root_le"]) < 1e-6):
+        return planform_at(spec.WING_PLANFORM, f)[0]
     return root_le_x + semi_span * f * math.tan(math.radians(sweep_le))
 
 

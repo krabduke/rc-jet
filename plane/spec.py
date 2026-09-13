@@ -70,13 +70,31 @@ FUSELAGE_SKIN = 1.2            # foam/skin thickness for the shelled body
 # Wing — cropped delta (chosen)
 # --------------------------------------------------------------------------
 
+# The wing is defined by a planform table, not by a root chord and a sweep
+# angle. A cropped delta does not have a straight leading edge: it starts as a
+# highly swept root extension, unsweeps through the mid span and finishes
+# nearly straight at the tip, and that curve is what makes it look like a wing
+# rather than a triangle with the corner cut off.
+#
+# (span fraction, leading edge x, chord)
+WING_PLANFORM = [
+    (0.00, 132.0, 236.0),
+    (0.14, 146.0, 224.0),
+    (0.30, 170.0, 202.0),
+    (0.48, 200.0, 172.0),
+    (0.66, 232.0, 140.0),
+    (0.82, 260.0, 112.0),
+    (0.93, 280.0,  92.0),
+    (1.00, 292.0,  78.0),
+]
+
 WING = {
-    "x_root_le":   175.0,
+    "x_root_le":   132.0,
     "z_root":       -6.0,       # mid-low mounted
-    "root_chord":  185.0,
-    "tip_chord":    58.0,
+    "root_chord":  236.0,
+    "tip_chord":    78.0,
     "semi_span":   150.0,       # 300 mm total, the envelope limit
-    "sweep_le":     40.0,
+    "sweep_le":     40.0,       # nominal, for the checks; the table rules
     "dihedral":      0.0,
     "incidence":     0.0,
     "thickness":     0.065,     # t/c — thin, as a jet wing should be
@@ -168,11 +186,14 @@ CANOPY = {
 # --------------------------------------------------------------------------
 
 GEAR = {
-    "nose_x":      112.0,
+    "nose_x":       98.0,
     "nose_leg":     34.0,
     "nose_wheel_r":  9.0,
     "nose_wheel_w":  5.0,
-    "main_x":      278.0,
+    # The wing moved forward, so the CG did, so the main gear has to follow:
+    # it has to sit just behind the CG or the aircraft tips onto its tail,
+    # and not so far behind that the nose leg carries too much to steer.
+    "main_x":      252.0,
     "main_y":       44.0,
     "main_leg":     36.0,
     "main_wheel_r": 11.0,
@@ -206,9 +227,9 @@ BULKHEADS = [
 # --------------------------------------------------------------------------
 
 HARDWARE = [
-    ("lipo_3s_1300",  242.0,  0.0,  -6.0, 72.0, 35.0, 22.0, 105.0),
-    ("esc_40a",       170.0,  0.0,  14.0, 45.0, 25.0, 10.0,  28.0),
-    ("receiver",      186.0, 16.0,  12.0, 22.0, 16.0,  6.0,   7.0),
+    ("lipo_3s_1300",  132.0,  0.0,  -4.0, 72.0, 35.0, 22.0, 105.0),
+    ("esc_40a",       232.0,  0.0,  14.0, 45.0, 25.0, 10.0,  28.0),
+    ("receiver",      252.0, 16.0,  12.0, 22.0, 16.0,  6.0,   7.0),
     ("servo_ail_l",   285.0,-22.0,  -5.0, 23.0, 12.0, 22.0,   5.5),
     ("servo_ail_r",   285.0, 22.0,  -5.0, 23.0, 12.0, 22.0,   5.5),
     ("servo_stab",    288.0, -8.0,  12.0, 23.0, 12.0, 22.0,   5.5),
@@ -218,7 +239,7 @@ HARDWARE = [
 # Distributed masses that are not discrete boxes: (name, x_centre, mass_g)
 DISTRIBUTED = [
     ("airframe_skin",   232.0, 62.0),
-    ("wing_structure",  248.0, 18.0),
+    ("wing_structure",  218.0, 18.0),
     ("engine",          370.0, 62.0),
     ("wiring_misc",     250.0, 12.0),
     ("gear_assembly",   219.0, 14.0),
@@ -338,21 +359,60 @@ def taper_ratio():
     return WING["tip_chord"] / WING["root_chord"]
 
 
+def _planform_strips(n=81):
+    """(chord, leading-edge x, strip width) along the semi span.
+
+    Everything derived from the wing -- area, MAC, where the MAC is -- is
+    integrated over the planform table rather than assumed trapezoidal. The
+    closed-form taper formulae describe a straight-edged wing and this one is
+    not straight-edged, so they would quietly describe a different aeroplane
+    from the one that gets built.
+    """
+    dy = WING["semi_span"] / n
+    out = []
+    for i in range(n):
+        f = (i + 0.5) / n
+        x_le, c = _planform_at(f)
+        out.append((c, x_le, dy))
+    return out
+
+
+def _planform_at(f):
+    tbl = WING_PLANFORM
+    if f <= tbl[0][0]:
+        return tbl[0][1], tbl[0][2]
+    if f >= tbl[-1][0]:
+        return tbl[-1][1], tbl[-1][2]
+    for i in range(len(tbl) - 1):
+        f0, x0, c0 = tbl[i]
+        f1, x1, c1 = tbl[i + 1]
+        if f0 <= f <= f1:
+            t = (f - f0) / (f1 - f0)
+            return x0 + (x1 - x0) * t, c0 + (c1 - c0) * t
+    return tbl[-1][1], tbl[-1][2]
+
+
 def mean_aero_chord():
-    """MAC of a straight-tapered wing."""
-    lam = taper_ratio()
-    return (2.0 / 3.0) * WING["root_chord"] * (1 + lam + lam * lam) / (1 + lam)
+    """MAC by integration: (2/S) * int c^2 dy over the semi span."""
+    strips = _planform_strips()
+    num = sum(c * c * dy for (c, _, dy) in strips)
+    return num / sum(c * dy for (c, _, dy) in strips)
 
 
 def mac_spanwise():
-    """Spanwise station of the MAC, from the root."""
-    lam = taper_ratio()
-    return (WING["semi_span"] / 3.0) * (1 + 2 * lam) / (1 + lam)
+    """Spanwise station of the MAC, from the root, by integration."""
+    strips = _planform_strips()
+    n = len(strips)
+    num = 0.0
+    for i, (c, _, dy) in enumerate(strips):
+        y = (i + 0.5) / n * WING["semi_span"]
+        num += c * y * dy
+    return num / sum(c * dy for (c, _, dy) in strips)
 
 
 def mac_leading_edge_x():
-    import math
-    return WING["x_root_le"] + mac_spanwise() * math.tan(math.radians(WING["sweep_le"]))
+    """Leading-edge station at the MAC's spanwise position."""
+    return _planform_at(mac_spanwise() / WING["semi_span"])[0]
 
 
 def target_cg_x():
@@ -360,8 +420,8 @@ def target_cg_x():
 
 
 def wing_area_mm2():
-    """Reference (trapezoidal) wing area, both sides."""
-    return (WING["root_chord"] + WING["tip_chord"]) * WING["semi_span"]
+    """Reference wing area, both sides, integrated over the planform."""
+    return 2.0 * sum(c * dy for (c, _, dy) in _planform_strips())
 
 
 def all_masses():

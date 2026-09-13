@@ -108,13 +108,35 @@ function surfacePanels(s, refLen){
    * AR 4 to 12, span efficiency 0.99 at AR 8 -- and matching that exactly is
    * worth more than a refinement whose error budget nobody has checked.
    */
+  /* A planform table beats a root chord and a tip chord, because a real
+   * delta's leading edge is a curve and two numbers cannot say that. The
+   * geometry is lofted from the same table, so the lattice and the model are
+   * the same wing rather than two approximations of one. */
+  const fromTable = (f) => {
+    const t = s.planform;
+    if(f <= t[0][0]) return [t[0][1], t[0][2]];
+    if(f >= t[t.length-1][0]) return [t[t.length-1][1], t[t.length-1][2]];
+    for(let i = 0; i < t.length - 1; i++){
+      if(f >= t[i][0] && f <= t[i+1][0]){
+        const u = (f - t[i][0])/(t[i+1][0] - t[i][0]);
+        return [t[i][1] + (t[i+1][1] - t[i][1])*u,
+                t[i][2] + (t[i+1][2] - t[i][2])*u];
+      }
+    }
+    return [t[t.length-1][1], t[t.length-1][2]];
+  };
+
   const station = (f) => {
     const le = [
       s.le_root[0] + (s.le_tip[0] - s.le_root[0]) * f,
       s.le_root[1] + (s.le_tip[1] - s.le_root[1]) * f,
       s.le_root[2] + (s.le_tip[2] - s.le_root[2]) * f,
     ];
-    const c = s.c_root + (s.c_tip - s.c_root) * f;
+    let c = s.c_root + (s.c_tip - s.c_root) * f;
+    if(s.planform){
+      const [xle, cc] = fromTable(f);
+      le[0] = xle; c = cc;
+    }
     const tw = (s.twist_root || 0) + ((s.twist_tip || 0) - (s.twist_root || 0)) * f;
     return [le, c, tw * Math.PI / 180];
   };
@@ -136,8 +158,27 @@ function surfacePanels(s, refLen){
     for(let i = 0; i < nS; i++){
       const f0 = i/nS, f1 = (i+1)/nS;
       const fm = 0.5*(f0 + f1);
-      // does this strip carry the control surface?
-      const inBand = band ? (fm >= band[0] && fm <= band[1]) : !!s.control;
+      /* How much of this strip's deflection applies.
+       *
+       * Not all-or-nothing. A flap's shed vortex has a finite spanwise
+       * extent, so the loading blends over roughly a strip either side of
+       * the flap end rather than jumping; and numerically, a step between
+       * neighbouring strips is a circulation discontinuity the lattice
+       * cannot resolve -- it drove CDi to 10 and made CL fall as flap was
+       * added. Ramping over the transition is both what happens and what the
+       * solver can represent.
+       */
+      let frac = 1;
+      if(band){
+        const tr = Math.max(1.0/nS, 0.04);
+        const up = Math.min(1, Math.max(0, (fm - band[0])/tr + 0.5));
+        const dn = Math.min(1, Math.max(0, (band[1] - fm)/tr + 0.5));
+        frac = Math.min(up, dn);
+        frac = frac*frac*(3 - 2*frac);            // smoothstep
+      }else if(!s.control){
+        frac = 0;
+      }
+      const inBand = frac > 0.001;
       for(let j = 0; j < nC; j++){
         const x0 = j/nC, x1 = (j+1)/nC;
         let p00 = point(f0, x0), p10 = point(f1, x0);
@@ -181,6 +222,7 @@ function surfacePanels(s, refLen){
           vert,
           surface: s.name,
           control: inBand ? s.control : null,
+          cfrac: frac,
           tau: s.control_tau !== undefined ? s.control_tau
              : flapTau(s.control_chord !== undefined ? s.control_chord : 0.25),
           csign: s.control_sign === undefined ? 1 : s.control_sign,
@@ -382,7 +424,8 @@ export class Tunnel {
       let extra = 0;
       if(p.control && controls[p.control] !== undefined){
         // positive deflection is trailing edge down, which adds lift
-        extra = controls[p.control]*Math.PI/180 * p.tau * p.csign;
+        extra = controls[p.control]*Math.PI/180 * p.tau * p.csign
+              * (p.cfrac === undefined ? 1 : p.cfrac);
       }
       rhs[i] = -dot(vv, p.n) - v*extra;
     }

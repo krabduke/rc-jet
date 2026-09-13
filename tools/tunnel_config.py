@@ -19,19 +19,18 @@ import spec
 MM = 0.001
 
 
-# Lattice resolution is pinned, not chosen for speed.
+# Lattice resolution is pinned, not chosen for speed, and it matches the
+# resolution aero/analyse.py runs at.
 #
-# A swept low aspect ratio delta with a tailplane close behind it is a hard
-# case for a lattice: at some spanwise panel counts a collocation point lands
-# almost on a neighbouring bound vortex and the answer jumps. Sweeping the
-# resolution against the validated Python solver (lift slope 3.533 /rad,
-# neutral point 37.6 % MAC) shows n_span = 10 reproducing it to three figures,
-# and n_span = 10 with two different chordwise counts agreeing with each other
-# -- which is what convergence actually looks like. tools/validate_js.mjs
-# asserts it, so changing these numbers fails the check rather than silently
-# moving the aeroplane.
-WING_NS, WING_NC = 10, 5
-TAIL_NS, TAIL_NC = 6, 4
+# This wing is AR 1.81 and a lattice is sensitive at that aspect ratio: a
+# resolution sweep gives a lift slope within 4 % of lifting-line theory at
+# 8x4, 10x5 and 16x6, but a neutral point that only agrees between 8x4
+# (32.5 %) and 16x6 (33.0 %) -- and 20x8 returns 6.9 per radian, which is
+# nonsense. Pinned where two independent resolutions agree, and matched to
+# the Python solver so the page and `make aero` describe one aeroplane.
+# tools/validate_js.mjs asserts it.
+WING_NS, WING_NC = 16, 6
+TAIL_NS, TAIL_NC = 8, 5
 FIN_NS, FIN_NC = 6, 4
 
 
@@ -55,6 +54,7 @@ def config(n_span=WING_NS, n_chord=WING_NC):
          "n_span": n_span, "n_chord": n_chord,
          "twist_root": W["incidence"],
          "twist_tip": W["incidence"] - W["washout"],
+         "planform": [[f, x * MM, c * MM] for (f, x, c) in spec.WING_PLANFORM],
          "control": "flaperon", "control_chord": FL["chord_frac"],
          "control_span": [FL["span_in"], FL["span_out"]]},
         {"name": "stabilator",
@@ -107,12 +107,17 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         # agree; without it, sitting the slider at zero would still show the
         # surface at its modelled angle while the solver assumed neutral.
         "controls": [
+            # +/- 12 degrees, which is real flaperon travel and also the
+            # range over which this solver's answer stays monotonic. At AR
+            # 1.81 a lattice is near its limit: past about 15 degrees the
+            # lift it predicts starts falling as flap is added, which is a
+            # property of the method rather than of the aeroplane.
             {"id": "flaperon", "label": "Flaperons", "unit": "deg",
-             "min": -25.0, "max": 25.0, "value": 0.0,
+             "min": -12.0, "max": 12.0, "value": 0.0,
              "baked": spec.FLAPERON["deflect"],
              "objects": ["flaperon_l", "flaperon_r"], "sign": [1.0, 1.0]},
             {"id": "stabilator", "label": "Stabilators", "unit": "deg",
-             "min": -20.0, "max": 20.0, "value": 0.0,
+             "min": -12.0, "max": 12.0, "value": 0.0,
              "baked": spec.HTAIL["deflect"],
              "objects": ["stabilator_l", "stabilator_r"], "sign": [1.0, 1.0]},
             {"id": "rudder", "label": "Rudder", "unit": "deg",
