@@ -213,6 +213,20 @@ def main():
            SD["rivet_r"] * 2 < SD["seam_w"] + 3.2,
            f"rivet d {SD['rivet_r'] * 2:.1f} mm")
 
+    # Nothing inside the aircraft may poke out through its skin. Bounding
+    # boxes cannot answer this -- a stringer's box is as wide as the widest
+    # station it passes -- so this is a per-vertex test against the section at
+    # each vertex's own station. It found 26 parts placed by eye.
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    try:
+        import audit_fit
+        through = audit_fit.check()
+    except Exception as exc:
+        through = [(0, f"audit failed: {exc}", None)]
+    c.true("nothing pokes through the skin", not through,
+           "all internals inside" if not through
+           else f"{len(through)} parts, worst {through[0][1]}")
+
     print("\nCOMPLETENESS")
     want = ["fuselage_skin", "wing_l", "wing_r", "flaperon_l", "flaperon_r",
             "stabilator_l", "stabilator_r", "vtail_fin", "rudder",
@@ -228,7 +242,7 @@ def main():
             "stringer_01", "horn_fl", "clevis_rud", "wheel_hub_n",
             "vg_l1", "wing_fence_r1", "fuel_tank", "fuel_pump",
             "retract_nose", "turbine_ecu", "naca_inlet_l",
-            "pilot_helmet", "ejection_seat", "mount_ring",
+            "access_tray", "rx_battery", "mount_ring",
             "bypass_slots", "antenna_a"]
     missing = [w for w in want if w not in by]
     c.true("key parts present", not missing, f"{len(want)} checked")

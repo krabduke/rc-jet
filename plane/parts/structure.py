@@ -76,7 +76,10 @@ def _formers():
 
 def _skin_path(angle_deg, standoff, x0=None, x1=None, n=40):
     """Follow the inside of the skin at a fixed clock angle."""
-    xa = spec.FUSELAGE[0][0] + 6.0 if x0 is None else x0
+    # Start aft of the point where the section is smaller than the stringer.
+    # At x = 6 the fuselage is 3 mm across and a 2.6 mm longeron cannot be
+    # inside it, standoff or not; the nose is solid there anyway.
+    xa = spec.FUSELAGE[0][0] + 28.0 if x0 is None else x0
     xb = spec.FUSELAGE[-1][0] - 4.0 if x1 is None else x1
     a = math.radians(angle_deg)
     ca, sa = math.cos(a), math.sin(a)

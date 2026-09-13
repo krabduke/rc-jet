@@ -69,8 +69,8 @@ def collection_for(name):
         return "11 Skin"
     if n.startswith(("gear_", "wheel")):
         return "06 Landing Gear"
-    if n.startswith(("pilot_", "ejection_seat", "console_", "coaming",
-                     "hud")):
+    if n.startswith(("access_tray", "rx_battery", "rx_mount",
+                     "canopy_latch")):
         return "05 Canopy"
     if n.startswith("canopy"):
         return "05 Canopy"

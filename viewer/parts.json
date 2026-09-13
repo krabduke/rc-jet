@@ -254,8 +254,8 @@
    "key": "05 Canopy",
    "label": "Canopy",
    "color": "#79A6B4",
-   "parts": 9,
-   "faces": 1876,
+   "parts": 7,
+   "faces": 1740,
    "x0": 77.4,
    "x1": 178.0
   },
@@ -283,8 +283,8 @@
    "color": "#4F8A5E",
    "parts": 28,
    "faces": 756,
-   "x0": 83.0,
-   "x1": 325.2
+   "x0": 83.4,
+   "x1": 324.7
   },
   {
    "key": "09 Structure",
@@ -292,7 +292,7 @@
    "color": "#9A7B4A",
    "parts": 50,
    "faces": 9660,
-   "x0": 5.3,
+   "x0": 27.2,
    "x1": 434.4
   },
   {
@@ -634,7 +634,7 @@
    "g": "08 RC Systems",
    "mat": "airframe",
    "x0": 112.0,
-   "x1": 312.7,
+   "x1": 312.6,
    "f": 92
   },
   "engine_augmentor_liner": {
@@ -2250,28 +2250,28 @@
   "longeron_1": {
    "g": "09 Structure",
    "mat": "spruce",
-   "x0": 5.3,
+   "x0": 27.2,
    "x1": 434.4,
    "f": 236
   },
   "longeron_2": {
    "g": "09 Structure",
    "mat": "spruce",
-   "x0": 5.3,
+   "x0": 27.2,
    "x1": 434.4,
    "f": 236
   },
   "longeron_3": {
    "g": "09 Structure",
    "mat": "spruce",
-   "x0": 5.4,
+   "x0": 27.3,
    "x1": 434.4,
    "f": 236
   },
   "longeron_4": {
    "g": "09 Structure",
    "mat": "spruce",
-   "x0": 5.4,
+   "x0": 27.3,
    "x1": 434.4,
    "f": 236
   },
@@ -2411,84 +2411,84 @@
   "stringer_01": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
   "stringer_02": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.7,
    "x1": 434.1,
    "f": 110
   },
   "stringer_03": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
   "stringer_04": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
   "stringer_05": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.7,
    "x1": 434.1,
    "f": 110
   },
   "stringer_06": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
   "stringer_07": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
   "stringer_08": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.7,
    "x1": 434.1,
    "f": 110
   },
   "stringer_09": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.8,
    "x1": 434.2,
    "f": 110
   },
   "stringer_10": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.8,
    "x1": 434.2,
    "f": 110
   },
   "stringer_11": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.7,
+   "x0": 27.7,
    "x1": 434.1,
    "f": 110
   },
   "stringer_12": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 5.6,
+   "x0": 27.7,
    "x1": 434.2,
    "f": 110
   },
@@ -2597,6 +2597,13 @@
    "x1": 345.9,
    "f": 152
   },
+  "access_tray": {
+   "g": "05 Canopy",
+   "mat": "ply",
+   "x0": 80.0,
+   "x1": 176.0,
+   "f": 22
+  },
   "antenna_a": {
    "g": "08 RC Systems",
    "mat": "carbon",
@@ -2625,25 +2632,18 @@
    "x1": 428.5,
    "f": 264
   },
-  "coaming": {
+  "canopy_latch_l": {
    "g": "05 Canopy",
-   "mat": "fabric",
-   "x0": 89.0,
-   "x1": 99.0,
+   "mat": "alu",
+   "x0": 159.0,
+   "x1": 173.0,
    "f": 22
   },
-  "console_l": {
+  "canopy_latch_r": {
    "g": "05 Canopy",
-   "mat": "board",
-   "x0": 106.0,
-   "x1": 146.0,
-   "f": 22
-  },
-  "console_r": {
-   "g": "05 Canopy",
-   "mat": "board",
-   "x0": 106.0,
-   "x1": 146.0,
+   "mat": "alu",
+   "x0": 159.0,
+   "x1": 173.0,
    "f": 22
   },
   "cooling_exit_l": {
@@ -2674,13 +2674,6 @@
    "x1": 277.0,
    "f": 22
   },
-  "ejection_seat": {
-   "g": "05 Canopy",
-   "mat": "fabric",
-   "x0": 129.0,
-   "x1": 162.0,
-   "f": 66
-  },
   "fuel_filter": {
    "g": "08 RC Systems",
    "mat": "alu",
@@ -2698,8 +2691,8 @@
   "fuel_lines": {
    "g": "08 RC Systems",
    "mat": "carbon",
-   "x0": 290.4,
-   "x1": 325.2,
+   "x0": 290.6,
+   "x1": 324.7,
    "f": 32
   },
   "fuel_pump": {
@@ -2719,22 +2712,22 @@
   "gear_door_actuator_l": {
    "g": "08 RC Systems",
    "mat": "steel",
-   "x0": 234.8,
-   "x1": 259.2,
+   "x0": 235.5,
+   "x1": 258.5,
    "f": 8
   },
   "gear_door_actuator_n": {
    "g": "08 RC Systems",
    "mat": "steel",
-   "x0": 83.0,
-   "x1": 103.0,
+   "x0": 83.4,
+   "x1": 102.6,
    "f": 8
   },
   "gear_door_actuator_r": {
    "g": "08 RC Systems",
    "mat": "steel",
-   "x0": 234.8,
-   "x1": 259.2,
+   "x0": 235.5,
+   "x1": 258.5,
    "f": 8
   },
   "gps_puck": {
@@ -2742,13 +2735,6 @@
    "mat": "board",
    "x0": 205.0,
    "x1": 223.0,
-   "f": 22
-  },
-  "hud": {
-   "g": "05 Canopy",
-   "mat": "glass",
-   "x0": 100.5,
-   "x1": 103.5,
    "f": 22
   },
   "kill_switch": {
@@ -2761,8 +2747,8 @@
   "mount_rails": {
    "g": "07 Engine",
    "mat": "carbon",
-   "x0": 306.0,
-   "x1": 420.0,
+   "x0": 305.8,
+   "x1": 420.2,
    "f": 16
   },
   "mount_ring": {
@@ -2786,20 +2772,6 @@
    "x1": 270.0,
    "f": 22
   },
-  "pilot_helmet": {
-   "g": "05 Canopy",
-   "mat": "lens_white",
-   "x0": 121.2,
-   "x1": 138.8,
-   "f": 70
-  },
-  "pilot_torso": {
-   "g": "05 Canopy",
-   "mat": "fabric",
-   "x0": 131.0,
-   "x1": 153.0,
-   "f": 22
-  },
   "retract_main_l": {
    "g": "08 RC Systems",
    "mat": "steel",
@@ -2819,6 +2791,20 @@
    "mat": "steel",
    "x0": 93.0,
    "x1": 127.0,
+   "f": 22
+  },
+  "rx_battery": {
+   "g": "05 Canopy",
+   "mat": "lipo",
+   "x0": 79.0,
+   "x1": 125.0,
+   "f": 22
+  },
+  "rx_mount": {
+   "g": "05 Canopy",
+   "mat": "board",
+   "x0": 137.0,
+   "x1": 167.0,
    "f": 22
   },
   "telemetry_sensor": {
