@@ -219,12 +219,17 @@ def main():
             "intake_lip", "duct_inlet", "canopy_glass", "canopy_frame",
             "wheel_nose", "wheel_main", "spar_carbon", "lipo_3s_1300",
             "esc_40a", "receiver", "wiring", "bhd_firewall",
-            "spar_rear", "stringers", "longeron_1", "former_01", "rib_r_01",
+            "spar_rear", "stringer_01", "longeron_1", "former_01", "rib_r_01",
             "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "rivets",
-            "panel_screws", "seam_lengthwise", "control_horns", "pitot",
-            "wheel_hubs", "gear_doors", "navlight_port", "tailpipe_shroud",
+            "panel_screws", "seam_lengthwise", "horn_fl", "pitot",
+            "wheel_hub_n", "gear_doors", "navlight_port", "tailpipe_shroud",
             "panel_battery", "panel_gearbay", "antennas",
-            "static_dischargers", "flaperon_l", "rudder"]
+            "static_dischargers", "flaperon_l", "rudder",
+            "stringer_01", "horn_fl", "clevis_rud", "wheel_hub_n",
+            "vg_l1", "wing_fence_r1", "fuel_tank", "fuel_pump",
+            "retract_nose", "turbine_ecu", "naca_inlet_l",
+            "pilot_helmet", "ejection_seat", "mount_ring",
+            "bypass_slots", "antenna_a"]
     missing = [w for w in want if w not in by]
     c.true("key parts present", not missing, f"{len(want)} checked")
     for m in missing:

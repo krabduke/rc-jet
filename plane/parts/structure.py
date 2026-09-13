@@ -112,7 +112,7 @@ def _stringers():
     for i in range(n):
         ang = 360.0 * i / n + 15.0
         parts.append(mesh.pipe(_skin_path(ang, r, n=28), r, 4))
-    return {"stringers": mesh.join(*parts)}
+    return {f"stringer_{i + 1:02d}": m for i, m in enumerate(parts)}
 
 
 # --------------------------------------------------------------------------

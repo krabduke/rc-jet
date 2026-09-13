@@ -69,8 +69,13 @@ def _control_horns():
         horn(H["x_root_le"] + H["root_chord"] * 0.30, sgn * 18.0,
              H["z_root"] + 2.0)
     horn(V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)
-    return {"control_horns": mesh.join(*horns),
-            "clevises": mesh.join(*clevises)}
+    tags = ["fl", "fr", "sl", "sr", "rud"]
+    out2 = {}
+    for i, m in enumerate(horns):
+        out2[f"horn_{tags[i]}"] = m
+    for i, m in enumerate(clevises):
+        out2[f"clevis_{tags[i]}"] = m
+    return out2
 
 
 def _probes():
@@ -139,7 +144,9 @@ def _fences():
             z0 = common.surface_z(W, fr, 0.30)
             fences.append(shapes.rounded_box(x_le + chord * 0.30, y, z0 + h / 2,
                                    chord * D["fence_chord"], D["fence_t"], h))
-    out["wing_fences"] = mesh.join(*fences)
+    half = len(fences) // 2
+    for i, m in enumerate(fences):
+        out[f"wing_fence_{'lr'[i // half]}{i % half + 1}"] = m
 
     vgs = []
     n = D["n_vg"]
@@ -160,7 +167,10 @@ def _fences():
             vgs.append(([(x_le + chord * D["vg_x"] + px * ca - py * sa,
                           y + px * sa + py * ca, z0 + h / 2 + pz)
                          for (px, py, pz) in v], f))
-    out["vortex_generators"] = mesh.join(*vgs)
+    # a vortex generator is a separately bonded tab; there are 24 of them
+    half = len(vgs) // 2
+    for i, m in enumerate(vgs):
+        out[f"vg_{'lr'[i // half]}{i % half + 1}"] = m
     return out
 
 
@@ -211,7 +221,8 @@ def _wheel_hubs():
         parts.append(_hub(x_ax, sgn * G["main_y"], z_ax,
                           G["main_wheel_r"] * 0.55,
                           G["main_wheel_w"] * 0.42, 5))
-    return {"wheel_hubs": mesh.join(*parts)}
+    tags = ["n", "ml", "mr"]
+    return {f"wheel_hub_{tags[i]}": m for i, m in enumerate(parts)}
 
 
 def _hub(x, y, z, r, half_w, spokes):

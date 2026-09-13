@@ -5,7 +5,7 @@ specification file, built to fit inside **500 × 300 mm**. The engine is the
 [F110-GE-129](https://github.com/krabduke/f110-turbofan) model from the sibling
 project, scaled 1:33 and installed — not re-modelled.
 
-**221 objects · 492 × 300 mm · 330 g all-up · 66 g/dm² · CG at 22.3 % MAC · 9.9 % static margin · builds in ~20 s**
+**302 objects · 492 × 300 mm · 330 g all-up · 66 g/dm² · CG at 22.3 % MAC · 9.9 % static margin · builds in ~20 s**
 
 ![hero](renders/01_hero.png)
 
