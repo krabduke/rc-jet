@@ -19,6 +19,8 @@ GROUPS = [
     ("07 Engine",          "Engine",        "#A8763E"),
     ("08 RC Systems",      "RC systems",    "#4F8A5E"),
     ("09 Structure",       "Structure",     "#9A7B4A"),
+    ("10 Detail",          "Detail",        "#A1A8AF"),
+    ("11 Skin",            "Skin detail",   "#98A0A6"),
 ]
 
 

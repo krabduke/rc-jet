@@ -2,7 +2,7 @@ BLENDER := /Applications/Blender.app/Contents/MacOS/Blender
 BLEND   := build/rcjet.blend
 SAMPLES ?= 128
 
-.PHONY: all build verify render export stl manifest viewer clean
+.PHONY: all build verify render export stl manifest viewer validate aero clean
 
 all: build verify render export
 
@@ -33,3 +33,12 @@ viewer:
 
 clean:
 	rm -rf build renders
+
+# numpy lives in Blender's bundled Python, not the system one
+BPY := /Applications/Blender.app/Contents/Resources/5.2/python/bin/python3.13
+
+validate:
+	$(BPY) aero/validate.py
+
+aero:
+	$(BPY) aero/analyse.py

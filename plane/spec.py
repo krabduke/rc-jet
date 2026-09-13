@@ -112,6 +112,7 @@ HTAIL = {
 
 VTAIL = {
     "x_root_le":   330.0,
+    "z_root":       24.0,       # where the fin leaves the fuselage spine
     "root_chord":  106.0,
     "tip_chord":    46.0,
     "height":       78.0,
@@ -254,6 +255,38 @@ MATERIAL_MAP = {
     "strut":      "steel",
     "gear":       "steel",
     "engine":     "engine",
+    "control_horns":      "steel",
+    "clevises":           "steel",
+    "pitot":              "steel",
+    "antennas":           "plastic",
+    "wing_fences":        "airframe",
+    "vortex_generators":  "airframe",
+    "navlight_port":      "lens_red",
+    "navlight_stbd":      "lens_green",
+    "navlight_tail":      "lens_white",
+    "gear_doors":         "airframe",
+    "wheel_hubs":         "alu",
+    "panel_":             "airframe",
+    "tailpipe_shroud":    "hot_metal",
+    "pylon_":             "airframe",
+    "missile_":           "ordnance",
+    "static_dischargers": "steel",
+    "instrument_panel":   "board",
+    "seat_pan":           "fabric",
+    "seat_back":          "fabric",
+    "former":             "ply",
+    "longeron":           "spruce",
+    "stringers":          "spruce",
+    "rib":                "ply",
+    "fin_rib":            "ply",
+    "spar_rear":          "carbon",
+    "hinge_flaperon":     "steel",
+    "hinge_rudder":       "steel",
+    "seam":               "airframe",
+    "rivets":             "alu",
+    "panel_screws":       "steel",
+    "wing_seams":         "airframe",
+    "doublers":           "airframe",
 }
 DEFAULT_MATERIAL = "airframe"
 
@@ -271,6 +304,15 @@ PALETTE = {
     "rubber":      ((0.040, 0.041, 0.044), 0.00, 0.88),
     "steel":       ((0.480, 0.492, 0.510), 1.00, 0.28),
     "engine":      ((0.412, 0.432, 0.462), 1.00, 0.34),
+    "alu":         ((0.560, 0.570, 0.585), 1.00, 0.22),
+    "plastic":     ((0.150, 0.152, 0.158), 0.00, 0.44),
+    "fabric":      ((0.095, 0.098, 0.108), 0.00, 0.90),
+    "hot_metal":   ((0.300, 0.282, 0.268), 1.00, 0.46),
+    "lens_red":    ((0.620, 0.055, 0.048), 0.00, 0.18),
+    "lens_green":  ((0.055, 0.520, 0.140), 0.00, 0.18),
+    "lens_white":  ((0.760, 0.770, 0.790), 0.00, 0.18),
+    "spruce":      ((0.545, 0.452, 0.288), 0.00, 0.70),
+    "ordnance":    ((0.216, 0.230, 0.218), 0.10, 0.52),
 }
 
 RES = {
@@ -339,3 +381,107 @@ def cg_frac_mac():
 
 def wing_loading_g_dm2():
     return total_mass_g() / (wing_area_mm2() / 10000.0)
+
+
+# --------------------------------------------------------------------------
+# Built-up structure
+# --------------------------------------------------------------------------
+# The airframe is not a solid block: it is formers and longerons carrying a
+# stressed skin, wing ribs on a spar, and hinge lines where surfaces move.
+# Modelling that is what makes a cutaway worth looking at.
+
+# Wing surface detail, sized as fractions of the local section rather than in
+# absolute millimetres -- a 4 mm vortex generator is right at the root and
+# absurd at a 58 mm tip chord.
+WING_DETAIL = {
+    "fence_stations": [0.46, 0.70],
+    "fence_h":        0.030,   # of local chord
+    "fence_chord":    0.44,
+    "fence_t":         1.4,
+    "n_vg":             12,
+    "vg_from":        0.34,
+    "vg_to":          0.90,
+    "vg_x":           0.62,    # chord fraction
+    "vg_h":           0.016,   # of local chord
+    "vg_chord":       0.050,
+    "vg_t":            0.9,
+    "vg_yaw":         14.0,    # deg, alternating: counter-rotating pairs
+    "horn_h":          7.0,
+}
+
+STRUCTURE = {
+    # lightweight formers, between the load-bearing bulkheads above
+    "former_x":     [30.0, 48.0, 88.0, 110.0, 130.0, 170.0, 190.0,
+                     210.0, 250.0, 268.0, 316.0, 344.0, 372.0, 400.0],
+    "former_t":       1.5,
+    "former_hole":    0.74,   # inner contour, as a fraction of the section
+    "n_longerons":      4,
+    "longeron_r":     2.6,
+    "n_stringers":     12,
+    "stringer_r":     1.1,
+    "n_wing_ribs":      9,
+    "rib_t":          1.6,
+    "rib_hole":       0.58,   # lightening cut-out, fraction of the section
+    "rear_spar_frac": 0.70,   # of local chord
+    "rear_spar_r":    1.4,
+    "rear_spar_span": 0.945,  # of semi-span, so the tube ends inside the tip
+    "n_fin_ribs":       4,
+    "rib_inset":      0.9,    # keep ribs under the skin, not through it
+    "hinge_r":        0.75,   # the hinge shows in the flaperon gap, so it
+    "hinge_knuckles":  11,    # has to be scaled like real hardware
+}
+
+# Skin detail: panel seams, fastener rows and the fine surface relief that
+# separates a model of an aeroplane from a smooth blob the same shape.
+SKIN_DETAIL = {
+    "seam_x":       [42.0, 68.0, 98.0, 150.0, 200.0, 252.0, 298.0,
+                     340.0, 384.0, 416.0],
+    "seam_h":         0.45,   # how far a seam stands off the skin
+    "seam_w":         1.5,
+    "rivets_per_ring":  36,
+    "rivet_r":        0.55,
+    "n_lengthwise":     4,
+    "screws_per_panel": 12,
+    "screw_r":        0.75,
+    # (x0, x1, angle_from, angle_to, standoff) -- panels follow the section
+    "panels": [
+        ("battery",   188.0, 268.0,  58.0, 122.0, 0.9),
+        ("receiver",  166.0, 202.0,  18.0,  62.0, 0.8),
+        ("avionics",  272.0, 312.0,  58.0, 122.0, 0.9),
+        ("gearbay",   258.0, 300.0, 236.0, 304.0, 0.8),
+        ("fuel",      312.0, 352.0, 236.0, 304.0, 0.8),
+    ],
+}
+
+# Probes and aerials
+TAILPIPE = {
+    "x_front":     424.0,
+    "x_rear":      438.0,
+    "r_front":      16.4,
+    "r_rear":       14.6,
+    "wall":          0.9,
+    "petals":         12,
+}
+
+# Underwing stores: a short-range AAM on each of two pylons per side.
+STORES = {
+    "stations":   [0.42, 0.66],   # fraction of semi-span
+    "pylon_h":      12.0,
+    "body_r":        5.2,
+    "body_len":     96.0,
+    "nose_len":     20.0,
+    "tail_len":     10.0,
+    "fin_span":     10.0,
+    "fin_chord":    18.0,
+    "canard_span":   7.0,
+    "canard_chord": 11.0,
+    "n_fins":          4,
+    "nose_lead":    16.0,   # how far the nose leads the wing LE
+}
+
+PROBE = {
+    "pitot_tip":    -28.0,   # ahead of the nose datum; keeps inside 500 mm
+    "pitot_r":        1.1,
+    "pitot_z":        2.0,
+    "fairing_r":      2.4,
+}

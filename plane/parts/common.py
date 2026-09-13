@@ -112,3 +112,19 @@ def local_chord(root_chord, tip_chord, f):
 
 def le_x_at(root_le_x, semi_span, sweep_le, f):
     return root_le_x + semi_span * f * math.tan(math.radians(sweep_le))
+
+
+def surface_z(W, f, u, upper=True):
+    """Height of a wing's surface at span fraction f, chord fraction u.
+
+    Details that sit on a wing -- fences, vortex generators, seams -- have to
+    start at the skin. Guessing an offset from the mean line puts them either
+    buried or floating, and the error grows towards the tip where the section
+    is thinnest.
+    """
+    import airfoil
+    chord = local_chord(W["root_chord"], W["tip_chord"], f)
+    yt = airfoil.naca_thickness(u, W["thickness"])
+    yc, _ = airfoil.camber_line(u, W.get("camber", 0.0))
+    v = (yc + yt) if upper else (yc - yt)
+    return W["z_root"] + v * chord

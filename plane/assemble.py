@@ -16,7 +16,8 @@ import spec              # noqa: E402
 import mesh as meshlib   # noqa: E402
 import materials         # noqa: E402
 from parts import (fuselage, wing, tail, intake, canopy,   # noqa: E402
-                   gear, internals, engine_mount)
+                   gear, internals, engine_mount,
+                   detail, structure, skin)
 
 MM = 0.001
 
@@ -24,21 +25,39 @@ MODULES = [
     ("fuselage", fuselage), ("wing", wing), ("tail", tail),
     ("intake", intake), ("canopy", canopy), ("gear", gear),
     ("internals", internals), ("engine", engine_mount),
+    ("detail", detail), ("structure", structure), ("skin", skin),
 ]
 
 COLLECTIONS = ["01 Fuselage", "02 Wing", "03 Tail", "04 Intake and Duct",
                "05 Canopy", "06 Landing Gear", "07 Engine",
-               "08 RC Systems", "09 Structure"]
+               "08 RC Systems", "09 Structure",
+               "10 Detail", "11 Skin"]
+
+
+DETAIL_NAMES = {
+    "control_horns", "clevises", "pitot", "antennas", "wing_fences",
+    "vortex_generators", "navlight_port", "navlight_stbd", "navlight_tail",
+    "access_panels", "exhaust_petals", "pylons", "static_dischargers",
+    "instrument_panel", "seat_pan", "seat_back",
+}
 
 
 def collection_for(name):
     n = name.lower()
+    if n in ("gear_doors", "wheel_hubs"):
+        return "06 Landing Gear"
+    if n in DETAIL_NAMES:
+        return "10 Detail"
     if n.startswith("engine_"):
         return "07 Engine"
     if n.startswith(("lipo", "esc", "receiver", "servo", "wiring")):
         return "08 RC Systems"
-    if n.startswith(("bhd_", "spar")):
+    if n.startswith(("bhd_", "spar", "former_", "longeron_", "stringers",
+                     "rib_", "fin_rib_", "hinge_")):
         return "09 Structure"
+    if n.startswith(("seam_", "rivets", "panel_screws", "wing_seams",
+                     "doublers")):
+        return "11 Skin"
     if n.startswith(("gear_", "wheel")):
         return "06 Landing Gear"
     if n.startswith("canopy"):

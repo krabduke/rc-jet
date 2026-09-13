@@ -139,3 +139,55 @@ def _bulkheads():
             faces.append((h_f + s, h_f + s2, h_a + s2, h_a + s))
         out[name] = (verts, faces)
     return out
+
+
+def surface_point(x, angle_deg, standoff=0.0):
+    """A point on (or just off) the skin, at a clock angle round the section."""
+    w, h, zc, n = station_at(x)
+    a = math.radians(angle_deg)
+    ca, sa = math.cos(a), math.sin(a)
+    p = 2.0 / n
+    y = (w + standoff) * math.copysign(abs(ca) ** p, ca)
+    z = (h + standoff) * math.copysign(abs(sa) ** p, sa)
+    return (x, y, zc + z)
+
+
+def surface_patch(x0, x1, a0, a1, height, nx=8, na=8):
+    """A panel that follows the skin instead of floating above it.
+
+    A flat box laid on a curved fuselage only touches along one line; its
+    corners either sink into the body or hang off it. Sampling the section
+    over the panel's own angular range and lofting the result gives a panel
+    that sits down on the surface everywhere.
+    """
+    inner, outer = [], []
+    for i in range(nx):
+        x = x0 + (x1 - x0) * i / (nx - 1)
+        for j in range(na):
+            a = a0 + (a1 - a0) * j / (na - 1)
+            inner.append(surface_point(x, a, 0.0))
+            outer.append(surface_point(x, a, height))
+    verts = inner + outer
+    off = len(inner)
+    faces = []
+    for i in range(nx - 1):
+        for j in range(na - 1):
+            k = i * na + j
+            faces.append((k, k + 1, k + na + 1, k + na))                 # base
+            faces.append((off + k, off + k + na, off + k + na + 1,
+                          off + k + 1))                                  # top
+    for i in range(nx - 1):                       # side walls along the angle
+        for j in (0, na - 1):
+            k = i * na + j
+            if j == 0:
+                faces.append((k, k + na, off + k + na, off + k))
+            else:
+                faces.append((k + na, k, off + k, off + k + na))
+    for j in range(na - 1):                       # end walls across the angle
+        for i in (0, nx - 1):
+            k = i * na + j
+            if i == 0:
+                faces.append((k + 1, k, off + k, off + k + 1))
+            else:
+                faces.append((k, k + 1, off + k + 1, off + k))
+    return verts, faces

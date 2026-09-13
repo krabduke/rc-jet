@@ -43,7 +43,7 @@ def _fin():
     out = {}
     ru = 1.0 - V["rudder_chord"]
     out["vtail_fin"] = common.panel(
-        root_le=(V["x_root_le"], 0.0, 24.0),
+        root_le=(V["x_root_le"], 0.0, V["z_root"]),
         root_chord=V["root_chord"], tip_chord=V["tip_chord"],
         semi_span=V["height"], sweep_le=V["sweep_le"],
         thickness=V["thickness"], camber=0.0,
@@ -54,7 +54,7 @@ def _fin():
     c_tip = c_root + (V["tip_chord"] - c_root) * V["rudder_span"]
     hinge_x = V["x_root_le"] + ru * c_root
     v, f = common.panel(
-        root_le=(V["x_root_le"], 0.0, 24.0),
+        root_le=(V["x_root_le"], 0.0, V["z_root"]),
         root_chord=c_root, tip_chord=c_tip, semi_span=h_span,
         sweep_le=V["sweep_le"], thickness=V["thickness"], camber=0.0,
         u0=ru + 0.030, u1=1.0, n_span=6, n_chord=NC, vertical=True)

@@ -72,8 +72,12 @@ def main():
     ar = b_ref ** 2 / s_ref
     print(f"  aspect ratio         {ar:>7.2f}")
     print(f"  CL at 0 deg          {s0.CL:>7.4f}")
-    print(f"  CL at 4 deg          {s4.CL:>7.4f}   CDi {s4.CDi:.5f}   "
-          f"e {vlm.efficiency(s4):.3f}")
+    print(f"  CL at 4 deg          {s4.CL:>7.4f}   CDi {s4.CDi:.5f}")
+    # Span efficiency from the Trefftz plane is only trusted above about
+    # AR 8; this is a delta at AR 2.5, so the figure is reported as a
+    # diagnostic and nothing here depends on it.
+    print(f"  span efficiency      {vlm.efficiency(s4):>7.3f}   "
+          f"(not trusted below AR 8 -- diagnostic only)")
 
     # level-flight trim
     w_N = spec.total_mass_g() / 1000.0 * 9.81
@@ -107,7 +111,9 @@ def main():
     peak = max(abs(s4.strips[y]) for y in half) or 1.0
     for y in half[::max(1, len(half)//10)]:
         n = int(round(abs(s4.strips[y]) / peak * 34))
-        print(f"    y {y*1000:>6.0f} mm  {'#' * n}")
+        # the solver works in chords, so strip stations come back
+        # non-dimensional -- multiply by the reference chord to get millimetres
+        print(f"    y {y * c_ref * 1000:>6.0f} mm  {'#' * n}")
 
     ok = sm > 0.02
     print("\n" + "=" * 62)

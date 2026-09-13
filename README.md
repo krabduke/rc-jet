@@ -5,7 +5,7 @@ specification file, built to fit inside **500 × 300 mm**. The engine is the
 [F110-GE-129](https://github.com/krabduke/f110-turbofan) model from the sibling
 project, scaled 1:33 and installed — not re-modelled.
 
-**135 objects · 445 × 300 mm · 330 g all-up · CG at 24.5 % MAC · builds in ~20 s**
+**224 objects · 492 × 295 mm · 330 g all-up · CG at 24.5 % MAC · 13.1 % static margin · builds in ~20 s**
 
 ![hero](renders/01_hero.png)
 
@@ -48,7 +48,7 @@ Requires Blender (`brew install --cask blender`). Nothing else.
 
 ```
 make build      # generate geometry, assemble build/rcjet.blend, write parts.csv
-make verify     # 23 dimensional and design checks   <- the definition of done
+make verify     # 32 dimensional and design checks   <- the definition of done
 make render     # hero, plan, cutaway and exploded views
 make export     # build/rcjet.glb  (Draco, 3.4 MB)
 make stl        # one STL per part, in millimetres
@@ -71,6 +71,12 @@ plane/
     canopy.py   bubble canopy, windscreen bow, sill rails
     gear.py     tricycle gear, struts and wheels
     internals.py LiPo, ESC, receiver, servos, wiring, pushrods
+    structure.py built-up frame: formers, longerons, stringers, wing and fin
+                ribs, rear spar, piano hinges
+    skin.py     panel seams, rivet rows, panel fasteners, doubler plates
+    detail.py   control horns, pitot, aerials, fences, vortex generators,
+                nav lights, gear doors, wheel hubs, pylons and missiles,
+                static wicks, tailpipe shroud, cockpit interior
     engine_mount.py imports the F110 generators and scales them
   materials.py  PBR: EPO foam, control surfaces, tinted canopy, ply, carbon
   assemble.py   the Blender stage
@@ -99,7 +105,7 @@ internals at every station it occupies — the tightest point is 0.9 mm.
 
 ## Verification
 
-`make verify` runs 23 checks. Dimensions are measured out of
+`make verify` runs 32 checks. Dimensions are measured out of
 `build/parts.csv`, so the envelope and fit checks test what actually got built.
 The rest are design rules:
 
@@ -111,8 +117,45 @@ The rest are design rules:
   would have sat the aircraft back on its tail
 - horizontal and vertical tail volume coefficients in usable bands
 - aspect and taper ratio
-- spar stays inside the wing planform
+- spar stays inside the wing planform, and the rear spar sits ahead of the
+  flaperon hinge it backs
+- internal structure stays inside the skin it supports — ribs, formers,
+  longerons and stringers all measured against the span
+- skin relief is relief: seam standoff less than the skin thickness, rivet
+  heads smaller than their seam
 - completeness and material assignment
+
+## Aerodynamic simulation
+
+```
+make validate    # check the solver against lifting-line theory first
+make aero        # solve the aircraft and report its stability
+```
+
+A **vortex-lattice solve** of the wing, stabilators and fin — a real
+three-dimensional potential-flow solve, not a coefficient lookup. The solver is
+validated against lifting-line theory before it is trusted: lift slope within
+7.5 % across AR 4–12, span efficiency 0.99 for a rectangular AR 8 wing, and
+ground effect reproduced correctly.
+
+| | |
+|---|---|
+| Lift slope | 3.53 per rad (0.062 per degree) |
+| Trim α at 22 m/s | 6.3° |
+| Neutral point | 37.6 % MAC |
+| Centre of gravity | 24.5 % MAC |
+| **Static margin** | **13.1 % MAC — stable, comfortable** |
+
+The solve changed the aircraft. The first stabilator position sat in the wing's
+wake sheet and too far forward; the solver put the neutral point barely ahead
+of the CG. Moving it aft to 392 mm and 22 mm below the wake line is what bought
+the margin — the tail is where it is because of this, not because it looked
+right.
+
+Span efficiency is reported but not trusted: the Trefftz routine is only
+reliable above about AR 8 and this is a delta at AR 2.5, so it is a diagnostic
+and nothing depends on it. The solve is inviscid throughout — no boundary
+layer, no separation, no stall, no profile drag.
 
 ## Honesty
 
@@ -123,8 +166,9 @@ figures are real, and everything internal is derived to be self-consistent with
 them rather than being manufacturer data.
 
 This is a **3D model with a credible mass and balance budget**, not a validated
-flight article. The aerodynamic numbers are first-order design checks, not
-analysis: there is no CFD, no structural sizing, and the 90 g/dm² wing loading
+flight article. The stability numbers come from a validated vortex-lattice solve, but
+everything viscous is outside it: there is no CFD, no structural sizing, and
+the 90 g/dm² wing loading
 means it would be fast and want a firm launch. Build it and fly it at your own
 risk.
 

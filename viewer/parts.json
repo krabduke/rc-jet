@@ -130,6 +130,87 @@
    ],
    "metal": 1.0,
    "rough": 0.34
+  },
+  "alu": {
+   "rgb": [
+    0.56,
+    0.57,
+    0.585
+   ],
+   "metal": 1.0,
+   "rough": 0.22
+  },
+  "plastic": {
+   "rgb": [
+    0.15,
+    0.152,
+    0.158
+   ],
+   "metal": 0.0,
+   "rough": 0.44
+  },
+  "fabric": {
+   "rgb": [
+    0.095,
+    0.098,
+    0.108
+   ],
+   "metal": 0.0,
+   "rough": 0.9
+  },
+  "hot_metal": {
+   "rgb": [
+    0.3,
+    0.282,
+    0.268
+   ],
+   "metal": 1.0,
+   "rough": 0.46
+  },
+  "lens_red": {
+   "rgb": [
+    0.62,
+    0.055,
+    0.048
+   ],
+   "metal": 0.0,
+   "rough": 0.18
+  },
+  "lens_green": {
+   "rgb": [
+    0.055,
+    0.52,
+    0.14
+   ],
+   "metal": 0.0,
+   "rough": 0.18
+  },
+  "lens_white": {
+   "rgb": [
+    0.76,
+    0.77,
+    0.79
+   ],
+   "metal": 0.0,
+   "rough": 0.18
+  },
+  "spruce": {
+   "rgb": [
+    0.545,
+    0.452,
+    0.288
+   ],
+   "metal": 0.0,
+   "rough": 0.7
+  },
+  "ordnance": {
+   "rgb": [
+    0.216,
+    0.23,
+    0.218
+   ],
+   "metal": 0.1,
+   "rough": 0.52
   }
  },
  "groups": [
@@ -137,8 +218,8 @@
    "key": "01 Fuselage",
    "label": "Fuselage",
    "color": "#8A9299",
-   "parts": 2,
-   "faces": 7480,
+   "parts": 16,
+   "faces": 9166,
    "x0": 0.0,
    "x1": 438.0
   },
@@ -158,7 +239,7 @@
    "parts": 6,
    "faces": 1046,
    "x0": 330.0,
-   "x1": 444.6
+   "x1": 464.2
   },
   {
    "key": "04 Intake and Duct",
@@ -182,10 +263,10 @@
    "key": "06 Landing Gear",
    "label": "Gear",
    "color": "#6F6F72",
-   "parts": 4,
-   "faces": 960,
-   "x0": 99.5,
-   "x1": 291.4
+   "parts": 6,
+   "faces": 1278,
+   "x0": 85.0,
+   "x1": 309.0
   },
   {
    "key": "07 Engine",
@@ -209,10 +290,28 @@
    "key": "09 Structure",
    "label": "Structure",
    "color": "#9A7B4A",
-   "parts": 6,
-   "faces": 1684,
-   "x0": 65.0,
-   "x1": 431.0
+   "parts": 51,
+   "faces": 10980,
+   "x0": 5.3,
+   "x1": 434.4
+  },
+  {
+   "key": "10 Detail",
+   "label": "Detail",
+   "color": "#A1A8AF",
+   "parts": 13,
+   "faces": 672,
+   "x0": -28.0,
+   "x1": 433.0
+  },
+  {
+   "key": "11 Skin",
+   "label": "Skin detail",
+   "color": "#98A0A6",
+   "parts": 15,
+   "faces": 23058,
+   "x0": 17.8,
+   "x1": 419.6
   }
  ],
  "parts": {
@@ -317,15 +416,15 @@
   "stabilator_l": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 352.0,
-   "x1": 424.2,
+   "x0": 392.0,
+   "x1": 464.2,
    "f": 268
   },
   "stabilator_r": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 352.0,
-   "x1": 424.2,
+   "x0": 392.0,
+   "x1": 464.2,
    "f": 268
   },
   "ventral_l": {
@@ -423,7 +522,7 @@
    "g": "01 Fuselage",
    "mat": "carbon",
    "x0": 296.3,
-   "x1": 402.5,
+   "x1": 410.2,
    "f": 56
   },
   "receiver": {
@@ -1160,6 +1259,629 @@
    "x0": 310.5,
    "x1": 347.1,
    "f": 19212
+  },
+  "antennas": {
+   "g": "10 Detail",
+   "mat": "plastic",
+   "x0": 190.0,
+   "x1": 273.0,
+   "f": 132
+  },
+  "clevises": {
+   "g": "10 Detail",
+   "mat": "steel",
+   "x0": 336.7,
+   "x1": 415.8,
+   "f": 200
+  },
+  "control_horns": {
+   "g": "10 Detail",
+   "mat": "steel",
+   "x0": 336.4,
+   "x1": 416.1,
+   "f": 30
+  },
+  "gear_doors": {
+   "g": "06 Landing Gear",
+   "mat": "airframe",
+   "x0": 85.0,
+   "x1": 309.0,
+   "f": 18
+  },
+  "instrument_panel": {
+   "g": "10 Detail",
+   "mat": "board",
+   "x0": 98.0,
+   "x1": 110.0,
+   "f": 6
+  },
+  "missile_l1": {
+   "g": "01 Fuselage",
+   "mat": "ordnance",
+   "x0": 211.9,
+   "x1": 307.9,
+   "f": 240
+  },
+  "missile_l2": {
+   "g": "01 Fuselage",
+   "mat": "ordnance",
+   "x0": 242.1,
+   "x1": 338.1,
+   "f": 240
+  },
+  "missile_r1": {
+   "g": "01 Fuselage",
+   "mat": "ordnance",
+   "x0": 211.9,
+   "x1": 307.9,
+   "f": 240
+  },
+  "missile_r2": {
+   "g": "01 Fuselage",
+   "mat": "ordnance",
+   "x0": 242.1,
+   "x1": 338.1,
+   "f": 240
+  },
+  "navlight_port": {
+   "g": "10 Detail",
+   "mat": "lens_red",
+   "x0": 313.8,
+   "x1": 322.8,
+   "f": 6
+  },
+  "navlight_stbd": {
+   "g": "10 Detail",
+   "mat": "lens_green",
+   "x0": 313.8,
+   "x1": 322.8,
+   "f": 6
+  },
+  "navlight_tail": {
+   "g": "10 Detail",
+   "mat": "lens_white",
+   "x0": 423.0,
+   "x1": 433.0,
+   "f": 6
+  },
+  "panel_avionics": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 272.0,
+   "x1": 312.0,
+   "f": 126
+  },
+  "panel_battery": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 188.0,
+   "x1": 268.0,
+   "f": 126
+  },
+  "panel_fuel": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 312.0,
+   "x1": 352.0,
+   "f": 126
+  },
+  "panel_gearbay": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 258.0,
+   "x1": 300.0,
+   "f": 126
+  },
+  "panel_receiver": {
+   "g": "01 Fuselage",
+   "mat": "board",
+   "x0": 166.0,
+   "x1": 202.0,
+   "f": 126
+  },
+  "pitot": {
+   "g": "10 Detail",
+   "mat": "steel",
+   "x0": -28.0,
+   "x1": 6.0,
+   "f": 58
+  },
+  "pylon_l1": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 234.8,
+   "x1": 284.9,
+   "f": 6
+  },
+  "pylon_l2": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 270.8,
+   "x1": 309.3,
+   "f": 6
+  },
+  "pylon_r1": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 234.8,
+   "x1": 284.9,
+   "f": 6
+  },
+  "pylon_r2": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 270.8,
+   "x1": 309.3,
+   "f": 6
+  },
+  "seat_back": {
+   "g": "10 Detail",
+   "mat": "fabric",
+   "x0": 155.0,
+   "x1": 161.0,
+   "f": 6
+  },
+  "seat_pan": {
+   "g": "10 Detail",
+   "mat": "fabric",
+   "x0": 123.0,
+   "x1": 157.0,
+   "f": 6
+  },
+  "static_dischargers": {
+   "g": "10 Detail",
+   "mat": "steel",
+   "x0": 330.2,
+   "x1": 350.4,
+   "f": 48
+  },
+  "tailpipe_shroud": {
+   "g": "01 Fuselage",
+   "mat": "hot_metal",
+   "x0": 424.0,
+   "x1": 438.0,
+   "f": 72
+  },
+  "vortex_generators": {
+   "g": "10 Detail",
+   "mat": "airframe",
+   "x0": 302.2,
+   "x1": 333.9,
+   "f": 144
+  },
+  "wheel_hubs": {
+   "g": "06 Landing Gear",
+   "mat": "alu",
+   "x0": 103.7,
+   "x1": 286.7,
+   "f": 300
+  },
+  "wing_fences": {
+   "g": "10 Detail",
+   "mat": "airframe",
+   "x0": 243.0,
+   "x1": 313.1,
+   "f": 24
+  },
+  "fin_rib_1": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 337.9,
+   "x1": 408.1,
+   "f": 80
+  },
+  "fin_rib_2": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 355.2,
+   "x1": 414.8,
+   "f": 80
+  },
+  "fin_rib_3": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 372.6,
+   "x1": 421.5,
+   "f": 80
+  },
+  "fin_rib_4": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 389.9,
+   "x1": 428.1,
+   "f": 80
+  },
+  "former_01": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 29.2,
+   "x1": 30.8,
+   "f": 256
+  },
+  "former_02": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 47.2,
+   "x1": 48.7,
+   "f": 256
+  },
+  "former_03": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 87.3,
+   "x1": 88.7,
+   "f": 256
+  },
+  "former_04": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 109.3,
+   "x1": 110.7,
+   "f": 256
+  },
+  "former_05": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 129.3,
+   "x1": 130.8,
+   "f": 256
+  },
+  "former_06": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 169.2,
+   "x1": 170.8,
+   "f": 256
+  },
+  "former_07": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 189.3,
+   "x1": 190.8,
+   "f": 256
+  },
+  "former_08": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 209.3,
+   "x1": 210.7,
+   "f": 256
+  },
+  "former_09": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 249.2,
+   "x1": 250.8,
+   "f": 256
+  },
+  "former_10": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 267.3,
+   "x1": 268.8,
+   "f": 256
+  },
+  "former_11": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 315.3,
+   "x1": 316.7,
+   "f": 256
+  },
+  "former_12": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 343.3,
+   "x1": 344.7,
+   "f": 256
+  },
+  "former_13": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 371.3,
+   "x1": 372.8,
+   "f": 256
+  },
+  "former_14": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 399.3,
+   "x1": 400.8,
+   "f": 256
+  },
+  "hinge_flaperon_l": {
+   "g": "09 Structure",
+   "mat": "steel",
+   "x0": 323.7,
+   "x1": 342.2,
+   "f": 450
+  },
+  "hinge_flaperon_r": {
+   "g": "09 Structure",
+   "mat": "steel",
+   "x0": 323.7,
+   "x1": 342.2,
+   "f": 450
+  },
+  "hinge_rudder": {
+   "g": "09 Structure",
+   "mat": "steel",
+   "x0": 406.0,
+   "x1": 433.7,
+   "f": 290
+  },
+  "longeron_1": {
+   "g": "09 Structure",
+   "mat": "spruce",
+   "x0": 5.3,
+   "x1": 434.4,
+   "f": 236
+  },
+  "longeron_2": {
+   "g": "09 Structure",
+   "mat": "spruce",
+   "x0": 5.3,
+   "x1": 434.4,
+   "f": 236
+  },
+  "longeron_3": {
+   "g": "09 Structure",
+   "mat": "spruce",
+   "x0": 5.4,
+   "x1": 434.4,
+   "f": 236
+  },
+  "longeron_4": {
+   "g": "09 Structure",
+   "mat": "spruce",
+   "x0": 5.4,
+   "x1": 434.4,
+   "f": 236
+  },
+  "rib_l_01": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 183.5,
+   "x1": 312.9,
+   "f": 104
+  },
+  "rib_l_02": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 197.6,
+   "x1": 316.5,
+   "f": 104
+  },
+  "rib_l_03": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 211.8,
+   "x1": 320.1,
+   "f": 104
+  },
+  "rib_l_04": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 225.9,
+   "x1": 323.7,
+   "f": 104
+  },
+  "rib_l_05": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 240.1,
+   "x1": 327.3,
+   "f": 104
+  },
+  "rib_l_06": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 254.3,
+   "x1": 330.9,
+   "f": 104
+  },
+  "rib_l_07": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 268.4,
+   "x1": 334.4,
+   "f": 104
+  },
+  "rib_l_08": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 282.6,
+   "x1": 338.0,
+   "f": 104
+  },
+  "rib_l_09": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 296.7,
+   "x1": 341.6,
+   "f": 104
+  },
+  "rib_r_01": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 183.5,
+   "x1": 312.9,
+   "f": 104
+  },
+  "rib_r_02": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 197.6,
+   "x1": 316.5,
+   "f": 104
+  },
+  "rib_r_03": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 211.8,
+   "x1": 320.1,
+   "f": 104
+  },
+  "rib_r_04": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 225.9,
+   "x1": 323.7,
+   "f": 104
+  },
+  "rib_r_05": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 240.1,
+   "x1": 327.3,
+   "f": 104
+  },
+  "rib_r_06": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 254.3,
+   "x1": 330.9,
+   "f": 104
+  },
+  "rib_r_07": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 268.4,
+   "x1": 334.4,
+   "f": 104
+  },
+  "rib_r_08": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 282.6,
+   "x1": 338.0,
+   "f": 104
+  },
+  "rib_r_09": {
+   "g": "09 Structure",
+   "mat": "ply",
+   "x0": 296.7,
+   "x1": 341.6,
+   "f": 104
+  },
+  "spar_rear": {
+   "g": "09 Structure",
+   "mat": "carbon",
+   "x0": 303.1,
+   "x1": 340.8,
+   "f": 66
+  },
+  "stringers": {
+   "g": "09 Structure",
+   "mat": "spruce",
+   "x0": 5.6,
+   "x1": 434.2,
+   "f": 1320
+  },
+  "doublers": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 208.0,
+   "x1": 373.0,
+   "f": 18
+  },
+  "panel_screws": {
+   "g": "11 Skin",
+   "mat": "steel",
+   "x0": 165.3,
+   "x1": 352.8,
+   "f": 1680
+  },
+  "rivets": {
+   "g": "11 Skin",
+   "mat": "alu",
+   "x0": 38.4,
+   "x1": 419.6,
+   "f": 18720
+  },
+  "seam_lengthwise": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 17.8,
+   "x1": 410.1,
+   "f": 568
+  },
+  "seam_ring_01": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 41.3,
+   "x1": 42.8,
+   "f": 192
+  },
+  "seam_ring_02": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 67.2,
+   "x1": 68.8,
+   "f": 192
+  },
+  "seam_ring_03": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 97.2,
+   "x1": 98.8,
+   "f": 192
+  },
+  "seam_ring_04": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 149.3,
+   "x1": 150.7,
+   "f": 192
+  },
+  "seam_ring_05": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 199.2,
+   "x1": 200.7,
+   "f": 192
+  },
+  "seam_ring_06": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 251.2,
+   "x1": 252.8,
+   "f": 192
+  },
+  "seam_ring_07": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 297.3,
+   "x1": 298.8,
+   "f": 192
+  },
+  "seam_ring_08": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 339.2,
+   "x1": 340.8,
+   "f": 192
+  },
+  "seam_ring_09": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 383.2,
+   "x1": 384.8,
+   "f": 192
+  },
+  "seam_ring_10": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 415.3,
+   "x1": 416.8,
+   "f": 192
+  },
+  "wing_seams": {
+   "g": "11 Skin",
+   "mat": "airframe",
+   "x0": 233.5,
+   "x1": 340.6,
+   "f": 152
   }
  },
  "masses": [

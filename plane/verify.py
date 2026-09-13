@@ -166,12 +166,65 @@ def main():
            f"{worst:.1f} mm margin at y={worst_y:.0f} mm")
     c.band("spar span vs wing span", spec.SPAR["span"], 0, spec.SPAN, " mm")
 
+    # The rear spar is the flaperon hinge backing, so it has to sit between the
+    # hinge line and the wing's trailing edge, not behind it.
+    ST = spec.STRUCTURE
+    hinge = 1.0 - spec.FLAPERON["chord_frac"]
+    c.true("rear spar ahead of the flaperon hinge",
+           ST["rear_spar_frac"] < hinge,
+           f"{ST['rear_spar_frac']:.2f} c vs hinge at {hinge:.2f} c")
+
+    ribs = [k for k in by if k.startswith("rib_")]
+    c.true("wing ribs per side", len(ribs) == 2 * ST["n_wing_ribs"],
+           f"{len(ribs)} ribs, {ST['n_wing_ribs']} per side")
+    # Every rib must be inside the skin it supports, or it pokes through.
+    worst_rib, who = 1e9, ""
+    for r in rows:
+        if not r["name"].startswith(("rib_", "former_", "longeron_",
+                                     "stringers", "fin_rib_")):
+            continue
+        for key, lo, hi in (("y", -spec.SPAN / 2, spec.SPAN / 2),):
+            m = min(float(r[f"{key}_max_mm"]) - lo, hi - float(r[f"{key}_min_mm"]))
+            if m < worst_rib:
+                worst_rib, who = m, r["name"]
+    c.true("internal structure inside the span", worst_rib > 0.0,
+           f"{worst_rib:.1f} mm margin, worst {who}")
+
+    formers = [k for k in by if k.startswith("former_")]
+    c.true("formers between the bulkheads",
+           len(formers) == len(ST["former_x"]), f"{len(formers)} formers")
+    bhd_x = [b[1] for b in spec.BULKHEADS]
+    clash = [x for x in ST["former_x"]
+             if any(abs(x - bx) < 6.0 for bx in bhd_x)]
+    c.true("no former clashes a bulkhead", not clash, f"{len(clash)} clashes")
+
+    print("\nSKIN DETAIL")
+    SD = spec.SKIN_DETAIL
+    seams = [k for k in by if k.startswith("seam_ring_")]
+    c.true("one seam per production joint",
+           len(seams) == len(SD["seam_x"]), f"{len(seams)} seam rings")
+    # Seams are relief on the skin, so they must stand off it -- but by less
+    # than the skin is thick, or they read as ledges rather than laps.
+    c.band("seam standoff", SD["seam_h"], 0.15, spec.FUSELAGE_SKIN, " mm")
+    c.true("seams inside the body",
+           all(spec.FUSELAGE[0][0] < x < spec.FUSELAGE[-1][0]
+               for x in SD["seam_x"]), f"{len(SD['seam_x'])} stations")
+    c.true("rivet heads smaller than their seam",
+           SD["rivet_r"] * 2 < SD["seam_w"] + 3.2,
+           f"rivet d {SD['rivet_r'] * 2:.1f} mm")
+
     print("\nCOMPLETENESS")
     want = ["fuselage_skin", "wing_l", "wing_r", "flaperon_l", "flaperon_r",
             "stabilator_l", "stabilator_r", "vtail_fin", "rudder",
             "intake_lip", "duct_inlet", "canopy_glass", "canopy_frame",
             "wheel_nose", "wheel_main", "spar_carbon", "lipo_3s_1300",
-            "esc_40a", "receiver", "wiring", "bhd_firewall"]
+            "esc_40a", "receiver", "wiring", "bhd_firewall",
+            "spar_rear", "stringers", "longeron_1", "former_01", "rib_r_01",
+            "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "rivets",
+            "panel_screws", "seam_lengthwise", "control_horns", "pitot",
+            "wheel_hubs", "gear_doors", "navlight_port", "tailpipe_shroud",
+            "panel_battery", "panel_gearbay", "antennas",
+            "missile_r1", "pylon_r1", "static_dischargers"]
     missing = [w for w in want if w not in by]
     c.true("key parts present", not missing, f"{len(want)} checked")
     for m in missing:

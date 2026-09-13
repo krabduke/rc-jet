@@ -170,8 +170,8 @@ class Solution:
         self.__dict__.update(kw)
 
 
-def trefftz_drag(panels, gamma, v_inf, s_ref):
-    """Induced drag from the Trefftz plane.
+def trefftz_drag(panels, gamma, v_inf, s_ref, ground=False):
+    """Induced drag from the Trefftz plane, in the full crossflow plane.
 
     Near-field Kutta-Joukowski drag is unreliable on swept wings: the bound
     vortex is no longer normal to the freestream and the velocity it induces
@@ -179,29 +179,67 @@ def trefftz_drag(panels, gamma, v_inf, s_ref):
     here as a swept wing producing negative induced drag. The Trefftz plane
     avoids that entirely by working in the far wake, where the flow is
     two-dimensional and only the shed vorticity matters.
+
+    That far wake is two-dimensional in (y, z), not in y alone. An earlier
+    version summed every strip onto the y axis and ignored height, which is
+    exact for one planar wing and nonsense for anything stacked: a racing
+    car's front wing, rear wing and beam wing all shed at the same span
+    stations at different heights, and collapsing them added their
+    circulations together. It returned CDi above 20.
+
+    Each strip sheds a trailing filament of +G at its inboard edge and -G at
+    its outboard edge, at the strip's own height. The drag is the work done by
+    the crossflow those filaments induce, taken normal to each wake element.
     """
     strips = {}
     for p, g in zip(panels, gamma):
-        key = (round(float(p["a"][1]), 9), round(float(p["b"][1]), 9))
-        s = strips.setdefault(key, {"G": 0.0,
-                                    "yl": float(p["a"][1]),
-                                    "yr": float(p["b"][1])})
-        s["G"] += float(g)
+        # key on the surface as well as the span station: two surfaces at the
+        # same y are different sheets and must not be merged
+        key = (p.get("surface", ""), round(float(p["a"][1]), 9),
+               round(float(p["b"][1]), 9))
+        st = strips.setdefault(key, {"G": 0.0,
+                                     "yl": float(p["a"][1]),
+                                     "yr": float(p["b"][1]),
+                                     "zl": 0.0, "zr": 0.0, "n": 0})
+        st["G"] += float(g)
+        st["zl"] += float(p["a"][2])
+        st["zr"] += float(p["b"][2])
+        st["n"] += 1
     items = list(strips.values())
-    for s in items:
-        s["ym"] = 0.5 * (s["yl"] + s["yr"])
-        s["dy"] = abs(s["yr"] - s["yl"])
+    for st in items:
+        st["zl"] /= st["n"]
+        st["zr"] /= st["n"]
+        st["ym"] = 0.5 * (st["yl"] + st["yr"])
+        st["zm"] = 0.5 * (st["zl"] + st["zr"])
+        dy, dz = st["yr"] - st["yl"], st["zr"] - st["zl"]
+        ds = math.hypot(dy, dz)
+        st["ds"] = ds
+        # unit normal to the wake element, in the crossflow plane
+        st["ny"] = -dz / ds if ds > 1e-12 else 0.0
+        st["nz"] = dy / ds if ds > 1e-12 else 1.0
+
+    # trailing filaments: +G at the inboard edge, -G at the outboard edge
+    fil = []
+    for st in items:
+        fil.append((st["yl"], st["zl"], st["G"]))
+        fil.append((st["yr"], st["zr"], -st["G"]))
+        if ground:
+            fil.append((st["yl"], -st["zl"], -st["G"]))
+            fil.append((st["yr"], -st["zr"], st["G"]))
 
     d = 0.0
-    for si in items:
-        w = 0.0
-        for sj in items:
-            for (y_end, sign) in ((sj["yr"], -1.0), (sj["yl"], 1.0)):
-                dy = si["ym"] - y_end
-                if abs(dy) < 1e-12:
-                    continue
-                w += sign * sj["G"] / (2.0 * math.pi * dy)
-        d += 0.5 * RHO * si["G"] * w * si["dy"]
+    for st in items:
+        vy = vz = 0.0
+        for (fy, fz, fg) in fil:
+            dy = st["ym"] - fy
+            dz = st["zm"] - fz
+            r2 = dy * dy + dz * dz
+            if r2 < 1e-18:
+                continue                     # principal value: skip the self
+            k = fg / (2.0 * math.pi * r2)
+            vy += -k * dz
+            vz += k * dy
+        d += 0.5 * RHO * st["G"] * (vy * st["ny"] + vz * st["nz"]) * st["ds"]
     return d / (0.5 * RHO * v_inf * v_inf * s_ref)
 
 
@@ -282,7 +320,7 @@ def solve(surfaces, alpha_deg, v_inf, s_ref, c_ref, b_ref,
 
     q = 0.5 * RHO * v_inf * v_inf
     lift = F[2] * math.cos(a) - F[0] * math.sin(a)
-    cdi = trefftz_drag(panels, gamma, v_inf, s_ref_n)
+    cdi = trefftz_drag(panels, gamma, v_inf, s_ref_n, ground)
     drag = cdi * q * s_ref_n
 
     return Solution(
