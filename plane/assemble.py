@@ -39,6 +39,8 @@ DETAIL_NAMES = {
     "vortex_generators", "navlight_port", "navlight_stbd", "navlight_tail",
     "access_panels", "exhaust_petals", "pylons", "static_dischargers",
     "instrument_panel", "seat_pan", "seat_back",
+    "bl_diverter", "intake_lip_ring", "nose_strakes",
+    "pushrod_linkages", "bellcranks",
 }
 
 

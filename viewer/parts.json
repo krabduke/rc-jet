@@ -264,7 +264,7 @@
    "label": "Gear",
    "color": "#6F6F72",
    "parts": 6,
-   "faces": 1278,
+   "faces": 1566,
    "x0": 85.0,
    "x1": 309.0
   },
@@ -282,7 +282,7 @@
    "label": "RC systems",
    "color": "#4F8A5E",
    "parts": 8,
-   "faces": 134,
+   "faces": 246,
    "x0": 147.5,
    "x1": 306.2
   },
@@ -299,8 +299,8 @@
    "key": "10 Detail",
    "label": "Detail",
    "color": "#A1A8AF",
-   "parts": 13,
-   "faces": 672,
+   "parts": 18,
+   "faces": 1622,
    "x0": -28.0,
    "x1": 433.0
   },
@@ -309,7 +309,7 @@
    "label": "Skin detail",
    "color": "#98A0A6",
    "parts": 15,
-   "faces": 23058,
+   "faces": 23106,
    "x0": 17.8,
    "x1": 419.6
   }
@@ -579,14 +579,14 @@
    "mat": "board",
    "x0": 147.5,
    "x1": 192.5,
-   "f": 6
+   "f": 22
   },
   "lipo_3s_1300": {
    "g": "08 RC Systems",
    "mat": "lipo",
    "x0": 206.0,
    "x1": 278.0,
-   "f": 6
+   "f": 22
   },
   "pushrods": {
    "g": "01 Fuselage",
@@ -600,35 +600,35 @@
    "mat": "board",
    "x0": 175.0,
    "x1": 197.0,
-   "f": 6
+   "f": 22
   },
   "servo_ail_l": {
    "g": "08 RC Systems",
    "mat": "servo",
    "x0": 273.5,
    "x1": 296.5,
-   "f": 6
+   "f": 22
   },
   "servo_ail_r": {
    "g": "08 RC Systems",
    "mat": "servo",
    "x0": 273.5,
    "x1": 296.5,
-   "f": 6
+   "f": 22
   },
   "servo_rudder": {
    "g": "08 RC Systems",
    "mat": "control",
    "x0": 276.5,
    "x1": 299.5,
-   "f": 6
+   "f": 22
   },
   "servo_stab": {
    "g": "08 RC Systems",
    "mat": "servo",
    "x0": 276.5,
    "x1": 299.5,
-   "f": 6
+   "f": 22
   },
   "wiring": {
    "g": "08 RC Systems",
@@ -1673,6 +1673,20 @@
    "x1": 273.0,
    "f": 132
   },
+  "bellcranks": {
+   "g": "10 Detail",
+   "mat": "servo",
+   "x0": 287.0,
+   "x1": 309.0,
+   "f": 44
+  },
+  "bl_diverter": {
+   "g": "10 Detail",
+   "mat": "airframe",
+   "x0": 38.0,
+   "x1": 108.0,
+   "f": 22
+  },
   "clevises": {
    "g": "10 Detail",
    "mat": "steel",
@@ -1685,42 +1699,56 @@
    "mat": "steel",
    "x0": 336.4,
    "x1": 416.1,
-   "f": 30
+   "f": 110
   },
   "gear_doors": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 85.0,
    "x1": 309.0,
-   "f": 18
+   "f": 66
   },
   "instrument_panel": {
    "g": "10 Detail",
    "mat": "board",
    "x0": 98.0,
    "x1": 110.0,
-   "f": 6
+   "f": 22
+  },
+  "intake_lip_ring": {
+   "g": "10 Detail",
+   "mat": "duct",
+   "x0": 48.8,
+   "x1": 57.2,
+   "f": 144
   },
   "navlight_port": {
    "g": "10 Detail",
    "mat": "lens_red",
    "x0": 313.8,
    "x1": 322.8,
-   "f": 6
+   "f": 22
   },
   "navlight_stbd": {
    "g": "10 Detail",
    "mat": "lens_green",
    "x0": 313.8,
    "x1": 322.8,
-   "f": 6
+   "f": 22
   },
   "navlight_tail": {
    "g": "10 Detail",
    "mat": "lens_white",
    "x0": 423.0,
    "x1": 433.0,
-   "f": 6
+   "f": 22
+  },
+  "nose_strakes": {
+   "g": "10 Detail",
+   "mat": "airframe",
+   "x0": 95.7,
+   "x1": 192.1,
+   "f": 76
   },
   "panel_avionics": {
    "g": "01 Fuselage",
@@ -1764,19 +1792,26 @@
    "x1": 6.0,
    "f": 58
   },
+  "pushrod_linkages": {
+   "g": "10 Detail",
+   "mat": "carbon",
+   "x0": 294.9,
+   "x1": 413.8,
+   "f": 40
+  },
   "seat_back": {
    "g": "10 Detail",
    "mat": "fabric",
    "x0": 155.0,
    "x1": 161.0,
-   "f": 6
+   "f": 22
   },
   "seat_pan": {
    "g": "10 Detail",
    "mat": "fabric",
    "x0": 123.0,
    "x1": 157.0,
-   "f": 6
+   "f": 22
   },
   "static_dischargers": {
    "g": "10 Detail",
@@ -1795,23 +1830,23 @@
   "vortex_generators": {
    "g": "10 Detail",
    "mat": "airframe",
-   "x0": 302.2,
-   "x1": 333.9,
-   "f": 144
+   "x0": 302.3,
+   "x1": 333.8,
+   "f": 528
   },
   "wheel_hubs": {
    "g": "06 Landing Gear",
    "mat": "alu",
    "x0": 103.7,
    "x1": 286.7,
-   "f": 300
+   "f": 540
   },
   "wing_fences": {
    "g": "10 Detail",
    "mat": "airframe",
    "x0": 243.0,
    "x1": 313.1,
-   "f": 24
+   "f": 88
   },
   "fin_rib_1": {
    "g": "09 Structure",
@@ -2133,7 +2168,7 @@
    "mat": "airframe",
    "x0": 208.0,
    "x1": 373.0,
-   "f": 18
+   "f": 66
   },
   "panel_screws": {
    "g": "11 Skin",

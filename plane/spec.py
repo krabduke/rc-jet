@@ -232,6 +232,11 @@ CG_TOLERANCE   = 0.03          # +/- 3 % MAC is the acceptance band
 # --------------------------------------------------------------------------
 
 MATERIAL_MAP = {
+    "bellcranks": "servo",
+    "pushrod_linkages": "carbon",
+    "nose_strakes": "airframe",
+    "intake_lip_ring": "duct",
+    "bl_diverter": "airframe",
     "fuselage":   "airframe",
     "wing":       "airframe",
     "flaperon":   "control",

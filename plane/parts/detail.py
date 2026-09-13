@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import common, fuselage as fus
 
 W = spec.WING
@@ -35,6 +36,8 @@ def build():
     out.update(_exhaust_petals())
     out.update(_dischargers())
     out.update(_cockpit())
+    out.update(_speed_kit())
+    out.update(_linkages())
     return out
 
 
@@ -42,8 +45,9 @@ def _control_horns():
     """A horn and clevis on every moving surface, where the pushrod meets it."""
     horns, clevises = [], []
 
-    def horn(x, y, z, h=spec.WING_DETAIL["horn_h"]):
-        hv, hf = mesh.box(x, y, z + h / 2, 5.0, 2.4, h)
+    def horn(x, y, z, h=None):
+        h = spec.WING_DETAIL["horn_h"] if h is None else h
+        hv, hf = shapes.rounded_box(x, y, z + h / 2, 5.0, 2.4, h)
         horns.append((hv, hf))
         cv, cf = mesh.cylinder(-3.2, 3.2, 2.2, 8)
         cv = mesh.rot_z(cv, math.pi / 2)
@@ -55,8 +59,11 @@ def _control_horns():
         y = sgn * W["semi_span"] * f
         chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
         x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
+        # under the wing: a horn and rod on the upper surface sit in the
+        # working flow and cost drag, which is the opposite of the brief
         horn(x_le + chord * (1 - FL["chord_frac"]) + 6.0, y,
-             common.surface_z(W, f, 1 - FL["chord_frac"]))
+             common.surface_z(W, f, 1 - FL["chord_frac"], upper=False),
+             -spec.WING_DETAIL["horn_h"])
 
     for sgn in (-1.0, 1.0):
         horn(H["x_root_le"] + H["root_chord"] * 0.30, sgn * 18.0,
@@ -130,7 +137,7 @@ def _fences():
                                   W["sweep_le"], fr)
             h = chord * D["fence_h"]
             z0 = common.surface_z(W, fr, 0.30)
-            fences.append(mesh.box(x_le + chord * 0.30, y, z0 + h / 2,
+            fences.append(shapes.rounded_box(x_le + chord * 0.30, y, z0 + h / 2,
                                    chord * D["fence_chord"], D["fence_t"], h))
     out["wing_fences"] = mesh.join(*fences)
 
@@ -145,7 +152,7 @@ def _fences():
                                   W["sweep_le"], fr)
             h = chord * D["vg_h"]
             z0 = common.surface_z(W, fr, D["vg_x"])
-            v, f = mesh.box(0.0, 0.0, 0.0, chord * D["vg_chord"],
+            v, f = shapes.rounded_box(0.0, 0.0, 0.0, chord * D["vg_chord"],
                             D["vg_t"], h)
             # alternate the yaw so the pair sheds counter-rotating vortices
             a = math.radians(D["vg_yaw"] * (1 if k % 2 else -1))
@@ -165,9 +172,9 @@ def _lights():
         x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], 1.0)
         chord = W["tip_chord"]
         # on the tip face itself, where a wingtip light actually goes
-        v, f = mesh.box(x_le + chord * 0.30, y, W["z_root"], 9.0, 4.0, 3.0)
+        v, f = shapes.rounded_box(x_le + chord * 0.30, y, W["z_root"], 9.0, 4.0, 3.0)
         out[f"navlight_{tag}"] = (v, f)
-    v, f = mesh.box(V["x_root_le"] + V["root_chord"] - 8.0, 0.0, 96.0,
+    v, f = shapes.rounded_box(V["x_root_le"] + V["root_chord"] - 8.0, 0.0, 96.0,
                     10.0, 6.0, 8.0)
     out["navlight_tail"] = (v, f)
     return out
@@ -177,11 +184,11 @@ def _gear_doors():
     """A door per leg, hinged open."""
     doors = []
     w, hh, zc, _ = fus.station_at(G["nose_x"])
-    nv, nf = mesh.box(G["nose_x"], 14.0, zc - hh + 8.0, 54.0, 3.0, 30.0)
+    nv, nf = shapes.rounded_box(G["nose_x"], 14.0, zc - hh + 8.0, 54.0, 3.0, 30.0)
     doors.append((nv, nf))
     for sgn in (-1.0, 1.0):
         w, hh, zc, _ = fus.station_at(G["main_x"])
-        mv, mf = mesh.box(G["main_x"], sgn * (G["main_y"] - 14.0),
+        mv, mf = shapes.rounded_box(G["main_x"], sgn * (G["main_y"] - 14.0),
                           zc - hh * 0.55 - 12.0, 62.0, 3.0, 34.0)
         doors.append((mv, mf))
     return {"gear_doors": mesh.join(*doors)}
@@ -218,7 +225,7 @@ def _hub(x, y, z, r, half_w, spokes):
     for k in range(spokes):
         a = 2 * math.pi * k / spokes
         ca, sa = math.cos(a), math.sin(a)
-        sv, sf = mesh.box(r * 0.62, 0.0, 0.0, r * 0.80, half_w * 1.1, 2.2)
+        sv, sf = shapes.rounded_box(r * 0.62, 0.0, 0.0, r * 0.80, half_w * 1.1, 2.2)
         parts.append(([(x + px * ca - pz * sa, y + py,
                         z + px * sa + pz * ca) for (px, py, pz) in sv], sf))
     return mesh.join(*parts)
@@ -285,14 +292,107 @@ def _cockpit():
     """Instrument coaming and a seat pan, visible through the canopy."""
     out = {}
     C = spec.CANOPY
-    out["instrument_panel"] = mesh.box(C["x_front"] + 26.0, 0.0,
+    out["instrument_panel"] = shapes.rounded_box(C["x_front"] + 26.0, 0.0,
                                        C["z_base"] + 2.0, 12.0, 26.0,
                                        C["height"] * 0.60)
-    out["seat_pan"] = mesh.box(C["x_front"] + 62.0, 0.0, C["z_base"] - 4.0,
+    out["seat_pan"] = shapes.rounded_box(C["x_front"] + 62.0, 0.0, C["z_base"] - 4.0,
                                34.0, 24.0, 6.0)
     # the canopy glass tops out at z_base + height; a taller seat goes
     # straight through it
-    out["seat_back"] = mesh.box(C["x_front"] + 80.0, 0.0,
+    out["seat_back"] = shapes.rounded_box(C["x_front"] + 80.0, 0.0,
                                 C["z_base"] + C["height"] * 0.30,
                                 6.0, 24.0, C["height"] * 0.70)
+    return out
+
+
+def _speed_kit():
+    """The parts that buy speed and roll rate, which is what this aircraft is
+    for: a sharp-lipped intake, a boundary-layer diverter, leading-edge root
+    extensions that keep the wing flying at high alpha, and a tailplane that
+    is not shadowed by anything.
+    """
+    out = {}
+    W = spec.WING
+    I = spec.INTAKE
+
+    # Boundary-layer diverter: the fuselage grows a sluggish layer of air and
+    # feeding it to the engine costs thrust. A splitter plate stands the
+    # intake off the skin so it swallows clean air.
+    rows = []
+    for i in range(6):
+        f = i / 5
+        x = I["x_lip"] - 14.0 + 70.0 * f
+        rows.append([(x, -I["lip_width"] / 2 * 0.82, I["z_lip"] + 12.0),
+                     (x, I["lip_width"] / 2 * 0.82, I["z_lip"] + 12.0)])
+    verts, faces = [], []
+    for r in rows:
+        verts.extend([(p[0], p[1], p[2] - 1.2) for p in r])
+        verts.extend([(p[0], p[1], p[2] + 1.2) for p in r])
+    n = 4
+    for i in range(len(rows) - 1):
+        a, b = i * n, (i + 1) * n
+        for j in range(n):
+            j2 = (j + 1) % n
+            faces.append((a + j, a + j2, b + j2, b + j))
+    faces.append((3, 2, 1, 0))
+    base = (len(rows) - 1) * n
+    faces.append((base, base + 1, base + 2, base + 3))
+    out["bl_diverter"] = (verts, faces)
+
+    # Intake lip: a sharp, slightly drooped lip pays at speed and a rounded
+    # one pays at low speed. This one is closer to sharp, because the brief
+    # was maximum speed.
+    lip = []
+    for k in range(18):
+        a = 2 * math.pi * k / 18
+        cy = math.cos(a) * I["lip_width"] / 2
+        cz = math.sin(a) * I["lip_height"] / 2 + I["z_lip"]
+        lip.append(mesh.pipe([(I["x_lip"] - 3.0, cy * 0.97, cz * 0.97),
+                              (I["x_lip"] + 5.0, cy, cz)], 1.5, 6))
+    out["intake_lip_ring"] = mesh.join(*lip)
+
+    # Vortex generators are already on the wing; these are the strakes that
+    # start the LERX vortex at the nose.
+    strakes = []
+    for sgn in (-1.0, 1.0):
+        pts = []
+        for i in range(7):
+            f = i / 6
+            x = 96.0 + 96.0 * f
+            w, hh, zc, _ = fus.station_at(x)
+            pts.append((x, sgn * (w + 1.5 + 5.0 * f), zc + hh * 0.30))
+        strakes.append(mesh.pipe(pts, 2.2, 6))
+    out["nose_strakes"] = mesh.join(*strakes)
+    return out
+
+
+def _linkages():
+    """Every control surface needs a pushrod from its horn to its servo, and
+    a snake or a bellcrank where the run changes direction. Modelling the
+    horns and not the rods is modelling half a control system.
+    """
+    out = {}
+    W, FL, V, H = spec.WING, spec.FLAPERON, spec.VTAIL, spec.HTAIL
+    rods = []
+    f = (FL["span_in"] + FL["span_out"]) / 2
+    for sgn in (-1.0, 1.0):
+        y = sgn * W["semi_span"] * f
+        chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
+        x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
+        horn = (x_le + chord * (1 - FL["chord_frac"]) + 6.0, y,
+                common.surface_z(W, f, 1 - FL["chord_frac"], upper=False)
+                - spec.WING_DETAIL["horn_h"])
+        rods.append(mesh.pipe([horn, (296.0, sgn * 26.0, -8.0)], 1.3, 6))
+    rods.append(mesh.pipe([(V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0),
+                           (300.0, 12.0, 14.0)], 1.3, 6))
+    for sgn in (-1.0, 1.0):
+        rods.append(mesh.pipe([(H["x_root_le"] + H["root_chord"] * 0.30,
+                                sgn * 18.0, H["z_root"] + 9.0),
+                               (300.0, sgn * 14.0, 2.0)], 1.3, 6))
+    out["pushrod_linkages"] = mesh.join(*rods)
+
+    horns = []
+    for sgn in (-1.0, 1.0):
+        horns.append(shapes.rounded_box(298.0, sgn * 22.0, 8.0, 22.0, 4.0, 16.0, 1.5))
+    out["bellcranks"] = mesh.join(*horns)
     return out

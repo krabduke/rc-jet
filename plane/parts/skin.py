@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import common, fuselage as fus
 
 SD = spec.SKIN_DETAIL
@@ -190,5 +191,5 @@ def _doublers():
                         (spec.BULKHEADS[2][1], 44.0, 58.0),
                         (V["x_root_le"] + 12.0, 62.0, 26.0)):
         w, hh, zc, _ = fus.station_at(x)
-        parts.append(mesh.box(x, 0.0, zc - hh - 0.4, lx, min(ly, w * 1.9), 1.0))
+        parts.append(shapes.rounded_box(x, 0.0, zc - hh - 0.4, lx, min(ly, w * 1.9), 1.0))
     return {"doublers": mesh.join(*parts)}

@@ -6,12 +6,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 
 
 def build():
     out = {}
     for (name, x, y, z, l, w, h, _mass) in spec.HARDWARE:
-        out[name] = mesh.box(x, y, z, l, w, h)
+        out[name] = shapes.rounded_box(x, y, z, l, w, h)
     out.update(_wiring())
     return out
 
