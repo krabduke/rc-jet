@@ -2309,6 +2309,9 @@
   "alpha_default": 4.0,
   "alpha_min": -6.0,
   "alpha_max": 16.0,
+  "beta_default": 0.0,
+  "beta_min": -15.0,
+  "beta_max": 15.0,
   "stall_alpha": 12.0,
   "ground": false,
   "cg_frac": 0.24526477272802902,
@@ -2361,8 +2364,7 @@
     ],
     "sign": [
      1.0
-    ],
-    "yaw_only": true
+    ]
    }
   ],
   "surfaces": [
@@ -2411,6 +2413,33 @@
     "twist_tip": 0.0,
     "control": "stabilator",
     "control_tau": 1.0
+   },
+   {
+    "name": "fin",
+    "le_root": [
+     0.33,
+     0.0,
+     0.024
+    ],
+    "c_root": 0.106,
+    "le_tip": [
+     0.4002315154552315,
+     0.0,
+     0.10200000000000001
+    ],
+    "c_tip": 0.046,
+    "axis": "z",
+    "mirror": false,
+    "n_span": 6,
+    "n_chord": 4,
+    "twist_root": 0.0,
+    "twist_tip": 0.0,
+    "control": "rudder",
+    "control_chord": 0.28,
+    "control_span": [
+     0.0,
+     0.86
+    ]
    }
   ]
  },

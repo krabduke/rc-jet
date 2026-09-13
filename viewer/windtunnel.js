@@ -95,7 +95,7 @@ export function flapTau(chordFraction){
 function surfacePanels(s, refLen){
   const out = [];
   const nS = s.n_span || 8, nC = s.n_chord || 3;
-  const sides = s.mirror === false ? [1] : [1, -1];
+  const sides = (s.mirror === false || s.axis === 'z') ? [1] : [1, -1];
   const band = (s.control && s.control_span) ? s.control_span : null;
 
   /* Spanwise stations, uniform.
@@ -119,10 +119,16 @@ function surfacePanels(s, refLen){
     return [le, c, tw * Math.PI / 180];
   };
 
+  /* A fin's span runs in z and its section thickness in y -- the opposite of
+   * a wing. Without this the vertical tail cannot be in the lattice at all,
+   * which is why the rudder slider moved the geometry and changed nothing in
+   * the solve. */
+  const vert = s.axis === 'z';
   const point = (f, xc) => {
     const [le, c, tw] = station(f);
     const dx = (xc - 0.25) * c;
     const ct = Math.cos(tw), st = Math.sin(tw);
+    if(vert) return [le[0] + 0.25*c + dx*ct, le[1] - dx*st, le[2]];
     return [le[0] + 0.25*c + dx*ct, le[1], le[2] - dx*st];
   };
 
@@ -153,7 +159,7 @@ function surfacePanels(s, refLen){
         let n = cross(sub(p11, p00), sub(p10, p01));
         const area = 0.5 * norm(n);
         const nn = norm(n);
-        n = nn > 1e-12 ? scale(n, 1/nn) : [0,0,1];
+        n = nn > 1e-12 ? scale(n, 1/nn) : (vert ? [0,1,0] : [0,0,1]);
         /* No "point the normal upwards" guard here.
          *
          * The winding is already made consistent above (the mirrored half has
@@ -168,8 +174,11 @@ function surfacePanels(s, refLen){
           a: scale(a, 1/refLen), b: scale(b, 1/refLen),
           col: scale(col, 1/refLen), n,
           area: area/(refLen*refLen),
+          // for a fin, "span" is z: the Trefftz strips key on it
           y: 0.5*(a[1] + b[1])/refLen,
-          dy: Math.abs(b[1] - a[1])/refLen,
+          dy: vert ? Math.abs(b[2] - a[2])/refLen
+                   : Math.abs(b[1] - a[1])/refLen,
+          vert,
           surface: s.name,
           control: inBand ? s.control : null,
           tau: s.control_tau !== undefined ? s.control_tau
@@ -346,16 +355,25 @@ export class Tunnel {
    * -0.11, and refining made it worse. This way the matrix never changes, the
    * factorisation is reused, and the flap behaves.
    */
+  /* Wind direction is a vector, not an angle.
+   *
+   * A tunnel blows from one fixed direction; what changes is how the model is
+   * held in it. With only `alpha` the aircraft could pitch but never yaw, so
+   * a fin could not see the flow and a rudder could not do anything. Passing
+   * the freestream as a vector lets attitude -- pitch and sideslip together
+   * -- set what the model sees.
+   */
   solve(opts){
-    const { alpha = 0, v = 20, controls = {}, ground = false, xRef = null } = opts || {};
+    const { alpha = 0, beta = 0, v = 20, controls = {},
+            ground = false, xRef = null } = opts || {};
     const { panels, n, LU, piv } = this._prepare(ground);
     const L = this.refLen;
     const sRef = this.cfg.s_ref/(L*L);
     const bRef = this.cfg.b_ref/L;
     const xr = (xRef === null ? (this.cfg.x_ref_default || 0) : xRef)/L;
 
-    const a = alpha*Math.PI/180;
-    const vv = [Math.cos(a)*v, 0, Math.sin(a)*v];
+    const a = alpha*Math.PI/180, b = beta*Math.PI/180;
+    const vv = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
     const wake = [1, 0, 0];
 
     const rhs = new Float64Array(n);
@@ -398,6 +416,7 @@ export class Tunnel {
 
     const q = 0.5*RHO*v*v;
     const lift = F[2]*Math.cos(a) - F[0]*Math.sin(a);
+    const side = F[1];
     const CDi = trefftzDrag(panels, gamma, v, sRef, ground);
     const CL = lift/(q*sRef);
 
@@ -405,6 +424,11 @@ export class Tunnel {
       CL, CDi, Cm: My/(q*sRef),
       lift_N: CL*q*this.cfg.s_ref,
       drag_N: CDi*q*this.cfg.s_ref,
+      // side force back in newtons: the solve works in chords, so like lift
+      // it has to be taken through the coefficient and the REAL area
+      CY: side/(q*sRef),
+      side_N: (side/(q*sRef))*q*this.cfg.s_ref,
+      beta,
       panels: n, gamma, lattice: panels, alpha, v, ground,
       bySurface, strips,
       LD: Math.abs(CDi) > 1e-9 ? Math.abs(CL/CDi) : Infinity,

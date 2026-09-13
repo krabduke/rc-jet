@@ -55,9 +55,13 @@ export class CFDView {
         seeds.push([
           xs,
           (fy * 2 - 1) * y1 * 1.45,
-          // never seed below the track when there is one
-          Math.max(this.cfg.ground ? 0.02 : -1e9,
-                   z0 + (z1 - z0) * (fz * 1.35 - 0.1)),
+          /* Seed above and below. With a ground plane the rake starts just
+             off the track, because there is nothing below it; in free air it
+             has to reach well under the model or the whole underside of the
+             aircraft is left unvisualised. */
+          this.cfg.ground
+            ? Math.max(0.015, z0 + (z1 - z0) * (fz * 1.45 - 0.05))
+            : z0 + (z1 - z0) * (fz * 2.1 - 0.55),
         ]);
       }
     }

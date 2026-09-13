@@ -37,6 +37,7 @@ export class WindTunnel {
       on: false,
       v: this.cfg.v_default,
       alpha: this.cfg.alpha_default,
+      beta: this.cfg.beta_default || 0,
       controls: {},
       smoke: true,
     };
@@ -111,16 +112,11 @@ export class WindTunnel {
 
   solve(){
     const s = this.state;
-    this.sol = this.solver.solve({
-      alpha: s.alpha, v: s.v, controls: s.controls, ground: !!this.cfg.ground,
-    });
-    this.np = this.solver.neutralPoint({
-      v: s.v, controls: s.controls, ground: !!this.cfg.ground,
-    });
-    // re-solve at the display condition: neutralPoint leaves `last` at alpha 4
-    this.sol = this.solver.solve({
-      alpha: s.alpha, v: s.v, controls: s.controls, ground: !!this.cfg.ground,
-    });
+    const o = {v: s.v, beta: s.beta, controls: s.controls,
+               ground: !!this.cfg.ground};
+    this.np = this.solver.neutralPoint(o);
+    // neutralPoint leaves the solver at alpha 4; re-solve at the real one
+    this.sol = this.solver.solve({...o, alpha: s.alpha});
     this.onSolve(this.report());
     return this.sol;
   }
@@ -134,7 +130,8 @@ export class WindTunnel {
       liftFrac: s.lift_N / W,
       np: this.np, cg: this.cfg.cg_frac,
       margin: this.np - this.cfg.cg_frac,
-      alpha: st.alpha, v: st.v,
+      alpha: st.alpha, beta: st.beta, v: st.v,
+      side_N: s.side_N, CY: s.CY,
       stalled: st.alpha > this.cfg.stall_alpha,
       stall_alpha: this.cfg.stall_alpha,
       strips: s.strips,
@@ -154,7 +151,7 @@ export class WindTunnel {
   }
 
   set(key, value){
-    if(key === 'v' || key === 'alpha') this.state[key] = value;
+    if(key === 'v' || key === 'alpha' || key === 'beta') this.state[key] = value;
     else this.state.controls[key] = value;
     this.solve();
     this.applyAttitude();
@@ -163,9 +160,17 @@ export class WindTunnel {
   /* Pitch the model to the solved incidence and put every control surface
    * where its slider says. The hinge comes from the manifest, so a surface
    * turns about its own hinge line rather than about the model origin. */
+  /* The wind blows from one fixed direction and the model is held at an
+   * attitude in it -- which is what a tunnel does, and what makes rotating
+   * the model change the aerodynamics rather than just the view. Pitch is
+   * alpha, yaw is sideslip, and the solver is given the same pair. */
   applyAttitude(){
-    if(this.root) this.root.rotation.z = this.state.on
-      ? -this.state.alpha * Math.PI/180 : 0;
+    if(this.root){
+      this.root.rotation.z = this.state.on
+        ? -this.state.alpha * Math.PI/180 : 0;
+      this.root.rotation.y = this.state.on
+        ? this.state.beta * Math.PI/180 : 0;
+    }
     for(const c of this.cfg.controls){
       // rotate by the difference from the angle the mesh was built at
       const baked = c.baked || 0;
@@ -197,7 +202,8 @@ export class WindTunnel {
     if(!this.cfg || !this.cfd || !this.state.on) return null;
     const a = this.state.alpha * Math.PI/180;
     const v = this.state.v;
-    const vinf = [Math.cos(a)*v, 0, Math.sin(a)*v];
+    const b = this.state.beta * Math.PI/180;
+    const vinf = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
     const lat = this.solver.inducedVelocity();
     const t0 = performance.now();
     const r = this.cfd.run(vinf, lat);
@@ -247,6 +253,10 @@ export function buildPanel(host, cfg, onChange, onCommit){
     mk('alpha', 'Angle of attack', cfg.alpha_min, cfg.alpha_max,
        cfg.alpha_default, '°', 0.25),
   ];
+  if(cfg.beta_max !== undefined){
+    rows.push(mk('beta', 'Sideslip', cfg.beta_min, cfg.beta_max,
+                 cfg.beta_default, '°', 0.5));
+  }
   for(const c of cfg.controls){
     rows.push(mk(c.id, c.label, c.min, c.max, c.value, '°', 0.5));
   }
@@ -265,6 +275,7 @@ export function buildPanel(host, cfg, onChange, onCommit){
     inp.addEventListener('change', () => { if(onCommit) onCommit(id, +inp.value); });
   };
   wire('v'); wire('alpha');
+  if(cfg.beta_max !== undefined) wire('beta');
   for(const c of cfg.controls) wire(c.id);
 
   const setSlider = (id, v) => {
@@ -283,6 +294,7 @@ export function buildPanel(host, cfg, onChange, onCommit){
     sync(state){
       setSlider('v', state.v);
       setSlider('alpha', state.alpha);
+      if(cfg.beta_max !== undefined) setSlider('beta', state.beta);
       for(const c of cfg.controls) setSlider(c.id, state.controls[c.id]);
     },
     reset(){
@@ -311,6 +323,7 @@ export function renderReadout(el, r, cfg, kind){
     ['C<sub>L</sub>', `${r.CL.toFixed(3)}`],
     ['Induced drag', `${r.drag_N.toFixed(3)} N`],
     ['L / D<sub>i</sub>', `${r.LD.toFixed(1)}`],
+    ['Side force', `${r.side_N.toFixed(2)} N`],
     ['Neutral point', `${(r.np*100).toFixed(1)} % MAC`],
     ['Static margin', `${(r.margin*100).toFixed(1)} % MAC`],
   ];

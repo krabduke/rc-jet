@@ -32,6 +32,7 @@ MM = 0.001
 # moving the aeroplane.
 WING_NS, WING_NC = 10, 5
 TAIL_NS, TAIL_NC = 6, 4
+FIN_NS, FIN_NC = 6, 4
 
 
 def config(n_span=WING_NS, n_chord=WING_NC):
@@ -68,6 +69,22 @@ def config(n_span=WING_NS, n_chord=WING_NC):
          # an all-moving surface is not a flap: the whole thing turns, so its
          # effectiveness is 1.0, not the thin-aerofoil flap factor
          "control": "stabilator", "control_tau": 1.0},
+        # The vertical fin. Its span runs in z, so it needs axis "z" and no
+        # mirroring -- there is only one of it. Without the fin in the lattice
+        # the rudder slider moved the geometry and changed nothing at all in
+        # the solve, and sideslip had nothing to act on.
+        {"name": "fin",
+         "le_root": [V["x_root_le"] * MM, 0.0, V["z_root"] * MM],
+         "c_root": V["root_chord"] * MM,
+         "le_tip": [(V["x_root_le"] + V["height"]
+                     * math.tan(math.radians(V["sweep_le"]))) * MM,
+                    0.0, (V["z_root"] + V["height"]) * MM],
+         "c_tip": V["tip_chord"] * MM,
+         "axis": "z", "mirror": False,
+         "n_span": FIN_NS, "n_chord": FIN_NC,
+         "twist_root": 0.0, "twist_tip": 0.0,
+         "control": "rudder", "control_chord": V["rudder_chord"],
+         "control_span": [0.0, V["rudder_span"]]},
     ]
 
     return {
@@ -79,6 +96,7 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         "mass_kg": spec.total_mass_g() / 1000.0,
         "v_default": 22.0, "v_min": 8.0, "v_max": 45.0,
         "alpha_default": 4.0, "alpha_min": -6.0, "alpha_max": 16.0,
+        "beta_default": 0.0, "beta_min": -15.0, "beta_max": 15.0,
         "stall_alpha": 12.0,
         "ground": False,
         "cg_frac": spec.cg_frac_mac(),
@@ -100,7 +118,7 @@ def config(n_span=WING_NS, n_chord=WING_NC):
             {"id": "rudder", "label": "Rudder", "unit": "deg",
              "min": -25.0, "max": 25.0, "value": 0.0,
              "baked": spec.VTAIL["deflect"],
-             "objects": ["rudder"], "sign": [1.0], "yaw_only": True},
+             "objects": ["rudder"], "sign": [1.0]},
         ],
         "surfaces": surfaces,
     }
