@@ -9,7 +9,8 @@
  */
 
 import * as THREE from 'three';
-import { Tunnel, filaments, velocityAt } from './windtunnel.js';
+import { Tunnel } from './windtunnel.js';
+import { CFDView, drawLegend } from './cfd-view.js';
 
 const MM = 0.001;
 
@@ -41,8 +42,13 @@ export class WindTunnel {
     };
     for(const c of this.cfg.controls) this.state.controls[c.id] = c.value;
 
-    this._buildSmoke();
     this._buildTunnelBox();
+    if(opts.bodyPanels){
+      this.cfd = new CFDView({
+        cfg: this.cfg, root: this.root, bounds: this.bounds,
+        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 150,
+      });
+    }
     this.group.visible = false;
     // Open at the incidence that actually flies, so the first thing on screen
     // is the aircraft in trim. A car has no such condition -- it is pressed
@@ -98,37 +104,7 @@ export class WindTunnel {
     this.box = {len, wid, hgt, cx, cz, floorY};
     this.group = new THREE.Group();
     this.group.add(g);
-    this.group.add(this.smoke.points);
-    this.group.add(this.smoke.lines);
     this.scene.add(this.group);
-  }
-
-  _buildSmoke(){
-    const N = RAKE_ROWS * RAKE_COLS;
-    this.rake = {N, pos: new Float32Array(N * TRAIL * 3),
-                 head: new Float32Array(N * 3), age: new Float32Array(N)};
-
-    // one line strip per filament, drawn as a single LineSegments buffer
-    const segs = N * (TRAIL - 1) * 2;
-    const lg = new THREE.BufferGeometry();
-    lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs*3), 3));
-    lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(segs*3), 3));
-    const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({
-      vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false,
-    }));
-    lines.frustumCulled = false;
-    lines.raycast = () => {};
-
-    const pg = new THREE.BufferGeometry();
-    pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N*3), 3));
-    const points = new THREE.Points(pg, new THREE.PointsMaterial({
-      size: 0.006, color: 0xDCE8EE, transparent: true, opacity: 0.9,
-      depthWrite: false, sizeAttenuation: true,
-    }));
-    points.frustumCulled = false;
-    points.raycast = () => {};
-
-    this.smoke = {lines, points, lg, pg};
   }
 
   /* ------------------------------------------------------------- solving */
@@ -145,7 +121,6 @@ export class WindTunnel {
     this.sol = this.solver.solve({
       alpha: s.alpha, v: s.v, controls: s.controls, ground: !!this.cfg.ground,
     });
-    this.fils = filaments(this.sol, !!this.cfg.ground);
     this.onSolve(this.report());
     return this.sol;
   }
@@ -173,7 +148,8 @@ export class WindTunnel {
   setOn(on){
     this.state.on = on;
     this.group.visible = on;
-    if(on){ this._seed(); this.solve(); }
+    if(this.cfd) this.cfd.setVisible(on);
+    if(on) this.solve();
     this.applyAttitude();
   }
 
@@ -210,111 +186,30 @@ export class WindTunnel {
     }
   }
 
-  /* ------------------------------------------------------------- the smoke */
-
-  _seed(){
-    const b = this.bounds, r = this.rake;
-    const x0 = b.min.x - (b.max.x - b.min.x) * 0.55;
-    for(let i = 0; i < r.N; i++){
-      const row = Math.floor(i / RAKE_COLS), col = i % RAKE_COLS;
-      const fy = (row + 0.5) / RAKE_ROWS, fz = (col + 0.5) / RAKE_COLS;
-      const y = b.min.y + (b.max.y - b.min.y) * (fy * 1.9 - 0.45);
-      const z = b.min.z + (b.max.z - b.min.z) * (fz * 1.25 - 0.12);
-      r.head[i*3] = x0; r.head[i*3+1] = y; r.head[i*3+2] = z;
-      r.age[i] = Math.random();
-      for(let k = 0; k < TRAIL; k++){
-        r.pos[(i*TRAIL + k)*3] = x0;
-        r.pos[(i*TRAIL + k)*3+1] = y;
-        r.pos[(i*TRAIL + k)*3+2] = z;
-      }
-    }
+  /* Retrace the streamlines through the freshly solved field.
+   *
+   * This costs of the order of a second, so it is not done while a slider is
+   * moving -- the numbers update on every input, the flow picture updates
+   * when the slider is released. Streamlines are steady anyway: the point of
+   * drawing them is that they stand still and can be read.
+   */
+  retrace(){
+    if(!this.cfg || !this.cfd || !this.state.on) return null;
+    const a = this.state.alpha * Math.PI/180;
+    const v = this.state.v;
+    const vinf = [Math.cos(a)*v, 0, Math.sin(a)*v];
+    const lat = this.solver.inducedVelocity();
+    const t0 = performance.now();
+    const r = this.cfd.run(vinf, lat);
+    return r ? {...r, ms: performance.now() - t0} : null;
   }
 
-  update(dt){
-    if(!this.state.on || !this.state.smoke || !this.fils) return;
-    const r = this.rake, b = this.bounds;
-    const L = this.cfg.c_ref;
-    // The freestream arrives level and the model is pitched to the incidence,
-    // which is how a tunnel actually works -- the air does not know about
-    // angle of attack, only the model's attitude relative to it. The solver
-    // is given the incidence directly; the smoke is drawn in the tunnel frame
-    // and the model is rotated into it.
-    const vv = [this.state.v, 0, 0];
-    const wake = [1, 0, 0];
-    const xEnd = b.max.x + (b.max.x - b.min.x) * 0.85;
-    const x0 = b.min.x - (b.max.x - b.min.x) * 0.55;
-    /* Slow motion, on purpose. The solver works in real units, so at 22 m/s a
-     * filament crosses a 0.5 m model in 23 milliseconds -- one frame. Showing
-     * the flow at roughly 1/50 speed is the only way to see where it goes;
-     * the physics is untouched, only the clock. */
-    const step = Math.min(dt, 0.04) * this.slowmo;
-    const out = [0,0,0];
-    const lp = this.smoke.lg.attributes.position.array;
-    const lc = this.smoke.lg.attributes.color.array;
-    const pp = this.smoke.pg.attributes.position.array;
-
-    for(let i = 0; i < r.N; i++){
-      let hx = r.head[i*3], hy = r.head[i*3+1], hz = r.head[i*3+2];
-      // solver frame: x aft, y span, z up (Blender). Scene frame is Y-up.
-      const p = [hx/L, -hz/L, hy/L];
-      velocityAt(p, this.fils, vv, wake, out);
-      const sp = Math.hypot(out[0], out[1], out[2]) || 1;
-      hx += out[0]*step;
-      hy += out[2]*step;
-      hz += -out[1]*step;
-      if(hx > xEnd){
-        const row = Math.floor(i / RAKE_COLS), col = i % RAKE_COLS;
-        const fy = (row + 0.5) / RAKE_ROWS, fz = (col + 0.5) / RAKE_COLS;
-        hx = x0;
-        hy = b.min.y + (b.max.y - b.min.y) * (fy * 1.9 - 0.45);
-        hz = b.min.z + (b.max.z - b.min.z) * (fz * 1.25 - 0.12);
-        for(let k = 0; k < TRAIL; k++){
-          r.pos[(i*TRAIL+k)*3] = hx;
-          r.pos[(i*TRAIL+k)*3+1] = hy;
-          r.pos[(i*TRAIL+k)*3+2] = hz;
-        }
-      }
-      r.head[i*3] = hx; r.head[i*3+1] = hy; r.head[i*3+2] = hz;
-
-      // shift the trail and write the new head
-      const base = i*TRAIL*3;
-      for(let k = TRAIL-1; k > 0; k--){
-        r.pos[base+k*3]   = r.pos[base+(k-1)*3];
-        r.pos[base+k*3+1] = r.pos[base+(k-1)*3+1];
-        r.pos[base+k*3+2] = r.pos[base+(k-1)*3+2];
-      }
-      r.pos[base] = hx; r.pos[base+1] = hy; r.pos[base+2] = hz;
-
-      pp[i*3] = hx; pp[i*3+1] = hy; pp[i*3+2] = hz;
-
-      // colour by how far the local speed departs from the freestream:
-      // cool where the flow is slowed, warm where it is accelerated
-      const rel = Math.min(1.6, sp/this.state.v);
-      const t = Math.max(0, Math.min(1, (rel - 0.85)/0.55));
-      const cr = 0.42 + 0.56*t, cg = 0.62 - 0.12*t, cb = 0.78 - 0.46*t;
-
-      for(let k = 0; k < TRAIL-1; k++){
-        const s0 = (i*(TRAIL-1) + k)*6;
-        lp[s0]   = r.pos[base+k*3];
-        lp[s0+1] = r.pos[base+k*3+1];
-        lp[s0+2] = r.pos[base+k*3+2];
-        lp[s0+3] = r.pos[base+(k+1)*3];
-        lp[s0+4] = r.pos[base+(k+1)*3+1];
-        lp[s0+5] = r.pos[base+(k+1)*3+2];
-        const fade = 1 - k/(TRAIL-1);
-        lc[s0]   = cr*fade; lc[s0+1] = cg*fade; lc[s0+2] = cb*fade;
-        lc[s0+3] = cr*fade; lc[s0+4] = cg*fade; lc[s0+5] = cb*fade;
-      }
-    }
-    this.smoke.lg.attributes.position.needsUpdate = true;
-    this.smoke.lg.attributes.color.needsUpdate = true;
-    this.smoke.pg.attributes.position.needsUpdate = true;
-  }
+  update(dt){ /* streamlines are steady: nothing to animate */ }
 }
 
 /* ---------------------------------------------------------------- the panel */
 
-export function buildPanel(host, cfg, onChange){
+export function buildPanel(host, cfg, onChange, onCommit){
   const el = document.createElement('div');
   el.id = 'tunnel';
   el.innerHTML = `
@@ -323,13 +218,19 @@ export function buildPanel(host, cfg, onChange){
         <span class="tt">Wind tunnel</span>
         <span class="ts" id="t-panels">—</span>
       </div>
+      <div class="tstatus" id="t-status">
+      </div>
       <div class="tsliders" id="t-sliders"></div>
       <div class="treadout" id="t-readout"></div>
       <div class="tplot">
+        <canvas id="t-legend" width="276" height="46"></canvas>
+      </div>
+      <div class="tplot">
         <div class="tcap">Spanwise load</div>
-        <canvas id="t-span" width="300" height="76"></canvas>
+        <canvas id="t-span" width="276" height="70"></canvas>
       </div>
       <p class="tnote" id="t-note"></p>
+      <p class="tabout" id="t-about"></p>
     </div>`;
   host.appendChild(el);
 
@@ -359,6 +260,9 @@ export function buildPanel(host, cfg, onChange){
       out.textContent = (+inp.value).toFixed(1) + unit;
       onChange(id, +inp.value);
     });
+    // Retracing the flow costs about a second, so it happens on release.
+    // The numbers move while you drag; the picture settles when you stop.
+    inp.addEventListener('change', () => { if(onCommit) onCommit(id, +inp.value); });
   };
   wire('v'); wire('alpha');
   for(const c of cfg.controls) wire(c.id);

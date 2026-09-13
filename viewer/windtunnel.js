@@ -412,6 +412,31 @@ export class Tunnel {
     return this.last;
   }
 
+  /* A closure giving the velocity the solved lattice induces at a point.
+   *
+   * The flow field needs this to make the body see the wings and to trace
+   * streamlines through both. Chordwise panels in a strip are merged into one
+   * filament first: that is the right far-field simplification and it cuts
+   * the per-point cost by the chordwise panel count.
+   */
+  inducedVelocity(){
+    const sol = this.last;
+    if(!sol) return null;
+    const L = this.refLen;
+    const fils = filaments(sol, sol.ground);
+    const wake = [1, 0, 0];
+    const t = [0, 0, 0], q = [0, 0, 0];
+    return (p, out) => {
+      q[0] = p[0]/L; q[1] = p[1]/L; q[2] = p[2]/L;
+      for(let i = 0; i < fils.length; i++){
+        const f = fils[i];
+        horseshoe(q, f.a, f.b, wake, t);
+        out[0] += f.G*t[0]; out[1] += f.G*t[1]; out[2] += f.G*t[2];
+      }
+      return out;
+    };
+  }
+
   /* Neutral point as a fraction of MAC, from two solves. Moments are taken
    * about the MAC quarter-chord; referencing them to the origin makes Cm a
    * small difference between large numbers and the answer becomes noise. */

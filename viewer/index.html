@@ -167,6 +167,12 @@
   #t-span{width:100%; height:76px; display:block}
   .tnote{font-size:10.5px; line-height:1.45; color:#7C8A92; margin:9px 0 0}
   .tnote.warn{color:#E0A05A}
+  .tstatus{font-size:10.5px; color:#7FB2C9; min-height:13px; margin:-4px 0 6px}
+  .tstatus.busy{color:#E0A05A}
+  #t-legend{width:100%; height:46px; display:block}
+  .tabout{font-size:10.5px; line-height:1.5; color:#8A969D;
+          margin:8px 0 0; padding-top:8px; border-top:1px solid #2C383E}
+
 
   /* --- throttle --------------------------------------------------------- */
   #thr{display:flex; gap:0; margin-right:8px}
@@ -257,6 +263,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {WindTunnel, buildPanel, renderReadout, drawSpanLoad}
   from './tunnel-ui.js';
+import {drawLegend} from './cfd-view.js';
 
 const MM = 0.001;
 const $ = s => document.querySelector(s);
@@ -533,10 +540,14 @@ function buildTunnel(box){
   if(!data.tunnel) return;
   // the panel first: the tunnel solves once on construction and writes its
   // first readout straight into this DOM
-  panel = buildPanel($('#tunnel-host'), data.tunnel, (id, v) => tunnel.set(id, v));
+  panel = buildPanel($('#tunnel-host'), data.tunnel,
+                     (id, v) => tunnel.set(id, v),
+                     () => retrace());
   tunnel = new WindTunnel({
     cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
     bounds: box.clone().translate(root.position),
+    bodyPanels: data.body_panels,
+    nLines: 150,
     onSolve: r => {
       renderReadout($('#t-readout'), r, data.tunnel, 'plane');
       drawSpanLoad($('#t-span'), r.strips);
@@ -549,12 +560,40 @@ function buildTunnel(box){
           + 'lift that the aircraft would not make.';
       }else{
         n.className = 'tnote';
-        n.textContent = 'Inviscid vortex-lattice solve, live. No boundary '
+        n.className = 'tnote';
+        n.textContent = 'Inviscid solve, live: a vortex lattice for the '
+          + 'lifting surfaces and source panels for the fuselage. No boundary '
           + 'layer, no stall, no profile drag — induced drag only.';
       }
+      $('#t-about').textContent = ABOUT;
     },
   });
   panel.sync(tunnel.state);
+}
+
+const ABOUT =
+  'A 440 mm cropped-delta jet around an F110 scaled to 1:33. The delta is '
+  + 'for roll rate and for a wing that keeps flying at high incidence; the '
+  + 'stabilators are all-moving because a delta has no room for an elevator '
+  + 'and needs the pitch authority. It sits at 13 % static margin — stable '
+  + 'enough to fly hands-off, loose enough to be quick in pitch. The tail is '
+  + 'where it is because the solver put it there: the first position sat in '
+  + 'the wing wake and left almost no margin at all.';
+
+function retrace(){
+  if(!tunnel || !tunnel.state.on) return;
+  const st = $('#t-status');
+  st.className = 'tstatus busy';
+  st.textContent = 'Tracing streamlines…';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const r = tunnel.retrace();
+    if(r){
+      drawLegend($('#t-legend'), r.vmin, r.vmax, 'Velocity [m/s]');
+      st.className = 'tstatus';
+      st.textContent = `${r.lines} streamlines · ${r.ms.toFixed(0)} ms · `
+                     + `${data.body_panels.n} body panels`;
+    }
+  }));
 }
 
 function setTunnel(on){
@@ -564,6 +603,7 @@ function setTunnel(on){
   tunnel.setOn(on);
   if(on){
     panel.sync(tunnel.state);
+    retrace();
     spinning = false;
     $('#spin').setAttribute('aria-pressed','false');
   }
