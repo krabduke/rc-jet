@@ -96,3 +96,22 @@ def _ventrals():
                   z_hinge + y * sa + (z - z_hinge) * ca) for (x, y, z) in verts]
         out[f"ventral_{side}"] = (verts, faces)
     return out
+
+
+def pivots():
+    """Hinge lines for the moving tail surfaces.
+
+    The stabilators are all-moving, so each pivots about its own quarter-chord
+    on a spanwise axis. The rudder hinges about a vertical axis at the fin's
+    rudder cut. These are the same points the geometry is deflected about, so
+    the modelled position and a viewer-driven one agree.
+    """
+    out = {}
+    pivot_x = H["x_root_le"] + H["root_chord"] * 0.25
+    for side, sgn in (("l", -1.0), ("r", 1.0)):
+        out[f"stabilator_{side}"] = ((pivot_x, 0.0, H["z_root"]),
+                                     (0.0, 1.0, 0.0), sgn, "hinge")
+    ru = 1.0 - V["rudder_chord"]
+    out["rudder"] = ((V["x_root_le"] + ru * V["root_chord"], 0.0, V["z_root"]),
+                     (0.0, 0.0, 1.0), 1.0, "hinge")
+    return out

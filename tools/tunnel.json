@@ -1,0 +1,118 @@
+{
+ "units": "m",
+ "s_ref": 0.03645,
+ "c_ref": 0.13256241426611798,
+ "b_ref": 0.3,
+ "x_le_mac": 0.22696892777455996,
+ "mass_kg": 0.33,
+ "v_default": 22.0,
+ "v_min": 8.0,
+ "v_max": 45.0,
+ "alpha_default": 4.0,
+ "alpha_min": -6.0,
+ "alpha_max": 16.0,
+ "stall_alpha": 12.0,
+ "ground": false,
+ "cg_frac": 0.24526477272802902,
+ "cg_x": 0.2594818181818182,
+ "controls": [
+  {
+   "id": "flaperon",
+   "label": "Flaperons",
+   "unit": "deg",
+   "min": -25.0,
+   "max": 25.0,
+   "value": 0.0,
+   "baked": -12.0,
+   "objects": [
+    "flaperon_l",
+    "flaperon_r"
+   ],
+   "sign": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "id": "stabilator",
+   "label": "Stabilators",
+   "unit": "deg",
+   "min": -20.0,
+   "max": 20.0,
+   "value": 0.0,
+   "baked": -4.0,
+   "objects": [
+    "stabilator_l",
+    "stabilator_r"
+   ],
+   "sign": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "id": "rudder",
+   "label": "Rudder",
+   "unit": "deg",
+   "min": -25.0,
+   "max": 25.0,
+   "value": 0.0,
+   "baked": 6.0,
+   "objects": [
+    "rudder"
+   ],
+   "sign": [
+    1.0
+   ],
+   "yaw_only": true
+  }
+ ],
+ "surfaces": [
+  {
+   "name": "wing",
+   "le_root": [
+    0.17500000000000002,
+    0.0,
+    -0.006
+   ],
+   "c_root": 0.185,
+   "le_tip": [
+    0.300864944676592,
+    0.15,
+    -0.006
+   ],
+   "c_tip": 0.058,
+   "n_span": 10,
+   "n_chord": 5,
+   "twist_root": 0.0,
+   "twist_tip": -1.5,
+   "control": "flaperon",
+   "control_chord": 0.26,
+   "control_span": [
+    0.38,
+    0.94
+   ]
+  },
+  {
+   "name": "stabilator",
+   "le_root": [
+    0.392,
+    0.0,
+    -0.022
+   ],
+   "c_root": 0.07200000000000001,
+   "le_tip": [
+    0.43381952804423046,
+    0.062,
+    -0.028516462586471943
+   ],
+   "c_tip": 0.031,
+   "n_span": 6,
+   "n_chord": 4,
+   "twist_root": 0.0,
+   "twist_tip": 0.0,
+   "control": "stabilator",
+   "control_tau": 1.0
+  }
+ ]
+}

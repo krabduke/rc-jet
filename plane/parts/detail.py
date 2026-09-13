@@ -1,8 +1,11 @@
 """Airframe detail: the parts that make a model look like an aircraft.
 
 Control horns and linkages, pitot and antennas, wing fences and vortex
-generators, navigation lights, gear doors, wheel hubs, access panels, exhaust
-petals, stores pylons and static dischargers.
+generators, navigation lights, gear doors, wheel hubs, access panels, the
+tailpipe shroud and static dischargers.
+
+There are no stores and no pylons. This aircraft is built for speed and roll
+rate, and a pylon is a bluff body hanging in the flow that buys neither.
 """
 
 import math
@@ -30,7 +33,6 @@ def build():
     out.update(_wheel_hubs())
     out.update(_access_panels())
     out.update(_exhaust_petals())
-    out.update(_pylons())
     out.update(_dischargers())
     out.update(_cockpit())
     return out
@@ -260,66 +262,6 @@ def _exhaust_petals():
                  (fi, ri, ri + 1, fi + 1), (fo, fo + 1, ro + 1, ro)]
         parts.append((verts, faces))
     return {"tailpipe_shroud": mesh.join(*parts)}
-
-
-def _pylons():
-    """A pylon per station carrying a short-range missile.
-
-    A bare cylinder under a wing reads as a dropped pipe; the ogive nose, tail
-    fins and canards are what make it read as a weapon.
-    """
-    out = {}
-    S = spec.STORES
-    for sgn, side in ((-1.0, "l"), (1.0, "r")):
-        for n, fr in enumerate(S["stations"], start=1):
-            y = sgn * W["semi_span"] * fr
-            chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
-            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
-                                  W["sweep_le"], fr)
-            # the nose leads the wing, as a rail-launched missile does
-            x_mid = x_le - S["nose_lead"] + S["body_len"] / 2
-            z_wing = W["z_root"] - W["thickness"] * chord * 0.5
-            z_body = z_wing - S["pylon_h"] - S["body_r"]
-            out[f"pylon_{side}{n}"] = mesh.box(
-                x_mid, y, (z_wing + z_body) / 2, chord * 0.38, 5.0,
-                z_wing - z_body)
-            out[f"missile_{side}{n}"] = _missile(x_mid, y, z_body, S)
-    return out
-
-
-def _missile(x_mid, y, z, S):
-    """Ogive nose, parallel body, boat-tail, four tail fins and four canards."""
-    r = S["body_r"]
-    L = S["body_len"]
-    x0 = x_mid - L / 2
-    nose, tail = S["nose_len"], S["tail_len"]
-    prof = []
-    for i in range(9):                      # tangent ogive
-        f = i / 8
-        prof.append((x0 + nose * f, r * math.sin(math.pi / 2 * f) ** 0.7))
-    prof.append((x0 + L - tail, r))
-    prof.append((x0 + L, r * 0.72))
-    body = mesh.revolve_open(prof, 16, cap_start=True, cap_end=True)
-    body = ([(px, py + y, pz + z) for (px, py, pz) in body[0]], body[1])
-    parts = [body]
-
-    def fin_set(x_c, span, chord, sweep):
-        for k in range(S["n_fins"]):
-            a = 2 * math.pi * k / S["n_fins"] + math.pi / 4
-            loop = [(x_c - chord / 2, r * 0.9),
-                    (x_c + chord / 2, r * 0.9),
-                    (x_c + chord / 2 - sweep * 0.3, r + span),
-                    (x_c - chord / 2 + sweep, r + span)]
-            v, f = _plate([(px, 0.0, pr) for (px, pr) in loop], 1.1)
-            ca, sa = math.cos(a), math.sin(a)
-            parts.append(([(px, y + py * ca - pz * sa,
-                            z + py * sa + pz * ca) for (px, py, pz) in v], f))
-
-    fin_set(x0 + L - tail - S["fin_chord"] * 0.5, S["fin_span"],
-            S["fin_chord"], 6.0)
-    fin_set(x0 + nose + S["canard_chord"] * 0.6, S["canard_span"],
-            S["canard_chord"], 4.0)
-    return mesh.join(*parts)
 
 
 def _dischargers():

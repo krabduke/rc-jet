@@ -224,7 +224,7 @@ def main():
             "panel_screws", "seam_lengthwise", "control_horns", "pitot",
             "wheel_hubs", "gear_doors", "navlight_port", "tailpipe_shroud",
             "panel_battery", "panel_gearbay", "antennas",
-            "missile_r1", "pylon_r1", "static_dischargers"]
+            "static_dischargers", "flaperon_l", "rudder"]
     missing = [w for w in want if w not in by]
     c.true("key parts present", not missing, f"{len(want)} checked")
     for m in missing:

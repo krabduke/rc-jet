@@ -463,22 +463,6 @@ TAILPIPE = {
     "petals":         12,
 }
 
-# Underwing stores: a short-range AAM on each of two pylons per side.
-STORES = {
-    "stations":   [0.42, 0.66],   # fraction of semi-span
-    "pylon_h":      12.0,
-    "body_r":        5.2,
-    "body_len":     96.0,
-    "nose_len":     20.0,
-    "tail_len":     10.0,
-    "fin_span":     10.0,
-    "fin_chord":    18.0,
-    "canard_span":   7.0,
-    "canard_chord": 11.0,
-    "n_fins":          4,
-    "nose_lead":    16.0,   # how far the nose leads the wing LE
-}
-
 PROBE = {
     "pitot_tip":    -28.0,   # ahead of the nose datum; keeps inside 500 mm
     "pitot_r":        1.1,

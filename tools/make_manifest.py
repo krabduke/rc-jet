@@ -7,7 +7,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "plane"))
-import spec  # noqa: E402
+import spec
+import tunnel_config  # noqa: E402
 
 GROUPS = [
     ("01 Fuselage",        "Fuselage",      "#8A9299"),
@@ -39,11 +40,28 @@ def main():
             "x1": max(float(r["x_max_mm"]) for r in mine),
         })
 
-    parts = {r["name"]: {
-        "g": r["collection"], "mat": r["material"],
-        "x0": float(r["x_min_mm"]), "x1": float(r["x_max_mm"]),
-        "f": int(r["faces"]),
-    } for r in rows}
+    def pivot(r):
+        """Objects that rotate carry their own origin and axis, so the viewer
+        can hinge a control surface about its hinge line rather than about the
+        nose of the aircraft."""
+        if not r.get("pivot_x_mm"):
+            return None
+        return {"p": [float(r["pivot_x_mm"]), float(r["pivot_y_mm"]),
+                      float(r["pivot_z_mm"])],
+                "axis": [float(r["axis_x"]), float(r["axis_y"]),
+                         float(r["axis_z"])],
+                "spin": float(r["spin"]) if r.get("spin") else 1.0,
+                "role": r.get("role") or "spin"}
+
+    parts = {}
+    for r in rows:
+        e = {"g": r["collection"], "mat": r["material"],
+             "x0": float(r["x_min_mm"]), "x1": float(r["x_max_mm"]),
+             "f": int(r["faces"])}
+        pv = pivot(r)
+        if pv:
+            e["pivot"] = pv
+        parts[r["name"]] = e
 
     masses = [{"name": n, "x": x, "m": m} for (n, x, m) in spec.all_masses()]
     masses.sort(key=lambda d: -d["m"])
@@ -68,6 +86,7 @@ def main():
         "palette": {k: {"rgb": list(v[0]), "metal": v[1], "rough": v[2]}
                     for k, v in spec.PALETTE.items()},
         "groups": groups, "parts": parts, "masses": masses,
+        "tunnel": tunnel_config.config(),
     }
     p = os.path.join(ROOT, "viewer", "parts.json")
     json.dump(out, open(p, "w"), indent=1)

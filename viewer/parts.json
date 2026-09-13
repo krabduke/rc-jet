@@ -218,8 +218,8 @@
    "key": "01 Fuselage",
    "label": "Fuselage",
    "color": "#8A9299",
-   "parts": 16,
-   "faces": 9166,
+   "parts": 8,
+   "faces": 8182,
    "x0": 0.0,
    "x1": 438.0
   },
@@ -229,8 +229,8 @@
    "color": "#6E93A8",
    "parts": 6,
    "faces": 1488,
-   "x0": 147.0,
-   "x1": 358.8
+   "x0": 0.7,
+   "x1": 343.8
   },
   {
    "key": "03 Tail",
@@ -238,8 +238,8 @@
    "color": "#7C86A6",
    "parts": 6,
    "faces": 1046,
-   "x0": 330.0,
-   "x1": 464.2
+   "x0": -18.0,
+   "x1": 433.4
   },
   {
    "key": "04 Intake and Duct",
@@ -360,16 +360,44 @@
   "flaperon_l": {
    "g": "02 Wing",
    "mat": "control",
-   "x0": 324.9,
-   "x1": 358.8,
-   "f": 192
+   "x0": 0.9,
+   "x1": 34.8,
+   "f": 192,
+   "pivot": {
+    "p": [
+     324.0,
+     -57.0,
+     -6.0
+    ],
+    "axis": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "spin": -1.0,
+    "role": "hinge"
+   }
   },
   "flaperon_r": {
    "g": "02 Wing",
    "mat": "control",
-   "x0": 324.7,
-   "x1": 358.8,
-   "f": 192
+   "x0": 0.7,
+   "x1": 34.8,
+   "f": 192,
+   "pivot": {
+    "p": [
+     324.0,
+     57.0,
+     -6.0
+    ],
+    "axis": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "hinge"
+   }
   },
   "spar_carbon": {
    "g": "09 Structure",
@@ -409,23 +437,65 @@
   "rudder": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 409.3,
-   "x1": 444.6,
-   "f": 192
+   "x0": 3.0,
+   "x1": 38.3,
+   "f": 192,
+   "pivot": {
+    "p": [
+     406.3,
+     0.0,
+     24.0
+    ],
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "spin": 1.0,
+    "role": "hinge"
+   }
   },
   "stabilator_l": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 392.0,
-   "x1": 464.2,
-   "f": 268
+   "x0": -18.0,
+   "x1": 54.2,
+   "f": 268,
+   "pivot": {
+    "p": [
+     410.0,
+     0.0,
+     -22.0
+    ],
+    "axis": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "spin": -1.0,
+    "role": "hinge"
+   }
   },
   "stabilator_r": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 392.0,
-   "x1": 464.2,
-   "f": 268
+   "x0": -18.0,
+   "x1": 54.2,
+   "f": 268,
+   "pivot": {
+    "p": [
+     410.0,
+     0.0,
+     -22.0
+    ],
+    "axis": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "spin": 1.0,
+    "role": "hinge"
+   }
   },
   "ventral_l": {
    "g": "03 Tail",
@@ -1295,34 +1365,6 @@
    "x1": 110.0,
    "f": 6
   },
-  "missile_l1": {
-   "g": "01 Fuselage",
-   "mat": "ordnance",
-   "x0": 211.9,
-   "x1": 307.9,
-   "f": 240
-  },
-  "missile_l2": {
-   "g": "01 Fuselage",
-   "mat": "ordnance",
-   "x0": 242.1,
-   "x1": 338.1,
-   "f": 240
-  },
-  "missile_r1": {
-   "g": "01 Fuselage",
-   "mat": "ordnance",
-   "x0": 211.9,
-   "x1": 307.9,
-   "f": 240
-  },
-  "missile_r2": {
-   "g": "01 Fuselage",
-   "mat": "ordnance",
-   "x0": 242.1,
-   "x1": 338.1,
-   "f": 240
-  },
   "navlight_port": {
    "g": "10 Detail",
    "mat": "lens_red",
@@ -1385,34 +1427,6 @@
    "x0": -28.0,
    "x1": 6.0,
    "f": 58
-  },
-  "pylon_l1": {
-   "g": "01 Fuselage",
-   "mat": "airframe",
-   "x0": 234.8,
-   "x1": 284.9,
-   "f": 6
-  },
-  "pylon_l2": {
-   "g": "01 Fuselage",
-   "mat": "airframe",
-   "x0": 270.8,
-   "x1": 309.3,
-   "f": 6
-  },
-  "pylon_r1": {
-   "g": "01 Fuselage",
-   "mat": "airframe",
-   "x0": 234.8,
-   "x1": 284.9,
-   "f": 6
-  },
-  "pylon_r2": {
-   "g": "01 Fuselage",
-   "mat": "airframe",
-   "x0": 270.8,
-   "x1": 309.3,
-   "f": 6
   },
   "seat_back": {
    "g": "10 Detail",
@@ -1945,5 +1959,123 @@
    "x": 288.0,
    "m": 5.5
   }
- ]
+ ],
+ "tunnel": {
+  "units": "m",
+  "s_ref": 0.03645,
+  "c_ref": 0.13256241426611798,
+  "b_ref": 0.3,
+  "x_le_mac": 0.22696892777455996,
+  "mass_kg": 0.33,
+  "v_default": 22.0,
+  "v_min": 8.0,
+  "v_max": 45.0,
+  "alpha_default": 4.0,
+  "alpha_min": -6.0,
+  "alpha_max": 16.0,
+  "stall_alpha": 12.0,
+  "ground": false,
+  "cg_frac": 0.24526477272802902,
+  "cg_x": 0.2594818181818182,
+  "controls": [
+   {
+    "id": "flaperon",
+    "label": "Flaperons",
+    "unit": "deg",
+    "min": -25.0,
+    "max": 25.0,
+    "value": 0.0,
+    "baked": -12.0,
+    "objects": [
+     "flaperon_l",
+     "flaperon_r"
+    ],
+    "sign": [
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "id": "stabilator",
+    "label": "Stabilators",
+    "unit": "deg",
+    "min": -20.0,
+    "max": 20.0,
+    "value": 0.0,
+    "baked": -4.0,
+    "objects": [
+     "stabilator_l",
+     "stabilator_r"
+    ],
+    "sign": [
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "id": "rudder",
+    "label": "Rudder",
+    "unit": "deg",
+    "min": -25.0,
+    "max": 25.0,
+    "value": 0.0,
+    "baked": 6.0,
+    "objects": [
+     "rudder"
+    ],
+    "sign": [
+     1.0
+    ],
+    "yaw_only": true
+   }
+  ],
+  "surfaces": [
+   {
+    "name": "wing",
+    "le_root": [
+     0.17500000000000002,
+     0.0,
+     -0.006
+    ],
+    "c_root": 0.185,
+    "le_tip": [
+     0.300864944676592,
+     0.15,
+     -0.006
+    ],
+    "c_tip": 0.058,
+    "n_span": 10,
+    "n_chord": 5,
+    "twist_root": 0.0,
+    "twist_tip": -1.5,
+    "control": "flaperon",
+    "control_chord": 0.26,
+    "control_span": [
+     0.38,
+     0.94
+    ]
+   },
+   {
+    "name": "stabilator",
+    "le_root": [
+     0.392,
+     0.0,
+     -0.022
+    ],
+    "c_root": 0.07200000000000001,
+    "le_tip": [
+     0.43381952804423046,
+     0.062,
+     -0.028516462586471943
+    ],
+    "c_tip": 0.031,
+    "n_span": 6,
+    "n_chord": 4,
+    "twist_root": 0.0,
+    "twist_tip": 0.0,
+    "control": "stabilator",
+    "control_tau": 1.0
+   }
+  ]
+ }
 }

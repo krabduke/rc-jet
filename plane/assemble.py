@@ -100,6 +100,26 @@ def make_object(name, verts, faces, coll):
     return ob
 
 
+def set_pivot(ob, pivot):
+    """Move an object's origin to `pivot` (mm) without moving the geometry.
+
+    Geometry is authored in world millimetres, so by default every object's
+    origin is the world origin -- a control surface would hinge about the nose
+    of the aircraft rather than about its own hinge line. Shifting the mesh
+    data and putting the offset in the object transform exports a glTF node
+    that rotates in place, for any consumer of the file.
+
+    Run this after booleans and arrays, which both work on world-space data.
+    """
+    px, py, pz = (pivot[0] * MM, pivot[1] * MM, pivot[2] * MM)
+    for v in ob.data.vertices:
+        v.co.x -= px
+        v.co.y -= py
+        v.co.z -= pz
+    ob.data.update()
+    ob.location = (px, py, pz)
+
+
 def apply_cutters(obj, cv, cf):
     cutter = make_object(obj.name + "__cut", cv, cf, bpy.context.scene.collection)
     m = obj.modifiers.new("cut", "BOOLEAN")
@@ -194,6 +214,7 @@ def main():
         arrays = getattr(module, "ARRAYS", {})
         objects = {k: v for k, v in built.items() if not k.startswith("cut:")}
         cutters = {k[4:]: v for k, v in built.items() if k.startswith("cut:")}
+        piv = module.pivots() if hasattr(module, "pivots") else {}
 
         for name, (v, f) in sorted(objects.items()):
             cname = collection_for(name)
@@ -209,9 +230,20 @@ def main():
             mname = material_for(name)
             ob.data.materials.append(mats[mname])
             n_sharp += shade(ob)
-            bb = meshlib.bbox([tuple(x.co) for x in ob.data.vertices])
+            spec_p = piv.get(name)
+            if spec_p:
+                set_pivot(ob, spec_p[0])
+            wm = ob.matrix_world
+            bb = meshlib.bbox([tuple(wm @ x.co) for x in ob.data.vertices])
+            ax = spec_p[1] if spec_p else ("", "", "")
             rows.append({
                 "name": name, "collection": cname, "material": mname,
+                "pivot_x_mm": round(spec_p[0][0], 1) if spec_p else "",
+                "pivot_y_mm": round(spec_p[0][1], 1) if spec_p else "",
+                "pivot_z_mm": round(spec_p[0][2], 1) if spec_p else "",
+                "axis_x": ax[0], "axis_y": ax[1], "axis_z": ax[2],
+                "spin": spec_p[2] if spec_p and len(spec_p) > 2 else "",
+                "role": spec_p[3] if spec_p and len(spec_p) > 3 else "",
                 "verts": len(ob.data.vertices), "faces": len(ob.data.polygons),
                 "x_min_mm": round(bb[0] / MM, 1), "x_max_mm": round(bb[3] / MM, 1),
                 "y_min_mm": round(bb[1] / MM, 1), "y_max_mm": round(bb[4] / MM, 1),

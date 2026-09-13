@@ -122,6 +122,51 @@
     #probe{left:16px; right:16px; max-width:none}
   }
   @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important}}
+
+  /* --- wind tunnel ---------------------------------------------------- */
+  /* An instrument panel, not a dashboard: the numbers are the content, so
+     they get a tabular monospace face and everything else stays quiet. */
+  #tunnel{
+    position:absolute; left:16px; top:96px; width:302px; z-index:6;
+    display:none;
+  }
+  #tunnel.on{display:block}
+  .twrap{
+    background:rgba(16,22,25,.93); border:1px solid #2C383E; border-radius:3px;
+    padding:12px 13px 10px;
+  }
+  .thead{display:flex; justify-content:space-between; align-items:baseline;
+         border-bottom:1px solid #2C383E; padding-bottom:7px; margin-bottom:9px}
+  .tt{font-weight:600; font-size:13px; letter-spacing:.01em}
+  .ts{font-size:11px; color:#6E7D86; font-variant-numeric:tabular-nums}
+  .trow{display:grid; grid-template-columns:82px 1fr 54px; align-items:center;
+        gap:8px; margin:7px 0}
+  .tlab{font-size:11px; color:#96A3AB}
+  .trow output{font-size:11px; color:#DCE6EB; text-align:right;
+               font-variant-numeric:tabular-nums}
+  .trow input[type=range]{
+    -webkit-appearance:none; appearance:none; height:2px; background:#36444B;
+    border-radius:2px; outline:none;
+  }
+  .trow input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:13px; height:13px; border-radius:50%;
+    background:#8FB9CE; cursor:grab; border:2px solid #101619;
+  }
+  .trow input[type=range]::-moz-range-thumb{
+    width:13px; height:13px; border-radius:50%; background:#8FB9CE;
+    cursor:grab; border:2px solid #101619;
+  }
+  .trow input[type=range]:focus-visible{outline:2px solid #8FB9CE; outline-offset:3px}
+  .treadout{margin-top:11px; border-top:1px solid #2C383E; padding-top:9px}
+  .treadout .tr{display:flex; justify-content:space-between; padding:2.5px 0}
+  .treadout dt{font-size:11px; color:#96A3AB}
+  .treadout dd{font-size:11.5px; margin:0; font-variant-numeric:tabular-nums;
+               color:#E6EEF2}
+  .tplot{margin-top:10px}
+  .tcap{font-size:10px; color:#6E7D86; margin-bottom:3px}
+  #t-span{width:100%; height:76px; display:block}
+  .tnote{font-size:10.5px; line-height:1.45; color:#7C8A92; margin:9px 0 0}
+  .tnote.warn{color:#E0A05A}
 </style>
 </head>
 <body>
@@ -162,11 +207,14 @@
   </div>
   <div id="groups"></div>
   <div id="controls">
+    <button class="btn" id="tunnel-btn" type="button" aria-pressed="false">Wind tunnel</button>
     <button class="btn" id="skin" type="button" aria-pressed="false">Show internals</button>
     <button class="btn" id="spin" type="button" aria-pressed="false">Spin</button>
     <button class="btn" id="reset" type="button">Reset view</button>
   </div>
 </div>
+
+<div id="tunnel-host"></div>
 
 <div id="load">
   <p id="loadtxt">Loading aircraft…</p>
@@ -186,6 +234,8 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
+import {WindTunnel, buildPanel, renderReadout, drawSpanLoad}
+  from './tunnel-ui.js';
 
 const MM = 0.001;
 const $ = s => document.querySelector(s);
@@ -197,6 +247,7 @@ const SKIN = ['fuselage_skin', 'canopy_glass'];
 let scene, camera, renderer, controls, root, raycaster, clock;
 let data, byGroup = new Map(), info = new Map(), pickable = [];
 let hidden = new Set(), hovered = null, corners = [], viewDir, spinning = false;
+let tunnel = null, panel = null, byName = new Map();
 
 init();
 
@@ -255,7 +306,14 @@ async function init(){
       $('#bar i').style.width = p + '%';
       $('#loadtxt').textContent = `Loading aircraft… ${p}%`;
     },
-    () => fail('Could not load <code>build/rcjet.glb</code>. Run <code>make export</code>.'));
+    // GLTFLoader routes anything thrown inside the success callback here too,
+    // so report what actually went wrong rather than always blaming the file.
+    e => {
+      console.error(e);
+      const why = e && e.message ? `<br><small>${e.message}</small>` : '';
+      fail('Could not load <code>build/rcjet.glb</code>. Run '
+         + `<code>make export</code>.${why}`);
+    });
 }
 
 function dir(colour, intensity, x, y, z){
@@ -328,6 +386,7 @@ function ready(model){
       o.material.depthWrite = false;
     }
     info.set(o, nfo);
+    byName.set(o.name, o);
     pickable.push(o);
     if(!byGroup.has(nfo.g)) byGroup.set(nfo.g, []);
     byGroup.get(nfo.g).push(o);
@@ -347,7 +406,8 @@ function ready(model){
   addEventListener('resize', onResize);
   renderer.domElement.addEventListener('pointermove', onMove);
   renderer.domElement.addEventListener('pointerleave', () => setProbe(null));
-  window.__dbg = {scene, camera, renderer, root, byGroup};
+  buildTunnel(box);
+  window.__dbg = {scene, camera, renderer, root, byGroup, tunnel};
   $('#load').classList.add('done');
   renderer.setAnimationLoop(tick);
 }
@@ -381,8 +441,49 @@ function onResize(){
   renderer.setSize(s.clientWidth, s.clientHeight);
 }
 
+function buildTunnel(box){
+  if(!data.tunnel) return;
+  // the panel first: the tunnel solves once on construction and writes its
+  // first readout straight into this DOM
+  panel = buildPanel($('#tunnel-host'), data.tunnel, (id, v) => tunnel.set(id, v));
+  tunnel = new WindTunnel({
+    cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
+    bounds: box.clone().translate(root.position),
+    onSolve: r => {
+      renderReadout($('#t-readout'), r, data.tunnel, 'plane');
+      drawSpanLoad($('#t-span'), r.strips);
+      $('#t-panels').textContent = `${r.panels} panels · ${r.v.toFixed(0)} m/s`;
+      const n = $('#t-note');
+      if(r.stalled){
+        n.className = 'tnote warn';
+        n.textContent = `Past ${r.stall_alpha}° this is beyond where a real wing `
+          + 'stalls. The solver has no boundary layer, so it keeps predicting '
+          + 'lift that the aircraft would not make.';
+      }else{
+        n.className = 'tnote';
+        n.textContent = 'Inviscid vortex-lattice solve, live. No boundary '
+          + 'layer, no stall, no profile drag — induced drag only.';
+      }
+    },
+  });
+  panel.sync(tunnel.state);
+}
+
+function setTunnel(on){
+  if(!tunnel) return;
+  $('#tunnel').classList.toggle('on', on);
+  $('#tunnel-btn').setAttribute('aria-pressed', String(on));
+  tunnel.setOn(on);
+  if(on){
+    panel.sync(tunnel.state);
+    spinning = false;
+    $('#spin').setAttribute('aria-pressed','false');
+  }
+}
+
 function tick(){
   const dt = Math.min(clock.getDelta(), 0.05);
+  if(tunnel) tunnel.update(dt);
   if(spinning && root) root.rotation.y += dt * 0.35;
   controls.update();
   renderer.render(scene, camera);
@@ -445,6 +546,10 @@ function buildRail(){
     box.appendChild(el);
   }
 
+  $('#tunnel-btn').addEventListener('click', () => {
+    setTunnel($('#tunnel-btn').getAttribute('aria-pressed') !== 'true');
+  });
+
   $('#skin').addEventListener('click', () => {
     const b = $('#skin');
     const showing = b.getAttribute('aria-pressed') === 'true';
@@ -464,6 +569,7 @@ function buildRail(){
   });
 
   $('#reset').addEventListener('click', () => {
+    if(tunnel && tunnel.state.on){ panel.reset(); }
     resetView();
     if(root) root.rotation.y = 0;
     spinning = false;

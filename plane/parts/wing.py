@@ -133,3 +133,23 @@ def _spar():
         paths.append(mesh.pipe(pts, spec.SPAR["outer_r"],
                                spec.RES["small_revolve"], caps=True))
     return {"spar_carbon": mesh.join(*paths)}
+
+
+def pivots():
+    """Flaperon hinge lines.
+
+    The flaperon rotates about the hinge it is cut at, so the viewer can move
+    it the way the servo does and feed the same angle to the aero solver.
+    Without a pivot it would swing about the nose of the aircraft.
+    """
+    hu = _hinge_u()
+    out = {}
+    for side, sgn in (("l", -1.0), ("r", 1.0)):
+        f_in = FL["span_in"]
+        c_in = common.local_chord(W["root_chord"], W["tip_chord"], f_in)
+        x_in = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"],
+                              f_in)
+        out[f"flaperon_{side}"] = ((x_in + hu * c_in,
+                                    sgn * W["semi_span"] * f_in,
+                                    W["z_root"]), (0.0, 1.0, 0.0), sgn, "hinge")
+    return out
