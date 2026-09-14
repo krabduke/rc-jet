@@ -2,7 +2,7 @@
  "source": "_shared/viewer",
  "files": {
   "flowfield.js": "dff17103f726",
-  "cfd-view.js": "0744ef79feec",
+  "cfd-view.js": "ab9feff9be52",
   "tunnel-ui.js": "bb9bb72c2650",
   "anim.js": "31e2189e4fac"
  }

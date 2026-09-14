@@ -490,7 +490,17 @@ export class CFDView {
     g.setAttribute('aSpd', new THREE.BufferAttribute(spdN, 1));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
 
-    const width = Math.max(0.0022, this.domain.L * 0.0016);
+    /* Ribbon width has to fall as the line count rises.
+     *
+     * The seeding went from 170 lines to 420 without the width moving, so
+     * two and a half times as much ink went onto the same picture and the
+     * field closed up into a mass you cannot see the car through. Total ink
+     * is roughly lines x width, so holding that constant means scaling by
+     * sqrt(170/n) -- and a floor, because a ribbon thinner than a pixel
+     * stops reading as a ribbon and starts flickering.
+     */
+    const ink = Math.sqrt(170 / Math.max(this.nLines, 1));
+    const width = Math.max(0.0016, this.domain.L * 0.0016 * ink);
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         uTime:  {value: 0},
