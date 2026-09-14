@@ -231,17 +231,47 @@ def _lights():
 
 
 def _gear_doors():
-    """A door per leg, hinged open."""
-    doors = []
+    """A door per leg, hinged open, each one its own part.
+
+    All three used to be a single object called `gear_doors`, which is a
+    convenience rather than a description: they are three separate panels on
+    three separate hinges that open at different times. Each now carries its
+    hinge line and the actuator link that swings it, because a door with
+    neither is a plate stuck to the side of a hole.
+    """
+    out = {}
     w, hh, zc, _ = fus.station_at(G["nose_x"])
-    nv, nf = shapes.rounded_box(G["nose_x"], 14.0, zc - hh + 8.0, 54.0, 3.0, 30.0)
-    doors.append((nv, nf))
-    for sgn in (-1.0, 1.0):
+    out["gear_door_n"] = _door(G["nose_x"], 14.0, zc - hh + 8.0,
+                               54.0, 30.0, 1.0)
+    for side, sgn in (("l", -1.0), ("r", 1.0)):
         w, hh, zc, _ = fus.station_at(G["main_x"])
-        mv, mf = shapes.rounded_box(G["main_x"], sgn * (G["main_y"] - 14.0),
-                          zc - hh * 0.55 - 12.0, 62.0, 3.0, 34.0)
-        doors.append((mv, mf))
-    return {"gear_doors": mesh.join(*doors)}
+        out[f"gear_door_{side}"] = _door(
+            G["main_x"], sgn * (G["main_y"] - 14.0),
+            zc - hh * 0.55 - 12.0, 62.0, 34.0, sgn)
+    return out
+
+
+def _door(x, y, z, length, depth, sgn):
+    """One door: the panel, a piano hinge down its inboard edge, and the rod
+    that holds it open."""
+    parts = [shapes.rounded_box(x, y, z, length, 3.0, depth, r=1.2)]
+    # piano hinge: a knuckle every few millimetres along the top edge
+    n = 7
+    for k in range(n):
+        f = (k + 0.5) / n
+        hv, hf = mesh.revolve_closed(
+            [(0.0, 0.0), (length / n * 0.62, 0.0),
+             (length / n * 0.62, 1.5), (0.0, 1.5)], 12)
+        parts.append(([(px + x - length / 2 + length * f,
+                        pz + y - sgn * 1.5, py + z + depth / 2)
+                       for (px, py, pz) in hv], hf))
+    # the link from the door to the leg, which is what opens it. It stops
+    # short of the intake duct: the mains are either side of it and the duct
+    # is 21 mm wide at that station.
+    parts.append(mesh.pipe(
+        [(x - length * 0.22, y - sgn * 2.0, z + depth * 0.30),
+         (x - length * 0.30, y - sgn * 6.0, z + depth * 0.46)], 0.8, 10))
+    return mesh.join(*parts)
 
 
 def _wheel_hubs():

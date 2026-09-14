@@ -48,7 +48,7 @@ DETAIL_NAMES = {
 
 def collection_for(name):
     n = name.lower()
-    if n in ("gear_doors", "wheel_hubs"):
+    if n.startswith(("gear_door", "wheel_hub", "brake_")):
         return "06 Landing Gear"
     if n in DETAIL_NAMES:
         return "10 Detail"

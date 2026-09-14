@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import fuselage
 
 I = spec.INTAKE
@@ -16,7 +17,114 @@ def build():
     out = {}
     out.update(_lip())
     out.update(_duct())
+    out.update(_hardware())
     return out
+
+
+def _hardware():
+    """What holds the duct up, what joins it to the engine, and what stops it
+    swallowing the runway.
+
+    The induction system was two objects: a lip and a duct. A duct is a
+    moulding, and a moulding has a bond line where its two halves meet, hoops
+    where it is carried by the fuselage frames, and a flange at the end where
+    it bolts to something. The inlet guard is the part that decides whether
+    the engine survives its first taxi across gravel.
+    """
+    out = {}
+    I = spec.INTAKE
+    x0, x1 = I["x_throat"], I["x_duct_end"]
+
+    # carrying hoops, at the stations the fuselage formers are near
+    hoops = []
+    for f in (0.10, 0.30, 0.50, 0.70, 0.88):
+        x = x0 + (x1 - x0) * f
+        w, h, zc = duct_section(x)
+        outer = _oval(x, w + 1.8, h + 1.8, zc, SEG, _squash(f))
+        inner = _oval(x, w + 0.1, h + 0.1, zc, SEG, _squash(f))
+        back_o = _oval(x + 2.6, w + 1.8, h + 1.8, zc, SEG, _squash(f))
+        back_i = _oval(x + 2.6, w + 0.1, h + 0.1, zc, SEG, _squash(f))
+        hoops.append(_ring_prism(outer, inner, back_o, back_i))
+    out["duct_frames"] = mesh.join(*hoops)
+
+    # the bond line down each side, where the two mouldings meet
+    seams = []
+    for sgn in (-1.0, 1.0):
+        path, scale = [], []
+        for i in range(18):
+            f = i / 17
+            x = x0 + (x1 - x0) * f
+            w, h, zc = duct_section(x)
+            path.append((x, sgn * (w + 0.2), zc))
+            scale.append((1.0, 1.0))
+        # 1.5 mm proud, not 3.2: the saddle tanks sit against the duct's
+        # flanks and a bond line is a bead, not a rail
+        seams.append(shapes.swept_profile(
+            path, [(-2.4, -0.7), (2.4, -0.7), (2.9, 0.0), (2.4, 0.7),
+                   (-2.4, 0.7), (-2.9, 0.0)], scale, subdiv=2))
+    out["duct_seam"] = mesh.join(*seams)
+
+    # the coupling at the engine face: a flange, its bolts, and the rubber
+    # bellows that takes the mismatch between a moulding and a machined case
+    w, h, zc = duct_section(x1)
+    r = I["duct_r_end"]
+    parts = []
+    fv, ff = mesh.revolve_open(
+        [(x1 - 10.0, r + 1.0), (x1 - 10.0, r + 5.5),
+         (x1 - 3.0, r + 5.5), (x1 - 3.0, r + 1.0)],
+        SEG // 2, cap_start=True, cap_end=True)
+    parts.append(([(px, py, pz + zc) for (px, py, pz) in fv], ff))
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        bv, bf = mesh.cylinder(0.0, 3.4, 1.1, 8)
+        parts.append(([(pz + x1 - 12.0, px + (r + 3.4) * math.cos(a),
+                        py + zc + (r + 3.4) * math.sin(a))
+                       for (px, py, pz) in bv], bf))
+    # the bellows itself: three convolutions between the flange and the case
+    for k in range(3):
+        xb = x1 - 10.0 + k * 3.2
+        cv, cf = mesh.revolve_open(
+            [(xb, r + 1.0), (xb + 1.6, r + 3.2), (xb + 3.2, r + 1.0)],
+            SEG // 2, cap_start=False, cap_end=False)
+        parts.append(([(px, py, pz + zc) for (px, py, pz) in cv], cf))
+    out["duct_coupling"] = mesh.join(*parts)
+
+    # the guard across the mouth: streamlined bars, not a mesh, because a
+    # mesh at this scale blocks more air than the engine can spare
+    bars = []
+    xl, w0, h0 = I["x_lip"] + I["lip_radius"] * 1.6, I["lip_width"] / 2, I["lip_height"] / 2
+    for k in range(5):
+        u = -0.66 + 1.32 * k / 4
+        y = u * (w0 - 2.0)
+        z_hi = I["z_lip"] + (h0 - 1.5) * math.sqrt(max(0.0, 1.0 - u * u))
+        z_lo = I["z_lip"] - (h0 - 1.5) * math.sqrt(max(0.0, 1.0 - u * u))
+        bars.append(shapes.swept_profile(
+            [(xl, y, z_lo), (xl + 3.0, y, (z_lo + z_hi) / 2), (xl, y, z_hi)],
+            [(-0.5, -1.7), (0.5, -1.7), (0.8, 0.0), (0.5, 1.7),
+             (-0.5, 1.7), (-0.8, 0.0)], subdiv=3))
+    out["intake_guard"] = mesh.join(*bars)
+    return out
+
+
+def _squash(f):
+    """The section exponent at fraction f along the duct, matching _duct."""
+    s = f * f * (3 - 2 * f)
+    return 2.4 + (2.0 - 2.4) * s
+
+
+def _ring_prism(front_o, front_i, back_o, back_i):
+    """Close two annular rings into a solid hoop."""
+    n = len(front_o)
+    verts = front_o + front_i + back_o + back_i
+    a, b, c, d = 0, n, 2 * n, 3 * n
+    faces = []
+    for s in range(n):
+        s2 = (s + 1) % n
+        faces.append((a + s, a + s2, b + s2, b + s))
+        faces.append((c + s, d + s, d + s2, c + s2))
+        faces.append((a + s, c + s, c + s2, a + s2))
+        faces.append((b + s, b + s2, d + s2, d + s))
+    return verts, faces
 
 
 def _oval(x, w, h, zc, segments=SEG, squash=2.4):
@@ -73,8 +181,12 @@ def duct_section(x):
             I["z_lip"] + (spec.ENGINE_Z - I["z_lip"]) * s)
 
 
-def duct_top(x, gap=1.0):
-    """The lowest z a box at station x can sit at and stay out of the duct."""
+def duct_top(x, gap=3.2):
+    """The lowest z a box at station x can sit at and stay out of the duct.
+
+    The gap is 3.2 mm, not 1: the duct is carried on hoops that stand 1.8 mm
+    proud of its outer wall, and a tray resting on the wall rests on them.
+    """
     w, h, zc = duct_section(x)
     return zc + h + gap
 

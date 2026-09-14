@@ -281,8 +281,8 @@
    "key": "04 Intake and Duct",
    "label": "Intake & duct",
    "color": "#5E6B74",
-   "parts": 2,
-   "faces": 3456,
+   "parts": 6,
+   "faces": 7890,
    "x0": 52.0,
    "x1": 300.0
   },
@@ -299,10 +299,10 @@
    "key": "06 Landing Gear",
    "label": "Gear",
    "color": "#6F6F72",
-   "parts": 8,
-   "faces": 9084,
+   "parts": 17,
+   "faces": 20194,
    "x0": 71.0,
-   "x1": 283.0
+   "x1": 284.1
   },
   {
    "key": "07 Engine",
@@ -317,8 +317,8 @@
    "key": "08 RC Systems",
    "label": "RC systems",
    "color": "#4F8A5E",
-   "parts": 29,
-   "faces": 16462,
+   "parts": 26,
+   "faces": 12274,
    "x0": 60.0,
    "x1": 316.2
   },
@@ -554,12 +554,40 @@
    "x1": 431.9,
    "f": 1752
   },
+  "duct_coupling": {
+   "g": "04 Intake and Duct",
+   "mat": "duct",
+   "x0": 286.9,
+   "x1": 299.6,
+   "f": 2392
+  },
+  "duct_frames": {
+   "g": "04 Intake and Duct",
+   "mat": "airframe",
+   "x0": 107.4,
+   "x1": 276.9,
+   "f": 1440
+  },
   "duct_inlet": {
    "g": "04 Intake and Duct",
    "mat": "duct",
    "x0": 86.0,
    "x1": 300.0,
    "f": 3168
+  },
+  "duct_seam": {
+   "g": "04 Intake and Duct",
+   "mat": "duct",
+   "x0": 86.0,
+   "x1": 300.0,
+   "f": 412
+  },
+  "intake_guard": {
+   "g": "04 Intake and Duct",
+   "mat": "duct",
+   "x0": 54.6,
+   "x1": 60.9,
+   "f": 190
   },
   "intake_lip": {
    "g": "04 Intake and Duct",
@@ -736,12 +764,33 @@
    "x1": 123.5,
    "f": 206
   },
-  "gear_main_struts": {
+  "brake_l": {
+   "g": "06 Landing Gear",
+   "mat": "steel",
+   "x0": 246.7,
+   "x1": 261.3,
+   "f": 2420
+  },
+  "brake_r": {
+   "g": "06 Landing Gear",
+   "mat": "steel",
+   "x0": 246.7,
+   "x1": 261.3,
+   "f": 2420
+  },
+  "gear_main_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
    "x0": 247.1,
    "x1": 256.3,
-   "f": 2840
+   "f": 1420
+  },
+  "gear_main_r": {
+   "g": "06 Landing Gear",
+   "mat": "steel",
+   "x0": 247.1,
+   "x1": 256.3,
+   "f": 1420
   },
   "gear_nose_strut": {
    "g": "06 Landing Gear",
@@ -750,12 +799,19 @@
    "x1": 101.6,
    "f": 1420
   },
-  "wheel_main": {
+  "wheel_main_l": {
    "g": "06 Landing Gear",
    "mat": "rubber",
    "x0": 243.6,
    "x1": 265.4,
-   "f": 616
+   "f": 308
+  },
+  "wheel_main_r": {
+   "g": "06 Landing Gear",
+   "mat": "rubber",
+   "x0": 243.6,
+   "x1": 265.4,
+   "f": 308
   },
   "wheel_nose": {
    "g": "06 Landing Gear",
@@ -1982,12 +2038,26 @@
    "x1": 417.2,
    "f": 668
   },
-  "gear_doors": {
+  "gear_door_l": {
+   "g": "06 Landing Gear",
+   "mat": "airframe",
+   "x0": 221.0,
+   "x1": 284.1,
+   "f": 864
+  },
+  "gear_door_n": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 71.0,
-   "x1": 283.0,
-   "f": 510
+   "x1": 125.9,
+   "f": 864
+  },
+  "gear_door_r": {
+   "g": "06 Landing Gear",
+   "mat": "airframe",
+   "x0": 221.0,
+   "x1": 284.1,
+   "f": 864
   },
   "horn_fl": {
    "g": "01 Fuselage",
@@ -2935,21 +3005,21 @@
    "f": 2104
   },
   "gear_door_actuator_l": {
-   "g": "08 RC Systems",
+   "g": "06 Landing Gear",
    "mat": "steel",
    "x0": 233.9,
    "x1": 266.1,
    "f": 1396
   },
   "gear_door_actuator_n": {
-   "g": "08 RC Systems",
+   "g": "06 Landing Gear",
    "mat": "steel",
    "x0": 81.9,
    "x1": 110.1,
    "f": 1396
   },
   "gear_door_actuator_r": {
-   "g": "08 RC Systems",
+   "g": "06 Landing Gear",
    "mat": "steel",
    "x0": 233.9,
    "x1": 266.1,

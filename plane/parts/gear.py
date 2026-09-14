@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import fuselage
 
 G = spec.GEAR
@@ -104,17 +105,68 @@ def _nose():
 
 
 def _mains():
+    """One leg per side, named per side.
+
+    They were one object called `gear_main_struts` and one called
+    `wheel_main`, each holding both sides. That hides the thing the structure
+    audit exists to check -- that a left part really is the mirror of its
+    right -- and it means the viewer cannot retract one leg without the other.
+    """
     out = {}
     w, hh, zc, _ = fuselage.station_at(G["main_x"])
     z_top = zc - hh * 0.55
-    legs, wheels = [], []
-    for sgn in (-1.0, 1.0):
+    for side, sgn in (("l", -1.0), ("r", 1.0)):
         y = sgn * G["main_y"]
-        legs.append(_strut(G["main_x"], y, z_top, G["main_leg"],
-                           G["strut_r"], rake=4.0))
+        out[f"gear_main_{side}"] = _strut(
+            G["main_x"], y, z_top, G["main_leg"], G["strut_r"], rake=4.0)
         z_ax = z_top - G["main_leg"] * math.cos(math.radians(4.0))
         x_ax = G["main_x"] + G["main_leg"] * math.sin(math.radians(4.0))
-        wheels.append(_wheel(x_ax, y, z_ax, G["main_wheel_r"], G["main_wheel_w"]))
-    out["gear_main_struts"] = mesh.join(*legs)
-    out["wheel_main"] = mesh.join(*wheels)
+        out[f"wheel_main_{side}"] = _wheel(
+            x_ax, y, z_ax, G["main_wheel_r"], G["main_wheel_w"])
+        out[f"brake_{side}"] = _brake(x_ax, y, z_ax, sgn)
     return out
+
+
+def _brake(x, y, z, sgn):
+    """A disc and a caliper on each main wheel.
+
+    A retract set this size is sold with brakes, and a model jet needs them:
+    it lands at 60 km/h on whatever runway it has, and the nose leg steers
+    rather than stops. The disc is drilled, the caliper has two pistons and
+    a banjo where the line comes in.
+    """
+    r = G["main_wheel_r"] * 0.62
+    parts = []
+    dv, df = mesh.revolve_closed(
+        [(0.0, r * 0.30), (0.0, r), (1.4, r), (1.4, r * 0.30)], 30)
+    parts.append(([(pz + x, py + y - sgn * (G["main_wheel_w"] / 2 + 0.9),
+                    px + z) for (px, py, pz) in dv], df))
+    # the bell the disc bolts to
+    bv, bf = mesh.revolve_closed(
+        [(0.0, 1.6), (0.0, r * 0.34), (-3.2, r * 0.34), (-3.2, 1.6)], 22)
+    parts.append(([(pz + x, py + y - sgn * (G["main_wheel_w"] / 2 + 0.9),
+                    px + z) for (px, py, pz) in bv], bf))
+    # drillings, which is what a disc this size has instead of vanes
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        hv, hf = mesh.cylinder(0.0, 2.2, 0.55, 8)
+        parts.append(([(pz + x + r * 0.66 * math.cos(a),
+                        px + y - sgn * (G["main_wheel_w"] / 2 + 1.6),
+                        py + z + r * 0.66 * math.sin(a))
+                       for (px, py, pz) in hv], hf))
+    # caliper astride the disc, forward of the axle
+    cv, cf = shapes.rounded_box(
+        x - r * 0.78, y - sgn * (G["main_wheel_w"] / 2 + 0.9), z + r * 0.30,
+        5.0, 5.6, 8.0, r=1.0)
+    parts.append((cv, cf))
+    for dz in (-2.2, 2.2):
+        pv, pf = mesh.revolve_closed(
+            [(0.0, 0.0), (2.0, 0.0), (2.0, 1.5), (0.0, 1.5)], 12)
+        parts.append(([(pz + x - r * 0.78,
+                        px + y - sgn * (G["main_wheel_w"] / 2 + 3.4),
+                        py + z + r * 0.30 + dz) for (px, py, pz) in pv], pf))
+    parts.append(mesh.pipe(
+        [(x - r * 0.78, y - sgn * (G["main_wheel_w"] / 2 + 0.9), z + r * 0.30 + 4.6),
+         (x - r * 0.40, y - sgn * (G["main_wheel_w"] / 2 + 0.4), z + r * 0.92),
+         (x + 2.0, y - sgn * 1.0, z + G["main_leg"] * 0.40)], 0.7, 10))
+    return mesh.join(*parts)

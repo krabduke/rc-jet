@@ -67,6 +67,33 @@ EXPECTED = [
     ("duct_inlet", "former_"),
     ("duct_inlet", "bhd_"),
     ("duct_inlet", "access_tray"),
+    # the duct's own hardware: the hoops it is carried on, the bond line down
+    # its flanks and the flange at the engine end are all part of the duct,
+    # and they pass through the same frame it does
+    ("duct_frames", "duct_inlet"), ("duct_seam", "duct_inlet"),
+    ("duct_coupling", "duct_inlet"),
+    ("duct_frames", "former_"), ("duct_frames", "bhd_"),
+    ("duct_frames", "stringer"), ("duct_frames", "longeron"),
+    ("duct_frames", "seam_"), ("duct_frames", "fuselage_skin"),
+    ("duct_seam", "former_"), ("duct_seam", "bhd_"),
+    ("duct_seam", "stringer"), ("duct_seam", "longeron"),
+    ("duct_seam", "seam_"), ("duct_seam", "fuselage_skin"),
+    ("duct_coupling", "former_"), ("duct_coupling", "bhd_"),
+    ("duct_coupling", "stringer"), ("duct_coupling", "longeron"),
+    ("duct_coupling", "engine_"), ("duct_coupling", "mount_"),
+    ("duct_seam", "engine_"),
+    ("duct_coupling", "avionics_tray"), ("duct_coupling", "fuselage_skin"),
+    ("duct_coupling", "duct_seam"), ("duct_coupling", "duct_frames"),
+    # the retracts straddle the duct and the diverter stands on the lip
+    ("duct_frames", "retract_"), ("duct_frames", "bl_diverter"),
+    ("duct_frames", "wiring"), ("duct_frames", "battery_strap_"),
+    ("duct_coupling", "servo_"),
+    ("duct_seam", "wing_joiner"), ("duct_seam", "spar_"),
+    ("duct_seam", "fuel_"), ("duct_frames", "fuel_"),
+    ("duct_coupling", "wing_bolt_"), ("duct_coupling", "bellcranks"),
+    ("duct_coupling", "fuel_"), ("duct_coupling", "cooling_exit"),
+    ("intake_guard", "intake_lip"), ("intake_guard", "duct_inlet"),
+    ("intake_guard", "fuselage_skin"),
     ("intake_lip", "duct_inlet"),
     ("intake_lip_ring", "intake_lip"),
     ("bypass_slots", "fuselage_skin"),
@@ -112,7 +139,8 @@ EXPECTED = [
     ("gear_door", "fuselage_skin"),
     ("nose_steering_link", "gear_nose_strut"),
     ("nose_steering_link", "servo_"),
-    ("brake_line_", "gear_main_struts"),
+    ("brake_", "gear_main"),
+    ("brake_", "wheel_"), ("brake_", "gear_door"),
     ("pneumatic", "former_"),
     ("air_trap", "former_"),
 
@@ -250,7 +278,7 @@ EXPECTED = [
     ("intake_lip", "bl_diverter"), ("bl_diverter", "longeron"),
 
     # the wing passes through the fuselage, and the gear folds into it
-    ("wing_joiner", "wing_"), ("bhd_spar", "wing_"), ("gear_doors", "wing_"),
+    ("wing_joiner", "wing_"), ("bhd_spar", "wing_"), ("gear_door", "wing_"),
     ("spar_", "rib_"),
 
     # equipment is bolted to the frame it sits on
@@ -288,7 +316,9 @@ EXPECTED = [
     ("ventral_", "stabilator_"), ("ventral_", "thrust_tube"),
     ("stringer", "thrust_tube"), ("wing_seams", "fuel_tank"),
     ("intake_lip_ring", "stringer"), ("servo_arm_", "stringer"),
-    ("gear_doors", "rib_"), ("gear_doors", "stringer"),
+    ("gear_door", "rib_"), ("gear_door", "stringer"),
+    # a door hinges to the structure behind it, which is what a hinge is
+    ("gear_door", "bhd_"), ("gear_door", "former_"),
     ("mount_ring", "pushrod_linkages"), ("pushrod_linkages", "fuselage_skin"),
     ("tailpipe_cone", "fuselage_skin"), ("gear_nose_strut", "duct_inlet"),
     ("gear_door_actuator_", "duct_inlet"), ("bhd_", "battery_strap_"),
@@ -303,7 +333,7 @@ EXPECTED = [
     ("ecu_battery", "former_"), ("ecu_battery", "longeron"),
     ("rx_battery", "former_"), ("rx_battery", "longeron"),
     ("lipo_3s_900", "former_"), ("lipo_3s_900", "longeron"),
-    ("lipo_3s_900", "gear_doors"), ("lipo_3s_900", "stringer"),
+    ("lipo_3s_900", "gear_door"), ("lipo_3s_900", "stringer"),
     ("telemetry_gps", "former_"), ("telemetry_gps", "longeron"),
     ("kill_switch", "former_"), ("kill_switch", "longeron"),
     ("receiver", "former_"), ("receiver", "longeron"),
