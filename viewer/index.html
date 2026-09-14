@@ -283,16 +283,22 @@ import {drawLegend, speedColour, pressureColour}
   from './cfd-view.js';
 
 const MM = 0.001;
+
+// Anything inside named(...) is a claim that these are parts or groups in
+// viewer/parts.json, and tools/validate_viewer.mjs checks the claim. A
+// renamed part must not be able to go on quietly not matching.
+const named = (...n) => n;
+const matching = (...n) => n;
 const $ = s => document.querySelector(s);
 
 // Hiding the skin is how you look inside. No clipping planes: discarding
 // fragments turned out to be far more trouble than toggling visibility.
-const SKIN = ['fuselage_skin', 'canopy_glass'];
+const SKIN = named('fuselage_skin', 'canopy_glass');
 
 // The gear is up unless you ask for it. This aircraft spends its life with
 // the wheels retracted, and a model shown sitting on its gear reads as a
 // model on a bench rather than an aeroplane.
-const GEAR_GROUP = '06 Landing Gear';
+const GEAR_GROUP = named('06 Landing Gear')[0];
 
 let keyLight = null;   // cast shadows, and sized to the model in ready()
 let scene, camera, renderer, controls, root, raycaster, clock;

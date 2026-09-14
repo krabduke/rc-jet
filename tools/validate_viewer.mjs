@@ -94,7 +94,56 @@ for(const f of mods){
   }
 }
 
+/* ---- 3. every name the page declares as a part IS a part ---- */
+/*
+ * A part name in the viewer is a string. Rename the part and the string does
+ * not stop working -- it stops matching, silently, and the feature it drives
+ * quietly does nothing. That is how the V8's cutaway came to hide `plenum`
+ * for weeks after the single plenum became two, and how the hypercar's
+ * "hide the bodywork" button came to list `nose` and `engine_cover`, neither
+ * of which has ever been a part.
+ *
+ * Scanning every string literal for something that looks like a part name
+ * cannot work -- half the vocabulary of a DOM event handler looks like one.
+ * So the viewer declares them. `named(...)` says these are exactly parts or
+ * groups; `matching(...)` says these are prefixes or fragments that must hit
+ * at least one part, which is what a "peel the casings" list is made of.
+ * Either way a rename that leaves a name behind fails here rather than
+ * quietly doing nothing.
+ */
+const manifest = JSON.parse(readFileSync(join(viewer, 'parts.json'), 'utf8'));
+const known = new Set([
+  ...Object.keys(manifest.parts || {}),
+  ...(manifest.groups || []).flatMap(g => [g.key, g.label]),
+]);
+const pick = (fn) => {
+  const out = new Set();
+  for (const src of blocks)
+    for (const call of src.matchAll(new RegExp(`\\b${fn}\\(([^)]*)\\)`, 'g')))
+      // strip line comments first: an apostrophe in one of them reads as a
+      // quote and swallows the rest of the list
+      for (const m of call[1].replace(/\/\/[^\n]*/g, '')
+                             .matchAll(/['"]([^'"\n]+)['"]/g))
+        out.add(m[1]);
+  return out;
+};
+const exact = pick('named');
+const frags = pick('matching');
+const all = [...known];
+if (!exact.size && !frags.size) {
+  bad('no named(...) or matching(...) lists -- every viewer has at least one');
+} else {
+  const strays = [
+    ...[...exact].filter(t => !known.has(t)),
+    ...[...frags].filter(t => !all.some(k => k.includes(t))),
+  ].sort();
+  if (strays.length)
+    bad(`${strays.length} declared names match no part: ` + strays.join(', '));
+  else
+    ok(`${exact.size + frags.size} declared part names all resolve`);
+}
+
 console.log('\n' + (fails
   ? `FAIL  ${fails} viewer problems`
-  : 'PASS  viewer scripts parse and every module loads'));
+  : 'PASS  viewer scripts parse, modules load and part names resolve'));
 process.exit(fails ? 1 : 0);
