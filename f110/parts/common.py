@@ -42,10 +42,23 @@ def _outer_band(row, height=10.0, n_seg=6):
     return _sector_band(row, r0, r0 + height, n_seg)
 
 
-def _inner_shroud(row, height=8.0, n_seg=6):
-    """Stator inner shroud, carrying the interstage air seal."""
+def _inner_shroud(row, height=8.0, n_seg=6, clearance=3.0):
+    """Stator inner shroud, carrying the interstage air seal.
+
+    A stator's inner shroud runs just above the rotating drum on a labyrinth
+    seal. Hung a fixed height below the flowpath line it goes straight into
+    the drum instead, so the lower edge is clamped to clear whatever the drum
+    is doing at this station.
+    """
     r1 = min(row.r_hub_le, row.r_hub_te)
-    return _sector_band(row, r1 - height, r1, n_seg)
+    lo = r1 - height
+    floor = hpc_drum_radius_max(row.x - row.chord * 0.12,
+                                row.x + row.chord * 1.12)
+    if floor is not None:
+        lo = max(lo, floor + clearance)
+    if lo >= r1 - 0.5:
+        lo = r1 - 0.5
+    return _sector_band(row, lo, r1, n_seg)
 
 
 def _sector_band(row, r_lo, r_hi, n_seg=6):
@@ -186,3 +199,61 @@ def shaft_profile(x0, x1, r_in, r_out, journals=(), flange_at=None):
     for (f, extra) in reversed(outer):
         prof.append((x0 + L * f, r_out + extra))
     return prof
+
+
+def platform_h(row):
+    """Height of the platform a rotor blade stands on."""
+    return max(4.0, min(12.0, (row.r_tip_le - row.r_hub_le) * 0.06))
+
+
+def hpc_drum_profile():
+    """(x, r) along the HP compressor drum's outer surface.
+
+    One definition, used by rotating.py to build the drum and by the stator
+    inner shrouds to clear it. When the two carried their own idea of where
+    the drum was, the shrouds hung a fixed 8 mm below the flowpath hub line
+    and the drum sat just below the same line -- so every HPC stator ran
+    through the rotating drum, by up to 23 mm.
+    """
+    rotors = [r for r in spec.HPC_ROWS if r.rotor]
+    prof = []
+    for row in rotors:
+        rim = min(row.r_hub_le, row.r_hub_te) - platform_h(row)
+        prof.append((row.x - row.chord * 0.25, rim))
+        prof.append((row.x + row.chord * 1.25, rim))
+    return prof
+
+
+def hpc_drum_radius_max(x0, x1):
+    """Greatest drum radius anywhere between two stations.
+
+    Taking the radius at the row's centre is not enough: the drum steps up
+    between one rotor and the next, so across a 58 mm stator shroud it can
+    climb 10 mm. Clamping on the centre value left the shroud 6 mm inside the
+    drum at its aft end.
+    """
+    prof = hpc_drum_profile()
+    if x1 < prof[0][0] or x0 > prof[-1][0]:
+        return None
+    best = None
+    for x in (x0, x1):
+        r = hpc_drum_radius_at(min(max(x, prof[0][0]), prof[-1][0]))
+        if r is not None:
+            best = r if best is None else max(best, r)
+    for (px, pr) in prof:
+        if x0 <= px <= x1:
+            best = pr if best is None else max(best, pr)
+    return best
+
+
+def hpc_drum_radius_at(x):
+    """Drum outer radius at station x, or None if x is off the drum."""
+    prof = hpc_drum_profile()
+    if x < prof[0][0] or x > prof[-1][0]:
+        return None
+    for (x0, r0), (x1, r1) in zip(prof, prof[1:]):
+        if x0 <= x <= x1:
+            if x1 - x0 < 1e-9:
+                return r0
+            return r0 + (r1 - r0) * (x - x0) / (x1 - x0)
+    return prof[-1][1]

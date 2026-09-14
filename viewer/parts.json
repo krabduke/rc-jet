@@ -640,7 +640,7 @@
   "engine_antiice_duct": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 301.6,
+   "x0": 301.7,
    "x1": 348.5,
    "f": 846
   },
@@ -1144,15 +1144,15 @@
   "engine_fan_containment": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 313.6,
-   "x1": 322.7,
+   "x0": 313.5,
+   "x1": 320.3,
    "f": 864
   },
   "engine_fan_cowl_door": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 313.9,
-   "x1": 329.1,
+   "x0": 321.4,
+   "x1": 335.8,
    "f": 574
   },
   "engine_fan_disc_assembly": {
@@ -1179,8 +1179,8 @@
   "engine_fan_door_hardware": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 315.0,
-   "x1": 326.5,
+   "x0": 322.3,
+   "x1": 333.3,
    "f": 1218
   },
   "engine_fan_frame_hub": {

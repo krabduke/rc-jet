@@ -97,11 +97,9 @@ def _hpc_rotor():
 
     hp_r = spec.SHAFTS["hp_outer_r"]
     bore = hp_r + 15.0
-    prof_outer = []
-    for row in rotors:
-        rim = min(row.r_hub_le, row.r_hub_te) - _platform_h(row)
-        prof_outer.append((row.x - row.chord * 0.25, rim))
-        prof_outer.append((row.x + row.chord * 1.25, rim))
+    # one definition of where the drum surface is, shared with the stator
+    # inner shrouds in common.py so the two cannot drift into each other
+    prof_outer = common.hpc_drum_profile()
 
     x_front = rotors[0].x - rotors[0].chord * 0.9
     x_rear = rotors[-1].x + rotors[-1].chord * 1.9

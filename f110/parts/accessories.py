@@ -83,7 +83,9 @@ def _case_detail():
     # panels and it has real hinge fittings forward and quick-access latches
     # aft -- the two things that make it read as a DOOR and not just a patch.
     door = []
-    dx0, dx1 = 40.0, 540.0
+    # aft of the fan containment wrap (x 26..250), which is a full ring round
+    # this same stretch of case -- the door was sitting inside it
+    dx0, dx1 = 286.0, 760.0
     dc, dspan = 118.0, 44.0
     lip = 7.0
 
@@ -374,13 +376,20 @@ def _systems():
         """Stand an x-axis solid up along the radius at a clock angle."""
         return mesh.rot_x(mesh.rot_z(v, math.pi / 2), math.radians(ang))
 
-    def strap(x, ang, r_out, r_in, width):
-        """A mounting strap clamping a can down onto the casing."""
+    def strap(x, ang, r_out, r_in, width, span=54.0):
+        """A mounting strap clamping a can down onto the casing.
+
+        It used to sweep 192 degrees -- half the circumference of the engine
+        for a strap over a 190 mm can. Every unit's strap therefore reached
+        round into every other unit's, which is why the oil tank and the heat
+        exchanger, mounted 76 degrees apart, had 97 per cent of their shared
+        vertices inside each other.
+        """
         return mesh.revolve_closed(
             [(x - width / 2, r_in), (x + width / 2, r_in),
              (x + width / 2, r_out), (x - width / 2, r_out)],
-            segments=22, phase=math.radians(ang - 96.0),
-            sweep=math.radians(192.0))
+            segments=16, phase=math.radians(ang - span / 2),
+            sweep=math.radians(span))
 
     # A line-replaceable unit is a can lying ALONG the engine, clamped down on
     # the casing. Each of these was built as a revolve running along x and then
@@ -400,7 +409,7 @@ def _systems():
 
     # ---- oil tank: the reservoir the whole lubrication system draws from ----
     ang = 38.0
-    xt0, xt1 = 120.0, 470.0
+    xt0, xt1 = 300.0, 640.0
     rr = 96.0
     tank, r_ctr = mount(
         [(xt0, 8.0), (xt0 + 14.0, rr), (xt1 - 14.0, rr), (xt1, 8.0),
@@ -421,7 +430,7 @@ def _systems():
 
     # ---- fuel/oil heat exchanger: a tube-and-shell cooler -------------------
     ang = -38.0
-    xh0, xh1 = 150.0, 430.0
+    xh0, xh1 = 316.0, 596.0
     rh = 62.0
     cooler, rh_ctr = mount(
         [(xh0, 10.0), (xh0 + 10.0, rh), (xh1 - 10.0, rh), (xh1, 10.0),
@@ -446,7 +455,7 @@ def _systems():
 
     # ---- engine control (AFTC): schedules fuel and nozzle area -------------
     ang = 150.0
-    xc0, xc1 = 180.0, 440.0
+    xc0, xc1 = 306.0, 566.0
     rc_ = 74.0
     ctl, rc_ctr = mount(
         [(xc0, 10.0), (xc0 + 12.0, rc_), (xc1 - 12.0, rc_), (xc1, 10.0),
@@ -558,7 +567,9 @@ def _systems():
     vv = mesh.rot_x(mesh.rot_z(vv, math.pi / 2), math.radians(ang))
     vp = _at(_casing_outer(760.0) + 34.0, ang, 760.0)
     pieces.append((mesh.translate(vv, vp[0], vp[1], vp[2]), vf))
-    mv, mf = mesh.ring_torus(-352.0, 578.0, 15.0, 64, 10)
+    # inside the inlet bore, feeding the lip -- at r=578 with a 15 mm tube it
+    # ran straight through the inlet case, whose bore is at 586
+    mv, mf = mesh.ring_torus(-352.0, 556.0, 12.0, 64, 10)
     pieces.append((mv, mf))
     out["antiice_duct"] = mesh.join(*pieces)
 
@@ -576,7 +587,9 @@ def _systems():
     out["inlet_probes"] = mesh.join(*pieces)
 
     # ---- fan containment wrap: the case is only half the story -------------
-    xc0, xc1 = 30.0, 330.0
+    # over the fan disc plane only: run aft to x=330 it sat under the oil tank
+    # and the cowl door, both of which mount on the same stretch of case
+    xc0, xc1 = 26.0, 250.0
     layers = []
     for i, (f0, f1) in enumerate(((0.0, 1.0), (0.08, 0.92), (0.16, 0.84))):
         a0 = xc0 + (xc1 - xc0) * f0
@@ -636,8 +649,11 @@ def _systems():
     pieces = []
     for (name, bx, r_shaft, r_house, kind) in spec.BEARINGS:
         # the sealed can around the bearing, with its scavenge boss
+        # +11, not +3: the shafts now carry raised bearing journals (5.7 mm on
+        # the LP spool, 8.3 on the HP), so a housing bore 3 mm off the nominal
+        # shaft diameter closed on the journal it is supposed to run on
         hv, hf = mesh.revolve_closed(
-            [(bx - 54.0, r_shaft + 3.0), (bx + 54.0, r_shaft + 3.0),
+            [(bx - 54.0, r_shaft + 11.0), (bx + 54.0, r_shaft + 11.0),
              (bx + 54.0, r_house + 4.0), (bx + 40.0, r_house + 16.0),
              (bx - 40.0, r_house + 16.0), (bx - 54.0, r_house + 4.0)],
             segments=40)

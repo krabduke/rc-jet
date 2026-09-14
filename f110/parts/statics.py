@@ -117,8 +117,11 @@ def _frames():
     out = {}
 
     out["inlet_case"] = mesh.revolve_closed(
+        # 574 not 586: with a 10 mm wall and the bolting lands on top this
+        # shell reached 604.5, which is inside casing_inlet's 596 bore. The
+        # two concentric shells were sharing metal over their whole length.
         common.shell_profile(spec.STATION["inlet_lip"], spec.STATION["fan_face"],
-                             586.0, 586.0, 10.0, ribs=False), segments=SEG)
+                             574.0, 574.0, 10.0, ribs=False), segments=SEG)
 
     # inlet lip -- rolled-over leading edge
     lip = []
