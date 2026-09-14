@@ -97,7 +97,8 @@ WING = {
     "sweep_le":     40.0,       # nominal, for the checks; the table rules
     "dihedral":      0.0,
     "incidence":     0.0,
-    "thickness":     0.065,     # t/c — thin, as a jet wing should be
+    "thickness":     0.098,     # t/c at the root, where the spar has to be deep
+    "thickness_tip": 0.052,     # and at the tip, where thickness is only drag
     "camber":        0.0,       # symmetric
     "washout":       1.5,       # deg, tip trailing edge up: tip stalls last
     "le_root_ext":  28.0,       # leading-edge root extension (strake)
@@ -123,7 +124,8 @@ HTAIL = {
     "tip_chord":    31.0,
     "semi_span":    62.0,
     "sweep_le":     34.0,
-    "thickness":     0.055,
+    "thickness":     0.072,
+    "thickness_tip": 0.045,
     "anhedral":     -6.0,
     "deflect":      -4.0,       # all-moving stabilator, modelled position
 }
@@ -135,7 +137,8 @@ VTAIL = {
     "tip_chord":    46.0,
     "height":       78.0,
     "sweep_le":     42.0,
-    "thickness":     0.055,
+    "thickness":     0.078,
+    "thickness_tip": 0.048,
     "rudder_chord":  0.28,
     "rudder_span":   0.86,
     "deflect":       6.0,
@@ -253,6 +256,20 @@ CG_TOLERANCE   = 0.03          # +/- 3 % MAC is the acceptance band
 # --------------------------------------------------------------------------
 
 MATERIAL_MAP = {
+    # airframe hardware
+    "thrust_tube":          "hot_metal",
+    "tailpipe_cone":        "hot_metal",
+    "wing_joiner":          "carbon",
+    "wing_bolt_l":          "steel",
+    "wing_bolt_r":          "steel",
+    "servo_arm_ail_l":      "plastic",
+    "servo_arm_ail_r":      "plastic",
+    "servo_arm_rudder":     "plastic",
+    "servo_arm_stab":       "plastic",
+    "battery_strap_lipo":   "fabric",
+    "battery_strap_rx":     "fabric",
+    "nose_steering_link":   "steel",
+
     "canopy_latch": "alu",
     "rx_mount": "board",
     "rx_battery": "lipo",
@@ -345,7 +362,6 @@ MATERIAL_MAP = {
     "hinge_flaperon":     "steel",
     "hinge_rudder":       "steel",
     "seam":               "airframe",
-    "rivets":             "alu",
     "panel_screws":       "steel",
     "wing_seams":         "airframe",
     "doublers":           "airframe",
@@ -377,14 +393,12 @@ PALETTE = {
     "ordnance":    ((0.216, 0.230, 0.218), 0.10, 0.52),
 }
 
-RES = {
-    "fuse_sections":   64,   # points around one fuselage section
-    "fuse_stations":   58,   # lengthwise samples through the loft
-    "airfoil_pts":     40,
-    "wing_stations":   14,
-    "revolve":         48,
-    "small_revolve":   20,
-}
+# Resolution. Forty chord points and fourteen spanwise stations made the main
+# wing a 532-vertex object closed off with a flat rib at the tip, which is
+# what made it read as blocky. These are the numbers the sibling F110 project
+# uses for its blade rows.
+RES = {"fuse_sections": 80, "fuse_stations": 72, "airfoil_pts": 72,
+       "wing_stations": 30, "revolve": 72, "small_revolve": 28}
 
 
 # --------------------------------------------------------------------------
@@ -539,8 +553,6 @@ SKIN_DETAIL = {
                      340.0, 384.0, 416.0],
     "seam_h":         0.45,   # how far a seam stands off the skin
     "seam_w":         1.5,
-    "rivets_per_ring":  36,
-    "rivet_r":        0.55,
     "n_lengthwise":     4,
     "screws_per_panel": 12,
     "screw_r":        0.75,

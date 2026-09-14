@@ -77,21 +77,45 @@ def _fuel_system():
     out = {}
     x0, x1 = 196.0, 292.0
     rings = []
-    for i in range(7):
-        f = i / 6
+    n_st = 22
+    for i in range(n_st):
+        f = i / (n_st - 1)
         x = x0 + (x1 - x0) * f
         w, h, zc, n = fus.station_at(x)
+        # domed at both ends: a flat-ended bladder would balloon
+        dome = math.sin(math.pi * min(1.0, 0.06 + 0.94 * f)) ** 0.30
         ring = []
-        for k in range(14):
-            a = 2 * math.pi * k / 14
-            ring.append((x, (w - 7.0) * 0.80 * math.cos(a),
-                         zc + (h - 7.0) * 0.62 * math.sin(a) - 2.0))
+        for k in range(30):
+            a = 2 * math.pi * k / 30
+            ring.append((x, (w - 7.0) * 0.80 * dome * math.cos(a),
+                         zc + (h - 7.0) * 0.62 * dome * math.sin(a) - 2.0))
         rings.append(ring)
-    out["fuel_tank"] = _loft(rings)
+    tank = [_loft(rings)]
+    # filler and vent stand-pipes out of the top, and the pickup out the back
+    for (fx, r_) in ((x0 + 18.0, 3.4), (x1 - 14.0, 2.6)):
+        w, h, zc, n = fus.station_at(fx)
+        sv, sf = mesh.revolve_closed(
+            [(0.0, 0.0), (10.0, 0.0), (10.0, r_), (8.0, r_ * 1.35),
+             (6.0, r_ * 1.35), (6.0, r_), (0.0, r_)], 18)
+        tank.append(([(pz + fx, py, px + zc + (h - 7.0) * 0.52)
+                      for (px, py, pz) in sv], sf))
+    out["fuel_tank"] = mesh.join(*tank)
 
-    out["fuel_hopper"] = mesh.revolve_open(
-        [(0.0, 0.0), (0.0, 9.0), (26.0, 9.0), (26.0, 0.0)], 12,
-        cap_start=True, cap_end=True)
+    # A hopper's job is to be the one place the pump never sees air, so it is
+    # domed at both ends, has a standpipe vent out of the top and takes its
+    # feed from the very bottom.
+    out["fuel_hopper"] = mesh.join(
+        mesh.revolve_closed(
+            [(0.0, 0.0), (2.0, 0.0), (3.4, 5.2), (5.0, 8.0), (7.0, 9.0),
+             (19.0, 9.0), (21.0, 8.0), (22.6, 5.2), (24.0, 0.0),
+             (26.0, 0.0), (24.6, 5.6), (22.6, 8.4), (20.0, 8.0),
+             (6.0, 8.0), (3.4, 8.4), (1.4, 5.6)], 30),
+        mesh.revolve_closed(
+            [(26.0, 0.0), (32.0, 0.0), (32.0, 2.4), (30.0, 3.0),
+             (28.0, 3.0), (26.0, 2.4)], 16),
+        mesh.revolve_closed(
+            [(-5.0, 0.0), (0.0, 0.0), (0.0, 2.4), (-3.0, 2.8),
+             (-5.0, 2.8)], 16))
     # The lathe runs along its own +x, and the remap below sends that to z --
     # so the part is 26 mm TALL, not 26 mm long, and its half-extent in z is
     # 13 mm about a centre 13 mm above the placed point. Placing it as if it
@@ -102,9 +126,20 @@ def _fuel_system():
                           out["fuel_hopper"][1])
     out["fuel_pump"] = shapes.rounded_box(
         *fits(302.0, -0.45, -0.30, 7.0, 7.0), 26.0, 14.0, 14.0, 3.0)
-    out["fuel_filter"] = mesh.revolve_open(
-        [(0.0, 0.0), (0.0, 6.0), (22.0, 6.0), (22.0, 0.0)], 10,
-        cap_start=True, cap_end=True)
+    # a filter is a clear bowl with a threaded cap at each end and the mesh
+    # element visible inside it -- the element is the reason it exists
+    out["fuel_filter"] = mesh.join(
+        mesh.revolve_closed(
+            [(0.0, 0.0), (22.0, 0.0), (22.0, 3.6), (20.0, 4.4),
+             (18.0, 6.0), (4.0, 6.0), (2.0, 4.4), (0.0, 3.6)], 28),
+        mesh.revolve_closed(
+            [(3.0, 4.2), (19.0, 4.2), (19.0, 5.2), (3.0, 5.2)], 24),
+        mesh.revolve_closed(
+            [(-4.0, 0.0), (0.0, 0.0), (0.0, 2.6), (-2.4, 3.0),
+             (-4.0, 3.0)], 16),
+        mesh.revolve_closed(
+            [(22.0, 0.0), (26.0, 0.0), (26.0, 3.0), (24.4, 3.0),
+             (22.0, 2.6)], 16))
     fx, fy_, fz_ = fits(296.0, -0.55, 0.0, 6.0, 11.0, 4.0)
     out["fuel_filter"] = ([(pz + fx, py + fy_, px + fz_ - 11.0)
                            for (px, py, pz) in out["fuel_filter"][0]],
@@ -114,9 +149,10 @@ def _fuel_system():
     c = inside(302.0, -0.45, -0.30, 4.0)
     d = inside(296.0, -0.55, 0.30, 5.0)
     out["fuel_lines"] = mesh.join(
-        mesh.pipe([a, b], 1.8, 6), mesh.pipe([b, c], 1.8, 6),
-        mesh.pipe([c, d], 1.8, 6),
-        mesh.pipe([d, (spec.ENGINE_X + 24.0, 0.0, 0.0)], 1.8, 6))
+        mesh.pipe([a, b], 1.8, 16, subdiv=3),
+        mesh.pipe([b, c], 1.8, 16, subdiv=3),
+        mesh.pipe([c, d], 1.8, 16, subdiv=3),
+        mesh.pipe([d, (spec.ENGINE_X + 24.0, 0.0, 0.0)], 1.8, 16, subdiv=3))
     return out
 
 
@@ -131,12 +167,12 @@ def _retracts():
         out[f"retract_main_{side}"] = shapes.rounded_box(
             *fits(G["main_x"] + 10.0, sgn * 0.50, -0.40, 10.0, 8.0),
             36.0, 20.0, 16.0, 3.0)
-        out[f"gear_door_actuator_{side}"] = mesh.pipe(
-            [inside(G["main_x"] - 16.0, sgn * 0.45, -0.35, 4.0),
-             inside(G["main_x"] + 6.0, sgn * 0.62, -0.55, 4.0)], 2.0, 6)
-    out["gear_door_actuator_n"] = mesh.pipe(
-        [inside(G["nose_x"] - 14.0, 0.40, -0.40, 4.0),
-         inside(G["nose_x"] + 4.0, 0.52, -0.58, 4.0)], 2.0, 6)
+        out[f"gear_door_actuator_{side}"] = shapes.linear_actuator(
+            inside(G["main_x"] - 16.0, sgn * 0.45, -0.35, 4.0),
+            inside(G["main_x"] + 6.0, sgn * 0.62, -0.55, 4.0), 2.0)
+    out["gear_door_actuator_n"] = shapes.linear_actuator(
+        inside(G["nose_x"] - 14.0, 0.40, -0.40, 4.0),
+        inside(G["nose_x"] + 4.0, 0.52, -0.58, 4.0), 2.0)
     return out
 
 
@@ -169,18 +205,22 @@ def _cooling():
     """
     out = {}
     for side, sgn in (("l", -1.0), ("r", 1.0)):
-        rows = []
-        for i in range(6):
-            f = i / 5
-            x = 236.0 + 34.0 * f
-            w, h, zc, n = fus.station_at(x)
-            half = 10.0 * f
-            depth = 6.0 * f
-            rows.append([(x, sgn * (w - depth) - sgn * 0.0, zc + 10.0 - half),
-                         (x, sgn * (w - depth), zc + 10.0 + half)])
-        out[f"naca_inlet_{side}"] = _loft_open(rows, 1.2)
-        out[f"cooling_exit_{side}"] = shapes.rounded_box(
-            306.0, sgn * 22.0, 16.0, 18.0, 4.0, 12.0, 2.0)
+        # A NACA duct is a ramp that diverges in plan while it deepens. Built
+        # as two rows lofted into a flat sheet it was a slot, and a slot
+        # ingests the boundary layer it is supposed to spill. It sits in the
+        # flank, so its width runs vertically and its depth cuts inboard.
+        w, h, zc, n = fus.station_at(253.0)
+        out[f"naca_inlet_{side}"] = shapes.naca_duct(
+            236.0, 270.0, across=zc + 10.0, surface=sgn * (w - 1.0),
+            width=20.0, depth=7.0, n=22, axis="y", sgn=sgn)
+        # the exit: a flush louvred vent, not a block
+        prof = shapes.panel_outline(
+            [(298.0, 9.0), (316.0, 11.0), (316.0, 23.0), (298.0, 21.0)],
+            subdiv=6)
+        vent = shapes.shaped_panel(prof, sgn * 22.0, 3.0, rim_seg=4)
+        out[f"cooling_exit_{side}"] = mesh.join(
+            vent, shapes.louvre_bank(300.0, 314.0, sgn * 23.5, 11.0, 21.0,
+                                     3, 12.0, 3.0, t=1.1, cant=24.0))
     return out
 
 
@@ -216,17 +256,44 @@ def _engine_bay():
     tailcone cool. A turbine's casing runs hot enough to melt foam."""
     out = {}
     x = spec.ENGINE_X
-    out["mount_ring"] = mesh.revolve_open(
-        [(0.0, 19.0), (0.0, 24.0), (5.0, 24.0), (5.0, 19.0)], 16,
-        cap_start=True, cap_end=True)
+    # The ring takes the whole thrust load into the firewall, so it is a
+    # flanged collar with a boss at every bolt, not a plain washer.
+    # The flange has to stay inside the skin: the fuselage is 28.1 mm in
+    # half-width at this station and 1.2 mm of that is skin, so the outer
+    # diameter stops at 25.
+    ring = [mesh.revolve_closed(
+        [(0.0, 19.0), (5.0, 19.0), (5.0, 21.0), (9.0, 21.0), (9.0, 23.6),
+         (7.0, 25.0), (2.0, 25.0), (0.0, 23.6)], 40)]
+    for k in range(8):
+        a = 2 * math.pi * k / 8
+        bv, bf = mesh.revolve_closed(
+            [(0.0, 0.0), (6.0, 0.0), (6.0, 1.9), (4.4, 2.6),
+             (0.0, 2.6)], 12)
+        ring.append(([(px + 2.0, py + math.cos(a) * 22.2,
+                       pz + math.sin(a) * 22.2) for (px, py, pz) in bv], bf))
+    out["mount_ring"] = mesh.join(*ring)
     out["mount_ring"] = ([(px + x + 6.0, py, pz + spec.ENGINE_Z)
                                  for (px, py, pz) in out["mount_ring"][0]],
                                 out["mount_ring"][1])
     rails = []
     for sgn in (-1.0, 1.0):
-        rails.append(mesh.pipe([inside(x + 6.0, sgn * 0.62, -0.52, 4.0),
-                                inside(x + 120.0, sgn * 0.62, -0.52, 4.0)],
-                               2.6, 6))
+        p0 = inside(x + 6.0, sgn * 0.62, -0.52, 4.0)
+        p1 = inside(x + 120.0, sgn * 0.62, -0.52, 4.0)
+        # the rail the engine slides on, with a saddle clamp at each end and
+        # two standoffs holding it off the skin
+        rails.append(mesh.pipe([p0, p1], 2.6, 20, subdiv=4))
+        for f in (0.06, 0.94):
+            pc = tuple(p0[k] + (p1[k] - p0[k]) * f for k in range(3))
+            cv, cf = mesh.revolve_closed(
+                [(-3.6, 2.4), (3.6, 2.4), (3.6, 5.2), (2.6, 6.0),
+                 (-2.6, 6.0), (-3.6, 5.2)], 22)
+            rails.append((shapes.orient(cv, pc,
+                                        tuple(p1[k] - p0[k] for k in range(3))),
+                          cf))
+        for f in (0.22, 0.72):
+            pc = tuple(p0[k] + (p1[k] - p0[k]) * f for k in range(3))
+            rails.append(mesh.pipe(
+                [pc, (pc[0], pc[1] + sgn * 5.0, pc[2] - 5.0)], 1.8, 14))
     out["mount_rails"] = mesh.join(*rails)
     slots = []
     for i in range(6):
@@ -244,12 +311,19 @@ def _aerials():
     """Two receiver antennas at right angles, which is how diversity works,
     plus the GPS puck and the telemetry sensor."""
     out = {}
-    out["antenna_a"] = mesh.pipe([(250.0, 12.0, 18.0), (262.0, 34.0, 26.0)],
-                                 0.9, 6)
-    out["antenna_b"] = mesh.pipe([(250.0, -12.0, 18.0), (250.0, -18.0, 44.0)],
-                                 0.9, 6)
-    out["gps_puck"] = shapes.rounded_box(
-        *fits(214.0, 0.0, 0.62, 9.0, 3.0), 18.0, 18.0, 5.0, 3.0)
+    out["antenna_a"] = shapes.whip_antenna((250.0, 12.0, 18.0),
+                                          (262.0, 34.0, 26.0), 0.9)
+    out["antenna_b"] = shapes.whip_antenna((250.0, -12.0, 18.0),
+                                          (250.0, -18.0, 44.0), 0.9)
+    # a GPS module is a ceramic patch under a domed radome on a base plate
+    gx, gy, gz = fits(214.0, 0.0, 0.62, 9.0, 3.0)
+    dome = mesh.revolve_closed(
+        [(0.0, 0.0), (1.6, 0.0), (1.6, 8.6), (3.4, 8.6), (4.6, 7.6),
+         (5.2, 5.4), (5.4, 0.0)], 30)
+    out["gps_puck"] = mesh.join(
+        ([(px + gx, py + gy, pz + gz - 2.4) for (pz, py, px) in dome[0]],
+         dome[1]),
+        shapes.rounded_box(gx, gy, gz - 3.0, 19.0, 19.0, 1.8, 2.0, seg=5))
     out["telemetry_sensor"] = shapes.rounded_box(
         *fits(276.0, 0.56, 0.40, 4.0, 3.0), 14.0, 8.0, 6.0, 2.0)
     return out

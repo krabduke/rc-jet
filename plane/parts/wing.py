@@ -37,6 +37,7 @@ def _panels():
             semi_span=W["semi_span"], sweep_le=W["sweep_le"],
             dihedral=W["dihedral"], thickness=W["thickness"],
             planform=spec.WING_PLANFORM,
+            thickness_tip=W["thickness_tip"], tip_cap=7,
             camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
             u0=0.0, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir)
@@ -64,9 +65,10 @@ def _flaperons():
             hinge_x, W["z_root"],
             root_le=(x_in, W["semi_span"] * f_in * (-1 if mir else 1), W["z_root"]),
             root_chord=c_in, tip_chord=c_out, semi_span=span, sweep_le=sweep,
-            dihedral=W["dihedral"], thickness=W["thickness"], camber=W["camber"],
+            dihedral=W["dihedral"], thickness=W["thickness"] * 0.80,
+            thickness_tip=W["thickness_tip"] * 0.92, camber=W["camber"],
             u0=hu + FL["gap"] / c_in, u1=1.0,
-            n_span=6, n_chord=NC, mirror=mir)
+            n_span=14, n_chord=NC, mirror=mir)
         out[f"flaperon_{side}"] = (v, f)
     return out
 
@@ -91,18 +93,40 @@ def _strakes():
             y_in = w * 0.96
             y_out = y_in + 13.0 * math.sin(math.pi * min(t * 1.05, 1.0)) ** 0.7
             pts.append((x, y_in, y_out))
-        verts, faces = [], []
+        # A strake exists to shed a strong, stable vortex over the wing root
+        # at high alpha. That needs a sharp leading edge and a section that
+        # thickens inboard into the body -- as a constant-thickness plate with
+        # a blunt edge all round it shed nothing and stalled with the root.
+        rings = []
+        n_c = 13
         for (x, y_in, y_out) in pts:
-            verts.append((x, sgn * y_out, W["z_root"] + 1.2))
-            verts.append((x, sgn * y_out, W["z_root"] - 1.2))
-            verts.append((x, sgn * y_in, W["z_root"] + 1.2))
-            verts.append((x, sgn * y_in, W["z_root"] - 1.2))
-        for i in range(len(pts) - 1):
-            a, b = i * 4, (i + 1) * 4
-            faces.append((a, b, b + 1, a + 1))
-            faces.append((a + 2, a + 3, b + 3, b + 2))
-            faces.append((a, a + 2, b + 2, b))
-            faces.append((a + 1, b + 1, b + 3, a + 3))
+            span = max(y_out - y_in, 0.1)
+            ring = []
+            for k in range(n_c):
+                g = k / (n_c - 1)
+                yy = y_in + span * g
+                # thickest at the body, tapering to a knife at the tip, and
+                # drooped outboard so it turns the flow down over the wing
+                th = 2.6 * (1.0 - g) ** 1.25 + 0.22
+                droop = -1.9 * g ** 1.9
+                ring.append((yy, th, droop))
+            loop = []
+            for (yy, th, dz) in ring:
+                loop.append((x, sgn * yy, W["z_root"] + dz + th / 2))
+            for (yy, th, dz) in reversed(ring[:-1]):
+                loop.append((x, sgn * yy, W["z_root"] + dz - th / 2))
+            rings.append(loop)
+        m = len(rings[0])
+        verts = [v for r in rings for v in r]
+        faces = []
+        for i in range(len(rings) - 1):
+            a, b = i * m, (i + 1) * m
+            for k in range(m):
+                k2 = (k + 1) % m
+                faces.append((a + k, a + k2, b + k2, b + k))
+        faces.append(tuple(range(m - 1, -1, -1)))
+        base = (len(rings) - 1) * m
+        faces.append(tuple(range(base, base + m)))
         out[f"wing_strake_{side}"] = (verts, faces)
     return out
 

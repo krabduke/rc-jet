@@ -137,9 +137,32 @@ def _cross(a, b):
             a[0] * b[1] - a[1] * b[0])
 
 
-def pipe(path, radius, segments=16, caps=True):
+def pipe(path, radius, segments=16, caps=True, subdiv=1):
     """Sweep a circular section along a 3D polyline using parallel transport,
-    so the tube does not twist around corners."""
+    so the tube does not twist around corners.
+
+    `radius` may be a number, or a list with one entry per path point, which
+    is how a tapered primary or a bellmouthed runner gets made -- a real pipe
+    on an engine is almost never a constant diameter.
+
+    `subdiv` inserts extra rings between the given points so a swept curve is
+    smooth rather than faceted.
+    """
+    if subdiv > 1 and len(path) >= 2:
+        dense, rad = [], []
+        radii = radius if isinstance(radius, (list, tuple)) else None
+        for i in range(len(path) - 1):
+            for k in range(subdiv):
+                t = k / subdiv
+                dense.append(tuple(path[i][j] + (path[i + 1][j] - path[i][j]) * t
+                                   for j in range(3)))
+                if radii:
+                    rad.append(radii[i] + (radii[i + 1] - radii[i]) * t)
+        dense.append(tuple(path[-1]))
+        if radii:
+            rad.append(radii[-1])
+        path = dense
+        radius = rad if radii else radius
     if len(path) < 2:
         return [], []
 
@@ -158,6 +181,8 @@ def pipe(path, radius, segments=16, caps=True):
         seed = (0.0, 1.0, 0.0)
     normal = _normalise(_cross(tangents[0], seed))
 
+    radii = (radius if isinstance(radius, (list, tuple))
+             else [radius] * len(path))
     verts = []
     for i, p in enumerate(path):
         t = tangents[i]
@@ -165,9 +190,10 @@ def pipe(path, radius, segments=16, caps=True):
         d = sum(a * b for a, b in zip(normal, t))
         normal = _normalise(tuple(normal[k] - d * t[k] for k in range(3)))
         binormal = _cross(t, normal)
+        rr = radii[min(i, len(radii) - 1)]
         for s in range(segments):
             a = 2.0 * math.pi * s / segments
-            ca, sa = math.cos(a) * radius, math.sin(a) * radius
+            ca, sa = math.cos(a) * rr, math.sin(a) * rr
             verts.append(tuple(p[k] + normal[k] * ca + binormal[k] * sa
                                for k in range(3)))
 
@@ -183,10 +209,6 @@ def pipe(path, radius, segments=16, caps=True):
         faces.append(tuple(range(base, base + segments)))
     return verts, faces
 
-
-# --------------------------------------------------------------------------
-# Transforms and combination
-# --------------------------------------------------------------------------
 
 def rot_x(verts, angle):
     ca, sa = math.cos(angle), math.sin(angle)

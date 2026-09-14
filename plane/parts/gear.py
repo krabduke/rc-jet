@@ -40,10 +40,57 @@ def _wheel(x, y, z, r, w):
 
 
 def _strut(x, y, z_top, length, r, rake=0.0):
+    """An oleo leg, which is two tubes and not one.
+
+    A landing gear leg has to absorb the landing: the sliding member runs
+    inside the outer cylinder, so there are two diameters with a wiper seal
+    between them, a trunnion at the top where it pivots into the bay, a torque
+    link stopping the axle from castoring, and an axle boss at the bottom. A
+    single capped cylinder is a peg.
+    """
     a = math.radians(rake)
-    x_bot = x + length * math.sin(a)
-    path = [(x, y, z_top), (x_bot, y, z_top - length * math.cos(a))]
-    return mesh.pipe(path, r, 10, caps=True)
+    sa, ca = math.sin(a), math.cos(a)
+
+    def place(verts):
+        # built with +x down the leg from the trunnion; rake it and drop it in
+        return [(x + px * sa + pz, y + py, z_top - px * ca)
+                for (px, py, pz) in verts]
+
+    parts = []
+    split = length * 0.52
+    # outer cylinder with its wiper gland, then the sliding member
+    parts.append((place(mesh.revolve_closed(
+        [(0.0, 0.0), (split, 0.0), (split, r * 0.72), (split - 1.2, r * 1.06),
+         (split - 3.0, r * 1.10), (4.0, r * 1.10), (1.5, r * 0.96),
+         (0.0, r * 0.80)], 34)[0]), mesh.revolve_closed(
+        [(0.0, 0.0), (split, 0.0), (split, r * 0.72), (split - 1.2, r * 1.06),
+         (split - 3.0, r * 1.10), (4.0, r * 1.10), (1.5, r * 0.96),
+         (0.0, r * 0.80)], 34)[1]))
+    parts.append((place(mesh.revolve_closed(
+        [(split - 4.0, 0.0), (length, 0.0), (length, r * 0.74),
+         (split - 4.0, r * 0.74)], 30)[0]), mesh.revolve_closed(
+        [(split - 4.0, 0.0), (length, 0.0), (length, r * 0.74),
+         (split - 4.0, r * 0.74)], 30)[1]))
+    # trunnion: the pivot the whole leg swings on
+    tv, tf = mesh.revolve_closed(
+        [(-r * 1.6, r * 0.5), (r * 1.6, r * 0.5), (r * 1.6, r * 1.5),
+         (r * 1.2, r * 1.7), (-r * 1.2, r * 1.7), (-r * 1.6, r * 1.5)], 26)
+    parts.append((place([(pz + 2.0, px, py) for (px, py, pz) in tv]), tf))
+    # torque link: two arms with a knuckle, on the forward face
+    for (p0, p1) in (((split - 10.0, 0.0, -r * 1.5),
+                      (split + 3.0, 0.0, -r * 2.6)),
+                     ((split + 3.0, 0.0, -r * 2.6),
+                      (split + 18.0, 0.0, -r * 1.3))):
+        seg = mesh.pipe([(p0[0], p0[1], p0[2]), (p1[0], p1[1], p1[2])],
+                        r * 0.34, 14)
+        parts.append((place(seg[0]), seg[1]))
+    # axle boss
+    av, af = mesh.revolve_closed(
+        [(-r * 1.4, 0.0), (r * 1.4, 0.0), (r * 1.4, r * 0.6),
+         (r * 1.0, r * 0.9), (-r * 1.0, r * 0.9), (-r * 1.4, r * 0.6)], 22)
+    parts.append((place([(pz + length - r * 1.2, px, py)
+                         for (px, py, pz) in av]), af))
+    return mesh.join(*parts)
 
 
 def _nose():

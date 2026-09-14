@@ -35,12 +35,16 @@ def _load_engine():
     try:
         espec = importlib.import_module("spec")
         # Coarsen the engine before anything is built.
+        # Coarsened, but not by as much as it was: at 32 segments a casing
+        # came out as a 128-vertex prism, which is a worse surface than
+        # anything else on the airframe and the engine is the thing people
+        # open the cutaway to look at. Two thirds of full resolution.
         espec.RES.update({
-            "airfoil_chord_pts": 14,
-            "airfoil_span_pts": 4,
-            "revolve_segments": 32,
-            "small_revolve": 10,
-            "pipe_segments": 8,
+            "airfoil_chord_pts": 20,
+            "airfoil_span_pts": 6,
+            "revolve_segments": 64,
+            "small_revolve": 16,
+            "pipe_segments": 12,
         })
         mods = [importlib.import_module(f"parts.{m}") for m in
                 ("rotating", "statics", "combustor", "turbine",
@@ -60,6 +64,22 @@ def _load_engine():
 
 ARRAYS = {}
 
+# Parts of the full-size engine that this aircraft does not install.
+#
+# These four are airframe-mounted line-replaceable units: on a real
+# installation the oil tank, the fuel/oil heat exchanger, the engine control
+# and the ignition exciters live in the nacelle, outboard of the engine's own
+# envelope, not on the engine as it leaves the stand. Scaled 1:33 into a
+# 440 mm fuselage they reach 32-38 mm off the axis where the fuselage inner
+# half-width is under 25 mm, so they come straight out through the skin.
+#
+# The aircraft has its own versions of all four at its own scale -- fuel_tank,
+# fuel_pump, turbine_ecu, ecu_battery -- and fitting a scaled F110 oil tank
+# beside a model fuel hopper would be the wrong object twice. So the airframe
+# takes the engine and leaves the nacelle kit behind.
+NOT_INSTALLED = ("oil_tank", "heat_exchanger", "engine_control",
+                 "ignition_exciters")
+
 
 def build():
     built, arrays, espec = _load_engine()
@@ -72,6 +92,11 @@ def build():
     out = {}
     ARRAYS.clear()
     for name, (verts, faces) in built.items():
+        # str.lstrip strips characters, not a prefix, so do it by hand:
+        # "turbine_cooling_manifold".lstrip("cut:") is "rbine_..."
+        bare = name[4:] if name.startswith("cut:") else name
+        if bare in NOT_INSTALLED:
+            continue
         key = name if name.startswith("cut:") else f"engine_{name}"
         if name.startswith("cut:"):
             key = f"cut:engine_{name[4:]}"

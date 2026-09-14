@@ -25,7 +25,6 @@ def build():
     out = {}
     out.update(_circumferential_seams())
     out.update(_lengthwise_seams())
-    out.update(_rivets())
     out.update(_screws())
     out.update(_wing_seams())
     out.update(_doublers())
@@ -117,32 +116,13 @@ def _dome(cx, cy, cz, r, segments=8, rings=3):
     return verts, faces
 
 
-def _rivets():
-    """Rivet rows flanking every circumferential seam.
-
-    Two rows per joint, as on a real lap joint -- one each side of the seam.
-    """
-    parts = []
-    n = SD["rivets_per_ring"]
-    r = SD["rivet_r"]
-    for x in SD["seam_x"]:
-        for dx in (-SD["seam_w"] - 1.6, SD["seam_w"] + 1.6):
-            ring = _proud_ring(x + dx, r * 0.3, segments=n)
-            w, hh, zc, expn = fus.station_at(x + dx)
-            for (px, py, pz) in ring:
-                # orient the head outward by offsetting along the radius
-                d = math.hypot(py, pz - zc) or 1.0
-                v, f = _dome(0.0, 0.0, 0.0, r)
-                # rotate so +z of the dome points along the outward radius
-                cy, cz = py / d, (pz - zc) / d
-                rot = []
-                for (vx, vy, vz) in v:
-                    rot.append((px + vx,
-                                py + vy * cz + vz * cy,
-                                pz - vy * cy + vz * cz))
-                parts.append((rot, f))
-    return {"rivets": mesh.join(*parts)}
-
+# There were 720 rivet heads here, in two rows flanking every circumferential
+# seam. This airframe is a moulded composite shell: its production joints are
+# bonded, not riveted, and the only fasteners on it are the countersunk screws
+# round the access hatches -- which are modelled, in `_panel_screws`. Rows of
+# rivets on a bonded joint are a scale-model convention borrowed from sheet
+# metal aircraft, and on this one they were 720 objects asserting something
+# untrue about how it is made. `verify.py` now fails if they come back.
 
 def _screws():
     """Countersunk fasteners round the edge of every access panel.
@@ -172,15 +152,23 @@ def _wing_seams():
     for frac in (spec.SPAR["x_frac"], spec.STRUCTURE["rear_spar_frac"]):
         for sgn in (-1.0, 1.0):
             path = []
-            for i in range(10):
-                f = 0.04 + 0.92 * i / 9
+            for i in range(22):
+                f = 0.04 + 0.92 * i / 21
                 chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
                 x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
                                       W["sweep_le"], f)
                 t = W["thickness"] * chord * 0.5
                 path.append((x_le + chord * frac, sgn * W["semi_span"] * f,
                              W["z_root"] + t + h))
-            parts.append(mesh.pipe(path, SD["seam_w"] * 0.4, 4))
+            # a moulded seam over a spar is a low rounded ridge, not a
+            # four-sided rod laid on the skin
+            parts.append(shapes.swept_profile(
+                path, shapes.rounded_polygon(
+                    [(-SD["seam_w"] * 0.5, -h * 0.5),
+                     (SD["seam_w"] * 0.5, -h * 0.5),
+                     (SD["seam_w"] * 0.34, h * 0.5),
+                     (-SD["seam_w"] * 0.34, h * 0.5)],
+                    h * 0.42, seg=4)))
     return {"wing_seams": mesh.join(*parts)}
 
 

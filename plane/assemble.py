@@ -17,7 +17,7 @@ import mesh as meshlib   # noqa: E402
 import materials         # noqa: E402
 from parts import (fuselage, wing, tail, intake, canopy,   # noqa: E402
                    gear, internals, engine_mount,
-                   detail, structure, skin, systems)
+                   detail, structure, skin, systems, hardware)
 
 MM = 0.001
 
@@ -26,7 +26,7 @@ MODULES = [
     ("intake", intake), ("canopy", canopy), ("gear", gear),
     ("internals", internals), ("engine", engine_mount),
     ("detail", detail), ("structure", structure), ("skin", skin),
-    ("systems", systems),
+    ("systems", systems), ("hardware", hardware),
 ]
 
 COLLECTIONS = ["01 Fuselage", "02 Wing", "03 Tail", "04 Intake and Duct",

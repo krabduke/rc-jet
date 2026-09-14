@@ -47,12 +47,24 @@ def _control_horns():
 
     def horn(x, y, z, h=None):
         h = spec.WING_DETAIL["horn_h"] if h is None else h
-        hv, hf = shapes.rounded_box(x, y, z + h / 2, 5.0, 2.4, h)
-        horns.append((hv, hf))
-        cv, cf = mesh.cylinder(-3.2, 3.2, 2.2, 8)
-        cv = mesh.rot_z(cv, math.pi / 2)
-        cv = [(px + x, py + y, pz + z + h) for (px, py, pz) in cv]
-        clevises.append((cv, cf))
+        sgn_h = 1.0 if h >= 0 else -1.0
+        # A horn is a moulded arm with a row of holes in it: the hole you use
+        # sets the throw, and the base flange is what bonds it to the surface.
+        arm = shapes.panel_outline(
+            [(x - 3.4, z), (x + 3.4, z),
+             (x + 2.4, z + h * 0.62), (x + 1.8, z + h),
+             (x - 1.8, z + h), (x - 2.6, z + h * 0.62)], subdiv=4)
+        parts = [shapes.shaped_panel(arm, y, 2.2, rim_seg=3)]
+        for k in (0.52, 0.74, 0.94):
+            hv, hf = mesh.revolve_closed(
+                [(-1.6, 0.62), (1.6, 0.62), (1.6, 1.05), (-1.6, 1.05)], 12)
+            parts.append(([(pz + x, px + y, py + z + h * k)
+                           for (px, py, pz) in hv], hf))
+        parts.append(shapes.rounded_box(x, y, z + sgn_h * 0.8, 11.0, 7.0,
+                                        1.6, 1.4, seg=4))
+        horns.append(mesh.join(*parts))
+        clevises.append(shapes.clevis(
+            (x, y, z + h), (0.0, 0.0, sgn_h), 1.9))
 
     f = (FL["span_in"] + FL["span_out"]) / 2
     for sgn in (-1.0, 1.0):
@@ -83,13 +95,14 @@ def _probes():
     out = {}
     P = spec.PROBE
     tip, z = P["pitot_tip"], P["pitot_z"]
-    boom = mesh.pipe([(tip + 6.0, 0.0, z), (tip + 34.0, 0.0, z)],
-                     P["pitot_r"], 8)
-    cone = mesh.revolve_open([(tip, 0.001), (tip + 6.0, P["fairing_r"]),
-                              (tip + 10.0, P["fairing_r"])],
-                             12, cap_start=True, cap_end=True)
+    probe = shapes.pitot_probe((tip + 34.0, 0.0, z), (1.0, 0.0, 0.0),
+                               length=28.0, r=P["pitot_r"], mast=7.0)
+    cone = mesh.revolve_closed(
+        [(tip, 0.0), (tip + 10.0, 0.0), (tip + 10.0, P["fairing_r"]),
+         (tip + 7.0, P["fairing_r"]), (tip + 3.0, P["fairing_r"] * 0.72),
+         (tip + 0.6, P["fairing_r"] * 0.30)], 24)
     cone = ([(x, y, z + zz) for (x, y, zz) in cone[0]], cone[1])
-    out["pitot"] = mesh.join(boom, cone)
+    out["pitot"] = mesh.join(probe, cone)
 
     # A 440 mm model carries a small blade aerial, not a shark fin -- sized
     # from the spine it sits on rather than picked by eye.
@@ -100,8 +113,17 @@ def _probes():
              (base[0] - 6.0, base[1], base[2] + 7.5),
              (base[0] + 9.0, base[1], base[2] + 7.5),
              (base[0] + 11.0, base[1], base[2])]
-    ants.append(_plate(blade, 1.4))
-    ants.append(fus.surface_patch(190.0, 212.0, 74.0, 106.0, 1.6))  # GPS patch
+    # a blade aerial is a moulded fin with a base flange, so it gets a
+    # section and a rolled top edge rather than being a flat card
+    prof = shapes.panel_outline(
+        [(blade[0][0], blade[0][2]), (blade[3][0], blade[3][2]),
+         (blade[2][0], blade[2][2]), (blade[1][0], blade[1][2])], subdiv=7)
+    ants.append(shapes.shaped_panel(prof, base[1], 1.9, rim_seg=5))
+    ants.append(shapes.rounded_box(base[0], base[1], base[2] - 0.4,
+                                   26.0, 5.0, 1.4, 1.2, seg=5))
+    # There used to be a GPS patch here as well, and a GPS module in
+    # systems.py -- two GPS aerials on a 440 mm aeroplane with one receiver.
+    # `gps_puck` is the one that survived; this is the UHF telemetry blade.
     out["antennas"] = mesh.join(*ants)
     return out
 
@@ -142,8 +164,19 @@ def _fences():
                                   W["sweep_le"], fr)
             h = chord * D["fence_h"]
             z0 = common.surface_z(W, fr, 0.30)
-            fences.append(shapes.rounded_box(x_le + chord * 0.30, y, z0 + h / 2,
-                                   chord * D["fence_chord"], D["fence_t"], h))
+            # A fence is cut to a profile: tall at its leading edge where the
+            # spanwise flow it is stopping is strongest, faired away aft so it
+            # does not stand in the flaperon's flow. A constant-height slab
+            # does the second half of that job badly.
+            c = chord * D["fence_chord"]
+            x0 = x_le + chord * 0.30 - c / 2
+            prof = shapes.panel_outline(
+                [(x0, z0), (x0 + c, z0), (x0 + c, z0 + h * 0.30),
+                 (x0 + c * 0.62, z0 + h * 0.86), (x0 + c * 0.24, z0 + h),
+                 (x0 - c * 0.04, z0 + h * 0.52)], subdiv=8)
+            fences.append(shapes.shaped_panel(
+                prof, y, D["fence_t"], rim_seg=6,
+                bow=lambda fx, fz, sgn=sgn: sgn * 2.4 * fx * fx))
     half = len(fences) // 2
     for i, m in enumerate(fences):
         out[f"wing_fence_{'lr'[i // half]}{i % half + 1}"] = m
@@ -159,8 +192,16 @@ def _fences():
                                   W["sweep_le"], fr)
             h = chord * D["vg_h"]
             z0 = common.surface_z(W, fr, D["vg_x"])
-            v, f = shapes.rounded_box(0.0, 0.0, 0.0, chord * D["vg_chord"],
-                            D["vg_t"], h)
+            # A vortex generator is a swept triangular vane, tall at the
+            # back and faired into the skin at the front: that geometry is
+            # what rolls the flow up into a discrete vortex. A rectangular
+            # tab just trips the boundary layer and adds drag.
+            c = chord * D["vg_chord"]
+            prof = shapes.panel_outline(
+                [(-c / 2, 0.0), (c / 2, 0.0), (c * 0.34, h),
+                 (c * 0.10, h * 0.94)], subdiv=9)
+            v, f = shapes.shaped_panel(prof, 0.0, D["vg_t"], rim_seg=5)
+            v = [(px, py, pz - h / 2) for (px, py, pz) in v]
             # alternate the yaw so the pair sheds counter-rotating vortices
             a = math.radians(D["vg_yaw"] * (1 if k % 2 else -1))
             ca, sa = math.cos(a), math.sin(a)
@@ -269,15 +310,37 @@ def _exhaust_petals():
                        (T["x_rear"], T["r_rear"])):
             for rr in (r - T["wall"], r):
                 seg.append((x, rr, a0, a1))
-        verts, faces = [], []
-        for (x, rr, aa0, aa1) in seg:
-            for a in (aa0, aa1):
-                verts.append((x, rr * math.cos(a), rr * math.sin(a)))
-        # 8 corners: front-inner, front-outer, rear-inner, rear-outer
-        fi, fo, ri, ro = 0, 2, 4, 6
-        faces = [(fi, fi + 1, fo + 1, fo), (ro, ro + 1, ri + 1, ri),
-                 (fi, fo, ro, ri), (fi + 1, ri + 1, ro + 1, fo + 1),
-                 (fi, ri, ri + 1, fi + 1), (fo, fo + 1, ro + 1, ro)]
+        # Each tile follows the cone it sits on, so it is curved in section
+        # and tapered along its length. Four corners made it a flat card
+        # standing off a round tailpipe on its own edges.
+        n_a, n_x = 7, 5
+        rings = []
+        for i in range(n_x):
+            fx = i / (n_x - 1)
+            x = T["x_front"] + (T["x_rear"] - T["x_front"]) * fx
+            r_o = T["r_front"] + (T["r_rear"] - T["r_front"]) * fx
+            r_i = r_o - T["wall"]
+            loop = []
+            for j in range(n_a):
+                g = j / (n_a - 1)
+                a = a0 + (a1 - a0) * g
+                loop.append((x, r_o * math.cos(a), r_o * math.sin(a)))
+            for j in range(n_a - 1, -1, -1):
+                g = j / (n_a - 1)
+                a = a0 + (a1 - a0) * g
+                loop.append((x, r_i * math.cos(a), r_i * math.sin(a)))
+            rings.append(loop)
+        m = len(rings[0])
+        verts = [v for r in rings for v in r]
+        faces = []
+        for i in range(n_x - 1):
+            a, b = i * m, (i + 1) * m
+            for k in range(m):
+                k2 = (k + 1) % m
+                faces.append((a + k, a + k2, b + k2, b + k))
+        faces.append(tuple(range(m - 1, -1, -1)))
+        base = (n_x - 1) * m
+        faces.append(tuple(range(base, base + m)))
         parts.append((verts, faces))
     return {"tailpipe_shroud": mesh.join(*parts)}
 
@@ -291,11 +354,23 @@ def _dischargers():
             chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
             x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
                                   W["sweep_le"], fr)
-            parts.append(mesh.pipe(
-                [(x_le + chord * 0.74, y, W["z_root"]),
-                 (x_le + chord * 0.74 + 8.0, y + sgn * 2.0,
-                  W["z_root"] + 1.6)],
-                0.6, 6))
+            # a wick is a base, a stub, and a bundle of filaments -- the
+            # filaments are the part that actually bleeds the charge
+            p0 = (x_le + chord * 0.74, y, W["z_root"])
+            p1 = (x_le + chord * 0.74 + 8.0, y + sgn * 2.0,
+                  W["z_root"] + 1.6)
+            d = tuple(p1[k] - p0[k] for k in range(3))
+            bv, bf = mesh.revolve_closed(
+                [(0.0, 0.0), (2.2, 0.0), (2.2, 0.9), (1.4, 1.5),
+                 (0.0, 1.5)], 14)
+            parts.append((shapes.orient(bv, p0, d), bf))
+            parts.append(mesh.pipe([p0, p1], [0.72, 0.34], 12, subdiv=2))
+            for k in range(5):
+                a = 2 * math.pi * k / 5
+                tip2 = (p1[0] + d[0] * 0.34 + math.cos(a) * 0.9,
+                        p1[1] + d[1] * 0.34 + math.sin(a) * 0.9,
+                        p1[2] + d[2] * 0.34)
+                parts.append(mesh.pipe([p1, tip2], 0.16, 6))
     return {"static_dischargers": mesh.join(*parts)}
 
 
@@ -329,26 +404,18 @@ def _speed_kit():
     # Boundary-layer diverter: the fuselage grows a sluggish layer of air and
     # feeding it to the engine costs thrust. A splitter plate stands the
     # intake off the skin so it swallows clean air.
-    rows = []
-    for i in range(6):
-        f = i / 5
-        x = I["x_lip"] - 14.0 + 70.0 * f
-        rows.append([(x, -I["lip_width"] / 2 * 0.82, I["z_lip"] + 12.0),
-                     (x, I["lip_width"] / 2 * 0.82, I["z_lip"] + 12.0)])
-    verts, faces = [], []
-    for r in rows:
-        verts.extend([(p[0], p[1], p[2] - 1.2) for p in r])
-        verts.extend([(p[0], p[1], p[2] + 1.2) for p in r])
-    n = 4
-    for i in range(len(rows) - 1):
-        a, b = i * n, (i + 1) * n
-        for j in range(n):
-            j2 = (j + 1) % n
-            faces.append((a + j, a + j2, b + j2, b + j))
-    faces.append((3, 2, 1, 0))
-    base = (len(rows) - 1) * n
-    faces.append((base, base + 1, base + 2, base + 3))
-    out["bl_diverter"] = (verts, faces)
+    # It is a wedge in plan, pointed at the front so the boundary layer
+    # splits cleanly and widening aft so what it splits off is pushed out
+    # past the intake rather than allowed to close back in behind it.
+    xl, zl = I["x_lip"], I["z_lip"] + 12.0
+    hw = I["lip_width"] / 2 * 0.82
+    prof = shapes.panel_outline(
+        [(xl - 22.0, 0.0), (xl - 6.0, -hw * 0.52), (xl + 16.0, -hw * 0.92),
+         (xl + 56.0, -hw), (xl + 56.0, hw), (xl + 16.0, hw * 0.92),
+         (xl - 6.0, hw * 0.52)], subdiv=7)
+    out["bl_diverter"] = shapes.shaped_panel(
+        prof, zl, 2.6, rim_seg=5, axis="z",
+        bow=lambda fx, fz: -1.1 * (1.0 - fx))
 
     # Intake lip: a sharp, slightly drooped lip pays at speed and a rounded
     # one pays at low speed. This one is closer to sharp, because the brief
@@ -372,7 +439,12 @@ def _speed_kit():
             x = 96.0 + 96.0 * f
             w, hh, zc, _ = fus.station_at(x)
             pts.append((x, sgn * (w + 1.5 + 5.0 * f), zc + hh * 0.30))
-        strakes.append(mesh.pipe(pts, 2.2, 6))
+        # A nose strake works by having a sharp edge to shed from. A round
+        # rod of the same size is a drag item that sheds nothing.
+        strakes.append(shapes.swept_profile(
+            pts, shapes.rounded_polygon(
+                [(-0.5, -2.4), (3.4, 0.0), (-0.5, 2.4)],
+                [0.35, 0.12, 0.35], seg=5), subdiv=3))
     out["nose_strakes"] = mesh.join(*strakes)
     return out
 
@@ -385,21 +457,31 @@ def _linkages():
     out = {}
     W, FL, V, H = spec.WING, spec.FLAPERON, spec.VTAIL, spec.HTAIL
     rods = []
+    # A rod runs from the servo's output arm to the surface's horn. It used to
+    # run from the horn to a point in mid-air near the servo bay, while a
+    # second complete set of rods in internals.py ran from the servos to the
+    # hinge lines. Both existed; neither joined a servo to a horn.
+    servo = {h[0]: h for h in spec.HARDWARE}
+
+    def arm(tag, dz=0.0):
+        s_ = servo[tag]
+        return (s_[1] + s_[4] * 0.52, s_[2], s_[3] + s_[6] * 0.46 + dz)
+
     f = (FL["span_in"] + FL["span_out"]) / 2
-    for sgn in (-1.0, 1.0):
+    for sgn, tag in ((-1.0, "servo_ail_l"), (1.0, "servo_ail_r")):
         y = sgn * W["semi_span"] * f
         chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
         x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
         horn = (x_le + chord * (1 - FL["chord_frac"]) + 6.0, y,
                 common.surface_z(W, f, 1 - FL["chord_frac"], upper=False)
                 - spec.WING_DETAIL["horn_h"])
-        rods.append(mesh.pipe([horn, (296.0, sgn * 26.0, -8.0)], 1.3, 6))
-    rods.append(mesh.pipe([(V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0),
-                           (300.0, 12.0, 14.0)], 1.3, 6))
+        rods.append(_rod(arm(tag), horn))
+    rods.append(_rod(arm("servo_rudder"),
+                     (V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)))
     for sgn in (-1.0, 1.0):
-        rods.append(mesh.pipe([(H["x_root_le"] + H["root_chord"] * 0.30,
-                                sgn * 18.0, H["z_root"] + 9.0),
-                               (300.0, sgn * 14.0, 2.0)], 1.3, 6))
+        rods.append(_rod(arm("servo_stab"),
+                         (H["x_root_le"] + H["root_chord"] * 0.30,
+                          sgn * 18.0, H["z_root"] + 9.0)))
     out["pushrod_linkages"] = mesh.join(*rods)
 
     horns = []
@@ -407,3 +489,23 @@ def _linkages():
         horns.append(shapes.rounded_box(298.0, sgn * 22.0, 8.0, 22.0, 4.0, 16.0, 1.5))
     out["bellcranks"] = mesh.join(*horns)
     return out
+
+
+def _rod(p0, p1, r=1.3):
+    """A pushrod: a threaded rod with a ball link swaged on each end.
+
+    The links are the whole linkage -- they take out the misalignment between
+    a surface swinging on its hinge line and a servo arm swinging on a
+    different one. A bare cylinder between two points cannot articulate.
+    """
+    d = tuple(p1[k] - p0[k] for k in range(3))
+    parts = [mesh.pipe([p0, p1], [r * 0.78, r * 0.78], 14, subdiv=3)]
+    for (p, dirn) in ((p0, tuple(-c for c in d)), (p1, d)):
+        bv, bf = mesh.revolve_closed(
+            [(0.0, 0.0), (r * 1.1, 0.0), (r * 1.6, r * 1.1),
+             (r * 1.1, r * 1.8), (0.0, r * 1.8), (-r * 0.9, r * 1.5),
+             (-r * 1.4, r * 0.9), (-r * 2.8, r * 0.62),
+             (-r * 4.0, r * 0.62)], 20)
+        parts.append((shapes.orient([(-px, py, pz) for (px, py, pz) in bv],
+                                    p, tuple(-c for c in dirn)), bf))
+    return mesh.join(*parts)

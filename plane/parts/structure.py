@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import common, fuselage as fus
 
 ST = spec.STRUCTURE
@@ -56,6 +57,63 @@ def _shrink(ring, zc, k):
     return [(x, y * k, zc + (z - zc) * k) for (x, y, z) in ring]
 
 
+def _lightened_ring(front, back, zc, k_bore, k_hub, n_holes, web_frac=0.34):
+    """A former web with a ring of lightening holes cut out of it.
+
+    A former is defined by what is taken out of it. These were solid annular
+    plates with a single central bore -- flat, two x-stations, no other
+    feature -- so the web between the bore and the skin said nothing at all.
+
+    Built as a rim out at the skin, a hub ring round the bore, and `n_holes`
+    spokes bridging the two. The gaps between the spokes are the lightening
+    holes, and because both rings follow the fuselage section the holes come
+    out shaped like the frame instead of as circles stamped through a disc.
+    """
+    n = len(front)
+    hub_f, hub_b = _shrink(front, zc, k_hub), _shrink(back, zc, k_hub)
+    bore_f, bore_b = _shrink(front, zc, k_bore), _shrink(back, zc, k_bore)
+
+    verts, faces = [], []
+
+    def closed_band(of, ob, if_, ib):
+        """A full annular band between an outer and an inner ring."""
+        base = len(verts)
+        verts.extend(of); verts.extend(ob); verts.extend(if_); verts.extend(ib)
+        a, b, c, d = base, base + n, base + 2 * n, base + 3 * n
+        for s in range(n):
+            s2 = (s + 1) % n
+            faces.append((a + s, a + s2, c + s2, c + s))     # front face
+            faces.append((b + s, d + s, d + s2, b + s2))     # back face
+            faces.append((a + s, b + s, b + s2, a + s2))     # outer edge
+            faces.append((c + s, c + s2, d + s2, d + s))     # inner edge
+
+    # the rim: from the skin in to the hub ring. Everything inboard of the hub
+    # is open except where a spoke crosses it.
+    closed_band(front, back, hub_f, hub_b)
+
+    span = max(2, int(n * web_frac / max(n_holes, 1)))
+    for h in range(n_holes):
+        s0 = int(n * h / n_holes)
+        idx = [(s0 + j) % n for j in range(span + 1)]
+        m = len(idx)
+        base = len(verts)
+        verts.extend([hub_f[i] for i in idx])
+        verts.extend([hub_b[i] for i in idx])
+        verts.extend([bore_f[i] for i in idx])
+        verts.extend([bore_b[i] for i in idx])
+        hf, hb, bf, bb = base, base + m, base + 2 * m, base + 3 * m
+        for j in range(m - 1):
+            faces.append((hf + j, hf + j + 1, bf + j + 1, bf + j))   # front
+            faces.append((hb + j, bb + j, bb + j + 1, hb + j + 1))   # back
+            faces.append((bf + j, bf + j + 1, bb + j + 1, bb + j))   # bore edge
+            faces.append((hf + j + 1, hf + j, hb + j, hb + j + 1))   # hub edge
+        # the two radial cut faces that make this a spoke and not a band
+        faces.append((hf, bf, bb, hb))
+        e = m - 1
+        faces.append((bf + e, hf + e, hb + e, bb + e))
+    return verts, faces
+
+
 def _formers():
     """A light former every 20-40 mm, each with a big lightening bore.
 
@@ -69,8 +127,10 @@ def _formers():
         w, h, zc, n = fus.station_at(x)
         f = fus.section_ring(x - t / 2, inset=spec.FUSELAGE_SKIN)
         b = fus.section_ring(x + t / 2, inset=spec.FUSELAGE_SKIN)
-        out[f"former_{i:02d}"] = _ring_prism(f, b, _shrink(f, zc, k),
-                                             _shrink(b, zc, k))
+        # rim out at the skin, hub round the bore, and six lightening holes
+        # between them -- the web was solid before, which is the one thing a
+        # former never is
+        out[f"former_{i:02d}"] = _lightened_ring(f, b, zc, k, k + 0.16, 6)
     return out
 
 
@@ -102,7 +162,16 @@ def _longerons():
     out = {}
     r = ST["longeron_r"]
     for i, ang in enumerate((42.0, 138.0, 222.0, 318.0), start=1):
-        out[f"longeron_{i}"] = mesh.pipe(_skin_path(ang, r), r, 6)
+        # a longeron is a rectangular strip, laid on edge against the skin --
+        # a round rod of the same area would be half as stiff in bending and
+        # would give the skin a line contact to be glued to instead of a face
+        # stood off by the section's half-diagonal, not its old radius: a
+        # rectangle 3.2r across corners will not fit in a 1r gap
+        out[f"longeron_{i}"] = shapes.swept_profile(
+            _skin_path(ang, r * 1.80), shapes.rounded_polygon(
+                [(-r * 1.6, -r * 0.62), (r * 1.6, -r * 0.62),
+                 (r * 1.6, r * 0.62), (-r * 1.6, r * 0.62)],
+                r * 0.30, seg=3), subdiv=2)
     return out
 
 
@@ -114,7 +183,11 @@ def _stringers():
     n = ST["n_stringers"]
     for i in range(n):
         ang = 360.0 * i / n + 15.0
-        parts.append(mesh.pipe(_skin_path(ang, r, n=28), r, 4))
+        parts.append(shapes.swept_profile(
+            _skin_path(ang, r * 1.50, n=28), shapes.rounded_polygon(
+                [(-r * 1.3, -r * 0.55), (r * 1.3, -r * 0.55),
+                 (r * 1.3, r * 0.55), (-r * 1.3, r * 0.55)],
+                r * 0.28, seg=3), subdiv=2))
     return {f"stringer_{i + 1:02d}": m for i, m in enumerate(parts)}
 
 
@@ -136,32 +209,78 @@ def _inset(sect, chord, inset, u0, u1):
 
 
 def _rib(y, f, t, u1):
-    """One wing rib: the local aerofoil, extruded in span, lightened."""
+    """One wing rib: cap strips top and bottom, webs between them, and a
+    doubler where each spar passes through.
+
+    The old rib was the aerofoil with one enormous hole scaled out of the
+    middle of it, which leaves a thin closed ring -- a shape that would buckle
+    the first time the skin loaded it and which nobody cuts. A real light rib
+    is a truss: full-depth cap strips carrying the bending, vertical webs
+    carrying the shear between them, and local doublers at the spars. It is
+    also what makes a cutaway of this aeroplane worth looking at.
+    """
     chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
     x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
     tw = math.radians(-W["washout"] * f)
-    sect = common.section_arc(28, W["thickness"], W["camber"], 0.0, u1)
-    sect = _inset(sect, chord, ST["rib_inset"], 0.0, u1)
+    # The wing tapers thinner towards the tip (thickness -> thickness_tip).
+    # A rib drawn at ROOT thickness is therefore deeper than the local skin
+    # outboard and pokes through the upper and lower surfaces -- which is
+    # exactly what made the ribs read as tan stripes on the closed wing.
+    # Scale the section by the same linear taper the lofted panel uses.
+    t_ratio = W["thickness_tip"] / max(W["thickness"], 1e-6)
+    tv = 1.0 + (t_ratio - 1.0) * f
+    sect = _inset(common.section_arc(48, W["thickness"], W["camber"], 0.0, u1),
+                  chord, ST["rib_inset"], 0.0, u1)
     ct, st = math.cos(tw), math.sin(tw)
     pivot = 0.25
 
     def place(u, v, yy):
         du = (u - pivot) * chord
-        dv = v * chord
+        dv = v * chord * tv
         return (x_le + pivot * chord + du * ct - dv * st,
                 yy, W["z_root"] + du * st + dv * ct)
 
-    front = [place(u, v, y - t / 2) for (u, v) in sect]
-    back = [place(u, v, y + t / 2) for (u, v) in sect]
-    # the cut-out is the same aerofoil shrunk about the half-chord: cap strips
-    # stay full width top and bottom, which is how a real rib is lightened
-    cu, cv = 0.5 * u1, 0.0
-    k = ST["rib_hole"]
-    hf = [place(cu + (u - cu) * k, cv + (v - cv) * k, y - t / 2)
-          for (u, v) in sect]
-    hb = [place(cu + (u - cu) * k, cv + (v - cv) * k, y + t / 2)
-          for (u, v) in sect]
-    return _ring_prism(front, back, hf, hb)
+    # the cap strips: the section, and the same section drawn inwards by the
+    # strip width, clamped so the two never cross near the trailing edge
+    cap = ST["rib_inset"] / max(chord, 1e-6)
+    inner = []
+    for (u, v) in sect:
+        keep = 0.22 * abs(v)
+        dv = min(cap, max(abs(v) - keep, 0.0))
+        uu = u + (cap * 0.8 if u < 0.06 else (-cap * 0.8 if u > u1 - 0.06
+                                              else 0.0))
+        inner.append((uu, v - math.copysign(dv, v or 1.0)))
+
+    parts = [_ring_prism([place(u, v, y - t / 2) for (u, v) in sect],
+                         [place(u, v, y + t / 2) for (u, v) in sect],
+                         [place(u, v, y - t / 2) for (u, v) in inner],
+                         [place(u, v, y + t / 2) for (u, v) in inner])]
+
+    # shear webs between the caps, and a diagonal across the biggest bay
+    def web(u0, u1_, wt):
+        top = common.surface_z_frac(sect, (u0 + u1_) / 2, upper=True)
+        bot = common.surface_z_frac(sect, (u0 + u1_) / 2, upper=False)
+        a = place((u0 + u1_) / 2, (top + bot) / 2, y)
+        h = abs(top - bot) * chord
+        return shapes.rounded_box(a[0], a[1], a[2], (u1_ - u0) * chord,
+                                  t * 0.92, max(h - 2 * ST["rib_inset"], 1.0),
+                                  min(1.2, t * 0.4), seg=5)
+
+    for (u0, u1_) in ((0.10, 0.145), (0.34, 0.385), (0.52, 0.565),
+                      (u1 - 0.10, u1 - 0.055)):
+        if u1_ < u1 - 0.01:
+            parts.append(web(u0, u1_, t))
+    # doublers where the two spars pass through
+    for frac in (0.30, ST["rear_spar_frac"]):
+        if frac >= u1 - 0.02:
+            continue
+        top = common.surface_z_frac(sect, frac, upper=True)
+        bot = common.surface_z_frac(sect, frac, upper=False)
+        a = place(frac, (top + bot) / 2, y)
+        parts.append(shapes.rounded_box(
+            a[0], a[1], a[2], chord * 0.075, t * 2.6,
+            abs(top - bot) * chord * 0.80, min(1.4, t), seg=5))
+    return mesh.join(*parts)
 
 
 def _wing_ribs():
@@ -195,7 +314,13 @@ def _rear_spar():
         chord = common.local_chord(W["root_chord"], W["tip_chord"], af)
         x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], af)
         pts.append((x_le + chord * frac, W["semi_span"] * f, W["z_root"]))
-    return {"spar_rear": mesh.pipe(pts, ST["rear_spar_r"], 8)}
+    # the hinge backing is a D-section: flat aft where the hinges screw into
+    # it, round forward where it takes the bending
+    r = ST["rear_spar_r"]
+    sect = shapes.rounded_polygon(
+        [(-r * 0.9, -r), (r * 1.5, -r), (r * 1.5, r), (-r * 0.9, r)],
+        [r * 0.85, r * 0.22, r * 0.22, r * 0.85], seg=6)
+    return {"spar_rear": shapes.swept_profile(pts, sect, subdiv=3)}
 
 
 def _fin_ribs():
@@ -209,7 +334,7 @@ def _fin_ribs():
     t = ST["rib_t"]
     k = ST["rib_hole"]
     u1 = 1.0 - V["rudder_chord"]
-    sect0 = common.section_arc(22, V["thickness"], 0.0, 0.0, u1)
+    sect0 = common.section_arc(44, V["thickness"], 0.0, 0.0, u1)
     cu = 0.5 * u1
     for i in range(n):
         f = 0.10 + 0.74 * i / (n - 1)
@@ -223,9 +348,19 @@ def _fin_ribs():
         def ring(pts, dz):
             return [(x_le + u * chord, v * chord, z + dz) for (u, v) in pts]
 
-        out[f"fin_rib_{i + 1}"] = _ring_prism(
-            ring(sect, -t / 2), ring(sect, t / 2),
-            ring(hole, -t / 2), ring(hole, t / 2))
+        rib = [_ring_prism(ring(sect, -t / 2), ring(sect, t / 2),
+                           ring(hole, -t / 2), ring(hole, t / 2))]
+        # the doubler where the fin spar passes through, and a web aft of it
+        for (frac, wid) in ((0.32, 0.10), (0.66, 0.06)):
+            if frac >= u1 - 0.02:
+                continue
+            top = common.surface_z_frac(sect, frac, upper=True)
+            bot = common.surface_z_frac(sect, frac, upper=False)
+            rib.append(shapes.rounded_box(
+                x_le + frac * chord, (top + bot) / 2 * chord, z,
+                chord * wid, abs(top - bot) * chord * 0.78, t * 2.2,
+                min(0.9, t), seg=5))
+        out[f"fin_rib_{i + 1}"] = mesh.join(*rib)
     return out
 
 # --------------------------------------------------------------------------
@@ -234,7 +369,7 @@ def _fin_ribs():
 
 def _piano_hinge(p0, p1, r, knuckles):
     """A hinge pin with knuckles alternating along it."""
-    parts = [mesh.pipe([p0, p1], r * 0.45, 8)]
+    parts = [mesh.pipe([p0, p1], r * 0.45, 18, subdiv=3)]
     dx, dy = p1[0] - p0[0], p1[1] - p0[1]
     ang = math.atan2(dy, dx)
     for k in range(knuckles):

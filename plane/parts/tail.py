@@ -32,8 +32,9 @@ def _stabilators():
             root_le=(H["x_root_le"], 0.0, H["z_root"]),
             root_chord=H["root_chord"], tip_chord=H["tip_chord"],
             semi_span=H["semi_span"], sweep_le=H["sweep_le"],
-            dihedral=H["anhedral"], thickness=H["thickness"], camber=0.0,
-            n_span=8, n_chord=NC, pivot=0.25, mirror=mir)
+            dihedral=H["anhedral"], thickness=H["thickness"],
+            thickness_tip=H["thickness_tip"], tip_cap=6, camber=0.0,
+            n_span=18, n_chord=NC, pivot=0.25, mirror=mir)
         out[f"stabilator_{side}"] = (v, f)
     return out
 
@@ -46,8 +47,9 @@ def _fin():
         root_le=(V["x_root_le"], 0.0, V["z_root"]),
         root_chord=V["root_chord"], tip_chord=V["tip_chord"],
         semi_span=V["height"], sweep_le=V["sweep_le"],
-        thickness=V["thickness"], camber=0.0,
-        u0=0.0, u1=ru, n_span=9, n_chord=NC, vertical=True)
+        thickness=V["thickness"], thickness_tip=V["thickness_tip"],
+        tip_cap=6, camber=0.0,
+        u0=0.0, u1=ru, n_span=20, n_chord=NC, vertical=True)
 
     h_span = V["height"] * V["rudder_span"]
     c_root = V["root_chord"]
@@ -56,8 +58,9 @@ def _fin():
     v, f = common.panel(
         root_le=(V["x_root_le"], 0.0, V["z_root"]),
         root_chord=c_root, tip_chord=c_tip, semi_span=h_span,
-        sweep_le=V["sweep_le"], thickness=V["thickness"], camber=0.0,
-        u0=ru + 0.030, u1=1.0, n_span=6, n_chord=NC, vertical=True)
+        sweep_le=V["sweep_le"], thickness=V["thickness"] * 0.84,
+        thickness_tip=V["thickness_tip"] * 0.92, camber=0.0,
+        u0=ru + 0.030, u1=1.0, n_span=16, n_chord=NC, vertical=True)
     # rudder deflects about the vertical hinge, so rotate in the x-y plane
     a = math.radians(V["deflect"])
     ca, sa = math.cos(a), math.sin(a)
@@ -69,32 +72,32 @@ def _fin():
 
 def _ventrals():
     """Small canted fins under the aft fuselage. They buy back the yaw
-    stability the fin loses at high angle of attack behind a delta."""
+    stability the fin loses at high angle of attack behind a delta.
+
+    These were four-point trapezoids extruded in y: eight vertices each, flat,
+    with a knife edge all the way round. A ventral is a lifting surface --
+    that is the only reason to carry one -- so it gets a section, and it is
+    cambered outboard because it is canted and only ever has to work one way.
+    """
     out = {}
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         x0, c, d = VN["x_le"], VN["chord"], VN["depth"]
         sw = math.tan(math.radians(VN["sweep"]))
-        t = VN["thickness"] / 2
-        # trapezoid in the x-z plane, extruded in y, then canted outboard
-        prof = [(x0, -8.0), (x0 + c, -8.0),
-                (x0 + c - 6.0, -8.0 - d), (x0 + sw * d, -8.0 - d)]
-        verts, faces = [], []
-        for (x, z) in prof:
-            verts.append((x, sgn * t, z))
-        for (x, z) in prof:
-            verts.append((x, -sgn * t, z))
-        n = len(prof)
-        faces.append(tuple(range(n)))
-        faces.append(tuple(range(2 * n - 1, n - 1, -1)))
-        for i in range(n):
-            i2 = (i + 1) % n
-            faces.append((i, i2, n + i2, n + i))
+        # loft downward from the fuselage: span runs -z, so build it vertical
+        # and then cant it outboard about its root
+        v, f = common.panel(
+            root_le=(x0, 0.0, -8.0), root_chord=c, tip_chord=c * 0.62,
+            semi_span=-d, sweep_le=-VN["sweep"],
+            thickness=VN["thickness"] / c * 1.9,
+            thickness_tip=VN["thickness"] / c * 1.2,
+            camber=0.03 * sgn, tip_cap=5,
+            n_span=12, n_chord=NC, vertical=True)
         ang = math.radians(VN["cant"]) * sgn
         ca, sa = math.cos(ang), math.sin(ang)
         z_hinge = -8.0
-        verts = [(x, y * ca - (z - z_hinge) * sa + sgn * 14.0,
-                  z_hinge + y * sa + (z - z_hinge) * ca) for (x, y, z) in verts]
-        out[f"ventral_{side}"] = (verts, faces)
+        v = [(x, y * ca - (z - z_hinge) * sa + sgn * 14.0,
+              z_hinge + y * sa + (z - z_hinge) * ca) for (x, y, z) in v]
+        out[f"ventral_{side}"] = (v, f)
     return out
 
 

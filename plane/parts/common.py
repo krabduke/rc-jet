@@ -57,7 +57,7 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
           dihedral=0.0, thickness=0.06, camber=0.0,
           twist_root=0.0, twist_tip=0.0, u0=0.0, u1=1.0,
           n_span=12, n_chord=40, pivot=0.25, vertical=False,
-          mirror=False, planform=None):
+          mirror=False, planform=None, thickness_tip=None, tip_cap=0):
     """Loft one lifting surface. Span runs +y, or +z when vertical.
 
     Twist is applied about `pivot` chord so washout does not also move the
@@ -65,35 +65,78 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
 
     `planform` overrides the linear root-to-tip taper with a station table,
     which is how the wing gets a curved leading edge.
+
+    `thickness_tip` tapers the section: a wing is thick at the root because
+    that is where the spar has to be deep, and thin at the tip because that
+    is where thickness is only drag. Constant thickness root to tip is the
+    clearest sign a wing was extruded rather than designed.
+
+    `tip_cap` closes the tip with that many rings of a rounded cap instead of
+    a flat rib. A flat-cut tip is the single thing that makes a lofted wing
+    read as blocky -- real tips are closed over, and they shed a tip vortex
+    off a radius rather than off a square edge.
     """
     sect = section_arc(n_chord, thickness, camber, u0, u1)
     n_sec = len(sect)
-    verts = []
-    for j in range(n_span):
-        f = j / (n_span - 1)
-        s = semi_span * f
+    t_ratio = (1.0 if thickness_tip is None
+               else thickness_tip / max(thickness, 1e-6))
+
+    def ring(f, s, v_scale=1.0, c_scale=1.0, s_extra=0.0):
         if planform is not None:
             x_le, chord = planform_at(planform, f)
         else:
             chord = root_chord + (tip_chord - root_chord) * f
             x_le = root_le[0] + s * math.tan(math.radians(sweep_le))
+        # shrink about the quarter-chord so a capped tip rakes in, not back
+        x_le += chord * pivot * (1.0 - c_scale)
+        chord *= c_scale
         tw = math.radians(twist_root + (twist_tip - twist_root) * f)
         ct, st = math.cos(tw), math.sin(tw)
         rise = s * math.tan(math.radians(dihedral))
-
+        tv = (1.0 + (t_ratio - 1.0) * f) * v_scale
+        out = []
         for (u, v) in sect:
             du = (u - pivot) * chord
-            dv = v * chord
+            dv = v * chord * tv
             dx = du * ct - dv * st
             dn = du * st + dv * ct     # offset along the section normal
             px = x_le + pivot * chord + dx
             if vertical:
                 # span runs +z, so the aerofoil's thickness must run +/-y.
                 # Putting both into z collapses the fin into a flat sheet.
-                verts.append((px, root_le[1] + dn, root_le[2] + s))
+                out.append((px, root_le[1] + dn, root_le[2] + s + s_extra))
             else:
-                y = root_le[1] + (-s if mirror else s)
-                verts.append((px, y, root_le[2] + rise + dn))
+                y = root_le[1] + (-(s + s_extra) if mirror else s + s_extra)
+                out.append((px, y, root_le[2] + rise + dn))
+        return out
+
+    # The cap rolls over INSIDE the tip station -- semi-span is measured to
+    # the tip, so a cap that bulged past it would make the wing wider than it
+    # is specified to be, which is exactly what it did.
+    bulge = 0.0
+    if tip_cap:
+        _, tip_c = (planform_at(planform, 1.0) if planform is not None
+                    else (0.0, tip_chord))
+        bulge = min(abs(tip_c * (thickness if thickness_tip is None
+                                 else thickness_tip) * 0.72),
+                    abs(semi_span) * 0.06)
+        bulge = math.copysign(bulge, semi_span or 1.0)
+
+    verts = []
+    for j in range(n_span):
+        f = j / (n_span - 1)
+        verts.extend(ring(f, (semi_span - bulge) * f))
+
+    if tip_cap:
+        # a quarter-round over the tip: the section collapses towards its own
+        # chord line as the span runs out to the tip station
+        for k in range(1, tip_cap + 1):
+            a = (math.pi / 2) * k / tip_cap
+            verts.extend(ring(1.0, semi_span - bulge,
+                              v_scale=max(math.cos(a), 0.09),
+                              c_scale=1.0 - 0.16 * (1.0 - math.cos(a)),
+                              s_extra=bulge * math.sin(a)))
+        n_span += tip_cap
 
     # Winding handedness depends on span axis and mirroring, and the rules
     # interact badly once surfaces are also rotated to a deflection. These are
@@ -163,3 +206,20 @@ def surface_z(W, f, u, upper=True):
     yc, _ = airfoil.camber_line(u, W.get("camber", 0.0))
     v = (yc + yt) if upper else (yc - yt)
     return W["z_root"] + v * chord
+
+
+def surface_z_frac(sect, u, upper=True):
+    """The section's v at chord fraction u, on the requested surface.
+
+    `section_arc` returns the loop going round the aerofoil, so picking a
+    surface means filtering on the sign of v -- which is what a rib needs in
+    order to know how deep its web has to be at a given station.
+    """
+    best, bv = None, 0.0
+    for (su, sv) in sect:
+        if (sv >= 0.0) != upper:
+            continue
+        d = abs(su - u)
+        if best is None or d < best:
+            best, bv = d, sv
+    return bv
