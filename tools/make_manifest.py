@@ -16,7 +16,7 @@ GROUPS = [
     ("02 Wing",            "Wing",          "#6E93A8"),
     ("03 Tail",            "Tail",          "#7C86A6"),
     ("04 Intake and Duct", "Intake & duct", "#5E6B74"),
-    ("05 Canopy",          "Canopy",        "#79A6B4"),
+    ("05 Cockpit",         "Cockpit",       "#79A6B4"),
     ("06 Landing Gear",    "Gear",          "#6F6F72"),
     ("07 Engine",          "Engine",        "#A8763E"),
     ("08 RC Systems",      "RC systems",    "#4F8A5E"),

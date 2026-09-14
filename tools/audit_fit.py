@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(HERE, "plane"))
 
 import spec
 from parts import (fuselage as fus, internals, structure, systems, detail,
-                   canopy as canopy_mod)
+                   cockpit, canopy as canopy_mod)
 
 # Everything is checked. This used to be an allow-list of prefixes that had to
 # stay inside, and anything not on it was skipped -- so a NACA inlet placed
@@ -79,8 +79,10 @@ OUTSIDE = {
 
 # The canopy is a bubble standing above the fuselage, so anything under it is
 # allowed that much extra height.
-CANOPY_PARTS = ("instrument_panel", "seat_pan", "seat_back", "console_",
-                "coaming", "hud", "pilot_", "ejection_seat")
+CANOPY_PARTS = ("cockpit_", "instrument_panel", "panel_instruments",
+                "seat_", "console_", "coaming", "hud_", "pilot_",
+                "ejection_handle", "rudder_pedals", "control_stick",
+                "throttle_lever")
 
 
 def canopy_top(x):
@@ -94,11 +96,16 @@ def canopy_top(x):
 
 def check():
     built = {}
-    for m in (internals, structure, systems, detail):
+    for m in (internals, structure, systems, detail, cockpit):
         built.update(m.build())
 
     worst = []
     for name, (verts, faces) in built.items():
+        # a "cut:" entry is a boolean cutter, not a part: the canopy aperture
+        # prism deliberately stands 60 mm clear of the skin so the difference
+        # reaches all of it
+        if name.startswith("cut:"):
+            continue
         allow_canopy = name.startswith(CANOPY_PARTS)
         if any(name.startswith(k) for k in OUTSIDE):
             continue

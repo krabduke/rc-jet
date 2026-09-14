@@ -16,21 +16,22 @@ import spec              # noqa: E402
 import mesh as meshlib   # noqa: E402
 import materials         # noqa: E402
 from parts import (fuselage, wing, tail, intake, canopy,   # noqa: E402
-                   gear, internals, engine_mount,
+                   cockpit, gear, internals, engine_mount,
                    detail, structure, skin, systems, hardware)
 
 MM = 0.001
 
 MODULES = [
     ("fuselage", fuselage), ("wing", wing), ("tail", tail),
-    ("intake", intake), ("canopy", canopy), ("gear", gear),
+    ("intake", intake), ("canopy", canopy), ("cockpit", cockpit),
+    ("gear", gear),
     ("internals", internals), ("engine", engine_mount),
     ("detail", detail), ("structure", structure), ("skin", skin),
     ("systems", systems), ("hardware", hardware),
 ]
 
 COLLECTIONS = ["01 Fuselage", "02 Wing", "03 Tail", "04 Intake and Duct",
-               "05 Canopy", "06 Landing Gear", "07 Engine",
+               "05 Cockpit", "06 Landing Gear", "07 Engine",
                "08 RC Systems", "09 Structure",
                "10 Detail", "11 Skin"]
 
@@ -39,7 +40,6 @@ DETAIL_NAMES = {
     "control_horns", "clevises", "pitot", "antennas", "wing_fences",
     "vortex_generators", "navlight_port", "navlight_stbd", "navlight_tail",
     "access_panels", "exhaust_petals", "pylons", "static_dischargers",
-    "instrument_panel", "seat_pan", "seat_back",
     "naca_inlet_l", "naca_inlet_r", "cooling_exit_l", "cooling_exit_r",
     "bl_diverter", "intake_lip_ring", "nose_strakes",
     "pushrod_linkages", "bellcranks",
@@ -70,10 +70,11 @@ def collection_for(name):
     if n.startswith(("gear_", "wheel")):
         return "06 Landing Gear"
     if n.startswith(("access_tray", "rx_battery", "rx_mount",
-                     "canopy_latch")):
-        return "05 Canopy"
-    if n.startswith("canopy"):
-        return "05 Canopy"
+                     "canopy_latch", "canopy", "cockpit_", "console_",
+                     "coaming", "hud_", "instrument_panel", "panel_instruments",
+                     "seat_", "ejection_handle", "rudder_pedals",
+                     "control_stick", "throttle_lever", "pilot_")):
+        return "05 Cockpit"
     if n.startswith(("intake", "duct")):
         return "04 Intake and Duct"
     if n.startswith(("stabilator", "vtail", "rudder", "ventral")):

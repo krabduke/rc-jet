@@ -170,7 +170,10 @@ def section(centre):
             continue
         m = o.modifiers.new("sec", "BOOLEAN")
         m.operation = "DIFFERENCE"
-        m.solver = "FLOAT"
+        # EXACT, not FLOAT. The fast solver gave up silently on the fuselage
+        # skin once the cockpit aperture was cut into it, and a boolean that
+        # does nothing looks exactly like a cutaway of a solid aeroplane.
+        m.solver = "EXACT"
         m.object = cut
 
 
@@ -202,7 +205,7 @@ def mode_exploded(s):
     moves = {
         "02 Wing": (0.0, 0.0, -0.070),
         "03 Tail": (0.055, 0.0, 0.034),
-        "05 Canopy": (0.0, 0.0, 0.052),
+        "05 Cockpit": (0.0, 0.0, 0.052),
         "06 Landing Gear": (0.0, 0.0, -0.046),
         "07 Engine": (0.080, 0.0, 0.0),
         "08 RC Systems": (-0.012, 0.0, 0.064),

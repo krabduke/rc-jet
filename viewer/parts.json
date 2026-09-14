@@ -211,6 +211,42 @@
    ],
    "metal": 0.1,
    "rough": 0.52
+  },
+  "helmet": {
+   "rgb": [
+    0.72,
+    0.73,
+    0.742
+   ],
+   "metal": 0.0,
+   "rough": 0.26
+  },
+  "visor": {
+   "rgb": [
+    0.24,
+    0.18,
+    0.06
+   ],
+   "metal": 0.6,
+   "rough": 0.1
+  },
+  "flightsuit": {
+   "rgb": [
+    0.118,
+    0.14,
+    0.108
+   ],
+   "metal": 0.0,
+   "rough": 0.86
+  },
+  "warning": {
+   "rgb": [
+    0.62,
+    0.44,
+    0.03
+   ],
+   "metal": 0.0,
+   "rough": 0.42
   }
  },
  "groups": [
@@ -219,7 +255,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 58,
-   "faces": 40162,
+   "faces": 40206,
    "x0": 0.0,
    "x1": 440.0
   },
@@ -251,11 +287,11 @@
    "x1": 300.0
   },
   {
-   "key": "05 Canopy",
-   "label": "Canopy",
+   "key": "05 Cockpit",
+   "label": "Cockpit",
    "color": "#79A6B4",
-   "parts": 6,
-   "faces": 2934,
+   "parts": 28,
+   "faces": 10202,
    "x0": 75.0,
    "x1": 226.0
   },
@@ -291,7 +327,7 @@
    "label": "Structure",
    "color": "#9A7B4A",
    "parts": 50,
-   "faces": 36968,
+   "faces": 36900,
    "x0": 26.7,
    "x1": 434.6
   },
@@ -299,8 +335,8 @@
    "key": "10 Detail",
    "label": "Detail",
    "color": "#A1A8AF",
-   "parts": 18,
-   "faces": 11255,
+   "parts": 15,
+   "faces": 10745,
    "x0": -28.0,
    "x1": 433.0
   },
@@ -355,7 +391,7 @@
    "mat": "airframe",
    "x0": 0.0,
    "x1": 438.0,
-   "f": 11520
+   "f": 11548
   },
   "flaperon_l": {
    "g": "02 Wing",
@@ -533,18 +569,172 @@
    "f": 288
   },
   "canopy_frame": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "glass",
    "x0": 77.4,
    "x1": 178.0,
    "f": 1254
   },
   "canopy_glass": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "glass",
    "x0": 78.0,
    "x1": 178.0,
    "f": 1000
+  },
+  "coaming": {
+   "g": "05 Cockpit",
+   "mat": "fabric",
+   "x0": 97.8,
+   "x1": 105.2,
+   "f": 232
+  },
+  "cockpit_tub": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 95.0,
+   "x1": 152.0,
+   "f": 974
+  },
+  "console_l": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 105.0,
+   "x1": 142.0,
+   "f": 412
+  },
+  "console_r": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 105.0,
+   "x1": 142.0,
+   "f": 412
+  },
+  "control_stick": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 121.4,
+   "x1": 124.1,
+   "f": 224
+  },
+  "ejection_handle": {
+   "g": "05 Cockpit",
+   "mat": "warning",
+   "x0": 125.9,
+   "x1": 129.7,
+   "f": 480
+  },
+  "hud_frame": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 103.8,
+   "x1": 109.9,
+   "f": 172
+  },
+  "hud_glass": {
+   "g": "05 Cockpit",
+   "mat": "visor",
+   "x0": 103.8,
+   "x1": 106.2,
+   "f": 256
+  },
+  "instrument_panel": {
+   "g": "05 Cockpit",
+   "mat": "board",
+   "x0": 97.5,
+   "x1": 100.5,
+   "f": 256
+  },
+  "panel_instruments": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 96.9,
+   "x1": 100.8,
+   "f": 672
+  },
+  "pilot_arms": {
+   "g": "05 Cockpit",
+   "mat": "flightsuit",
+   "x0": 115.6,
+   "x1": 138.3,
+   "f": 460
+  },
+  "pilot_helmet": {
+   "g": "05 Cockpit",
+   "mat": "helmet",
+   "x0": 131.6,
+   "x1": 139.2,
+   "f": 286
+  },
+  "pilot_mask": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 130.3,
+   "x1": 137.4,
+   "f": 240
+  },
+  "pilot_torso": {
+   "g": "05 Cockpit",
+   "mat": "flightsuit",
+   "x0": 134.2,
+   "x1": 140.4,
+   "f": 182
+  },
+  "pilot_visor": {
+   "g": "05 Cockpit",
+   "mat": "visor",
+   "x0": 131.4,
+   "x1": 133.5,
+   "f": 236
+  },
+  "rudder_pedals": {
+   "g": "05 Cockpit",
+   "mat": "alu",
+   "x0": 104.6,
+   "x1": 115.0,
+   "f": 176
+  },
+  "seat_back": {
+   "g": "05 Cockpit",
+   "mat": "fabric",
+   "x0": 139.9,
+   "x1": 146.5,
+   "f": 236
+  },
+  "seat_harness": {
+   "g": "05 Cockpit",
+   "mat": "fabric",
+   "x0": 130.5,
+   "x1": 143.8,
+   "f": 476
+  },
+  "seat_headbox": {
+   "g": "05 Cockpit",
+   "mat": "fabric",
+   "x0": 142.4,
+   "x1": 150.0,
+   "f": 268
+  },
+  "seat_pan": {
+   "g": "05 Cockpit",
+   "mat": "fabric",
+   "x0": 126.0,
+   "x1": 142.0,
+   "f": 242
+  },
+  "seat_rails": {
+   "g": "05 Cockpit",
+   "mat": "steel",
+   "x0": 143.7,
+   "x1": 148.3,
+   "f": 170
+  },
+  "throttle_lever": {
+   "g": "05 Cockpit",
+   "mat": "plastic",
+   "x0": 110.9,
+   "x1": 123.5,
+   "f": 206
   },
   "gear_main_struts": {
    "g": "06 Landing Gear",
@@ -1834,13 +2024,6 @@
    "x1": 419.1,
    "f": 490
   },
-  "instrument_panel": {
-   "g": "10 Detail",
-   "mat": "board",
-   "x0": 98.0,
-   "x1": 110.0,
-   "f": 170
-  },
   "intake_lip_ring": {
    "g": "10 Detail",
    "mat": "duct",
@@ -1924,20 +2107,6 @@
    "x0": 270.4,
    "x1": 416.0,
    "f": 4030
-  },
-  "seat_back": {
-   "g": "10 Detail",
-   "mat": "fabric",
-   "x0": 141.0,
-   "x1": 147.0,
-   "f": 170
-  },
-  "seat_pan": {
-   "g": "10 Detail",
-   "mat": "fabric",
-   "x0": 115.0,
-   "x1": 149.0,
-   "f": 170
   },
   "static_dischargers": {
    "g": "10 Detail",
@@ -2224,14 +2393,14 @@
    "mat": "ply",
    "x0": 109.3,
    "x1": 110.7,
-   "f": 428
+   "f": 386
   },
   "former_05": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 129.3,
    "x1": 130.8,
-   "f": 428
+   "f": 402
   },
   "former_06": {
    "g": "09 Structure",
@@ -2497,14 +2666,14 @@
    "mat": "spruce",
    "x0": 27.7,
    "x1": 434.2,
-   "f": 866
+   "f": 874
   },
   "stringer_04": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.7,
    "x1": 434.2,
-   "f": 866
+   "f": 874
   },
   "stringer_05": {
    "g": "01 Fuselage",
@@ -2661,7 +2830,7 @@
    "f": 1688
   },
   "access_tray": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "ply",
    "x0": 75.0,
    "x1": 159.0,
@@ -2696,14 +2865,14 @@
    "f": 2040
   },
   "canopy_latch_l": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "alu",
    "x0": 159.0,
    "x1": 173.0,
    "f": 170
   },
   "canopy_latch_r": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "alu",
    "x0": 159.0,
    "x1": 173.0,
@@ -2857,7 +3026,7 @@
    "f": 170
   },
   "rx_battery": {
-   "g": "05 Canopy",
+   "g": "05 Cockpit",
    "mat": "lipo",
    "x0": 190.0,
    "x1": 226.0,

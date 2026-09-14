@@ -141,9 +141,62 @@ EXPECTED = [
     ("antennas", "fuselage_skin"),
     ("static_dischargers", "wing_"),
     ("static_dischargers", "vtail_fin"),
+
+    # ------------------------------------------------------------------
+    # The cockpit, which is one assembly pretending to be twenty-two parts.
+    #
+    # Two things make almost all of this unavoidable. The first is that this
+    # test runs on the geometry layer, which is pure Python and knows nothing
+    # about booleans: the cockpit aperture is cut from the skin, the formers
+    # and the two upper stringers by a modifier in assemble.py, so what is
+    # tested here is the frame before the hole is in it. Every part under the
+    # canopy is therefore inside the skin, and the ones abreast of a former
+    # are inside that too. The second is that a cockpit is nested by nature: a
+    # pilot sits in a seat, his hands are on the controls, the helmet is on
+    # his head and the mask is clipped to the helmet. Each of those overlaps
+    # IS the assembly.
+    # ------------------------------------------------------------------
+    ("cockpit_tub", "fuselage_skin"), ("cockpit_tub", "former_"),
+    ("cockpit_tub", "bhd_"), ("cockpit_tub", "stringer"),
+    ("cockpit_tub", "longeron"), ("cockpit_tub", "lipo_3s"),
+    ("cockpit_tub", "seam_"), ("cockpit_tub", "battery_strap_"),
+    # the windscreen frame lands on the tub edge, which is the sill
+    ("cockpit_tub", "canopy_"),
+    ("console_", "cockpit_tub"), ("console_", "fuselage_skin"),
+    ("console_", "former_"), ("console_", "stringer"),
+    ("console_", "seam_"),
     ("instrument_panel", "fuselage_skin"),
-    ("seat_", "fuselage_skin"),
-    ("seat_", "former_"),
+    ("instrument_panel", "cockpit_tub"), ("instrument_panel", "coaming"),
+    ("instrument_panel", "panel_instruments"),
+    ("instrument_panel", "former_"), ("instrument_panel", "seam_"),
+    ("panel_instruments", "fuselage_skin"), ("panel_instruments", "coaming"),
+    ("panel_instruments", "seam_"),
+    ("coaming", "fuselage_skin"), ("coaming", "canopy_glass"),
+    ("coaming", "cockpit_tub"), ("coaming", "seam_"),
+    ("hud_glass", "hud_frame"), ("hud_", "coaming"),
+    ("hud_", "fuselage_skin"), ("hud_", "canopy_glass"),
+    ("hud_", "seam_"),
+    # the seat: pan, back, headbox, rails and harness are one seat
+    ("seat_", "seat_"),
+    ("seat_", "fuselage_skin"), ("seat_", "former_"),
+    ("seat_", "cockpit_tub"), ("seat_", "bhd_"), ("seat_", "seam_"),
+    ("seat_", "console_"), ("seat_", "stringer"), ("seat_", "longeron"),
+    ("ejection_handle", "seat_"), ("ejection_handle", "fuselage_skin"),
+    ("ejection_handle", "former_"),
+    ("ejection_handle", "seam_"), ("ejection_handle", "cockpit_tub"),
+    ("rudder_pedals", "fuselage_skin"), ("rudder_pedals", "cockpit_tub"),
+    ("rudder_pedals", "seam_"),
+    ("control_stick", "console_"), ("control_stick", "fuselage_skin"),
+    ("control_stick", "seam_"),
+    ("throttle_lever", "console_"), ("throttle_lever", "fuselage_skin"),
+    ("throttle_lever", "seam_"),
+    # the pilot, who is in the seat with his hands on the controls
+    ("pilot_", "pilot_"),
+    ("pilot_", "seat_"), ("pilot_", "fuselage_skin"),
+    ("pilot_", "cockpit_tub"), ("pilot_", "console_"),
+    ("pilot_", "control_stick"), ("pilot_", "throttle_lever"),
+    ("pilot_", "canopy_glass"), ("pilot_", "seam_"),
+    ("pilot_", "former_"), ("pilot_", "stringer"),
     ("bl_diverter", "fuselage_skin"),
     ("tailpipe_shroud", "fuselage_skin"),
     ("naca_inlet_", "fuselage_skin"),
@@ -151,14 +204,11 @@ EXPECTED = [
     ("canopy_latch_", "canopy_frame"),
     ("canopy_latch_", "fuselage_skin"),
     ("wheel_hub_", "wheel_"),
-    ("gps_puck", "avionics_tray"),
-    ("telemetry_sensor", "avionics_tray"),
     ("kill_switch", "fuselage_skin"),
+    ("telemetry_gps", "avionics_tray"),
+    ("receiver", "former_"),
     ("ecu_battery", "avionics_tray"),
     ("turbine_ecu", "avionics_tray"),
-    ("rx_mount", "former_"),
-    ("receiver", "rx_mount"),
-    ("esc_40a", "avionics_tray"),
 
     # ------------------------------------------------------------------
     # Joints the check could not reach until it stopped spending its

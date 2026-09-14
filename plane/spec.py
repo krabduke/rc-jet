@@ -24,6 +24,8 @@ Chin inlet, bubble canopy, all-moving stabilators, single swept fin, tricycle
 gear. Flaperons for roll and pitch trim, stabilators for pitch, rudder for yaw.
 """
 
+import math
+
 # --------------------------------------------------------------------------
 # Envelope and scale
 # --------------------------------------------------------------------------
@@ -186,6 +188,52 @@ CANOPY = {
 }
 
 # --------------------------------------------------------------------------
+# Cockpit (chosen) — sized by what is under the floor, not by the canopy
+# --------------------------------------------------------------------------
+#
+# The flight pack fills the bay from the datum up to z = 20, so the tub floor
+# has to sit on top of it. That leaves 19 mm from floor to canopy crown, which
+# is why the pilot is a bust: a full figure would need a footwell the battery
+# is already in. Every z here is checked against tools/audit_fit's canopy_top.
+
+COCKPIT = {
+    "x_front":        95.0,     # footwell bulkhead, under the windscreen
+    "x_rear":        152.0,     # ends on bhd_cockpit; the receiver is behind it
+    "z_floor":        20.6,     # on top of the flight pack
+    "depth":           3.2,     # tub side height above the floor
+    "half_width":     12.4,
+    "half_width_aft": 11.0,
+    "wall":            1.0,
+    "x_panel":        99.0,
+    "z_panel_top":    30.2,
+    "panel_cant":     19.0,     # deg, top laid back towards the pilot
+    "x_hud":         105.0,
+    "x_pedals":      106.0,
+    "x_seat":        126.0,     # seat pan front edge
+    "seat_half_width": 7.0,
+    "seat_recline":   16.0,     # deg
+    # The canopy is 19 mm deep from the tub floor and the flight pack is
+    # under the floor, so a 1:34 pilot does not fit and never could. This
+    # is a scale-RC pilot: a bust sized to the hatch rather than to a
+    # person, which is what those figures actually are.
+    "helmet_r":        3.6,
+}
+
+def canopy_profile(t):
+    """Canopy half-width and height at t along its length, 0 at the
+    windscreen base and 1 at the spine.
+
+    The skin needs this as much as the canopy does: the aperture the skin has
+    to be cut for is the canopy's own plan outline, and the two have to agree
+    exactly or the glass lands on air. So it lives here, with the numbers it
+    is made of, rather than in either module.
+    """
+    w = CANOPY["half_width"] * math.sin(math.pi * min(t * 1.12, 1.0)) ** 0.62
+    h = CANOPY["height"] * math.sin(math.pi * min(t * 1.06, 1.0)) ** 0.52
+    return max(w, 0.4), max(h, 0.3)
+
+
+# --------------------------------------------------------------------------
 # Landing gear (chosen) — tricycle, fixed, modelled down
 # --------------------------------------------------------------------------
 
@@ -333,12 +381,27 @@ MATERIAL_MAP = {
     "bypass_slots": "duct",
     "mount_rails": "carbon",
     "mount_ring": "alu",
-    "hud": "glass",
+    "cockpit_tub": "plastic",
     "coaming": "fabric",
-    "console_": "board",
-    "ejection_seat": "fabric",
-    "pilot_torso": "fabric",
-    "pilot_helmet": "lens_white",
+    "console_": "plastic",
+    "instrument_panel": "board",
+    "panel_instruments": "plastic",
+    "hud_glass": "visor",
+    "hud_frame": "plastic",
+    "seat_pan": "fabric",
+    "seat_back": "fabric",
+    "seat_headbox": "fabric",
+    "seat_harness": "fabric",
+    "seat_rails": "steel",
+    "ejection_handle": "warning",
+    "rudder_pedals": "alu",
+    "control_stick": "plastic",
+    "throttle_lever": "plastic",
+    "pilot_torso": "flightsuit",
+    "pilot_arms": "flightsuit",
+    "pilot_helmet": "helmet",
+    "pilot_visor": "visor",
+    "pilot_mask": "plastic",
     "cooling_exit": "duct",
     "naca_inlet": "duct",
     "avionics_tray": "ply",
@@ -396,9 +459,6 @@ MATERIAL_MAP = {
     "pylon_":             "airframe",
     "missile_":           "ordnance",
     "static_dischargers": "steel",
-    "instrument_panel":   "board",
-    "seat_pan":           "fabric",
-    "seat_back":          "fabric",
     "former":             "ply",
     "longeron":           "spruce",
     "stringers":          "spruce",
@@ -437,6 +497,11 @@ PALETTE = {
     "lens_white":  ((0.760, 0.770, 0.790), 0.00, 0.18),
     "spruce":      ((0.545, 0.452, 0.288), 0.00, 0.70),
     "ordnance":    ((0.216, 0.230, 0.218), 0.10, 0.52),
+    # the cockpit
+    "helmet":      ((0.720, 0.730, 0.742), 0.00, 0.26),
+    "visor":       ((0.240, 0.180, 0.060), 0.60, 0.10),
+    "flightsuit":  ((0.118, 0.140, 0.108), 0.00, 0.86),
+    "warning":     ((0.620, 0.440, 0.030), 0.00, 0.42),
 }
 
 # Resolution. Forty chord points and fourteen spanwise stations made the main

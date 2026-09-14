@@ -31,6 +31,32 @@ def build():
     out.update(_rear_spar())
     out.update(_fin_ribs())
     out.update(_hinges())
+    out.update(_cockpit_cutouts(out))
+    return out
+
+
+def _cockpit_cutouts(built):
+    """Open the frame where the cockpit is.
+
+    A former is a ring and a stringer runs the length of the body, so both
+    cross the canopy aperture -- and with the skin now cut, they crossed it in
+    plain sight, six ply hoops standing across an open cockpit. On a built-up
+    airframe they are cut away there and the tub is bonded to what is left of
+    them, which is why the tub has a flange. Hand the same prism the skin is
+    cut with to every frame member that reaches into it.
+    """
+    aperture = fus.canopy_aperture()
+    K = spec.COCKPIT
+    out = {}
+    for name, (verts, _f) in built.items():
+        if not name.startswith(("former_", "longeron", "stringer")):
+            continue
+        # only the ones that actually reach into the hole; the boolean is
+        # exact and slow, and most of the frame is nowhere near the cockpit
+        if any(K["x_front"] <= x <= K["x_rear"]
+               and abs(y) <= K["half_width"]
+               and z > spec.CANOPY["z_base"] - 1.0 for (x, y, z) in verts):
+            out[f"cut:{name}"] = aperture
     return out
 
 

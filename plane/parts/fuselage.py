@@ -15,6 +15,7 @@ def build():
     out = {}
     out.update(_skin())
     out.update(_bulkheads())
+    out["cut:fuselage_skin"] = canopy_aperture()
     return out
 
 
@@ -108,6 +109,61 @@ def _skin():
         faces.append((s, off + s, off + s2, s2))
         faces.append((last + s, last + s2, off + last + s2, off + last + s))
     return {"fuselage_skin": (verts, faces)}
+
+
+def canopy_aperture():
+    """The hole the cockpit is seen through.
+
+    The skin was lofted closed from nose to tail and the canopy sat on top of
+    it, so the aeroplane had no cockpit opening at all: the tub, the seat, the
+    panel and the pilot were all buried inside solid material, with the top of
+    a helmet coming through the spine like a periscope. Nobody noticed while
+    the cockpit was three boxes, because three boxes look much the same
+    whether you can see them or not.
+
+    The hole is the tub's outline, not the canopy's. That is the part people
+    get wrong: a bubble canopy is longer and wider than the cockpit it covers,
+    and forward of the windscreen base it closes over solid nose deck -- you
+    see the instrument panel through the glass, not through a hole. Cut to the
+    canopy instead and you get a slot either side of the tub looking straight
+    down at the flight pack, and an open trench under the windscreen.
+
+    So: the tub's plan outline, from the sill line up past the crown, with the
+    skin below the sill left alone. That is the coaming the cockpit is let
+    into.
+    """
+    C = spec.CANOPY
+    K = spec.COCKPIT
+    n = 40
+    prism = []
+    for i in range(n):
+        t = i / (n - 1)
+        x = K["x_front"] + (K["x_rear"] - K["x_front"]) * t
+        tub = K["half_width"] + (K["half_width_aft"] - K["half_width"]) * t
+        ct = (x - C["x_front"]) / (C["x_rear"] - C["x_front"])
+        w = max(min(spec.canopy_profile(ct)[0] - C["frame"] * 1.1,
+                    tub - K["wall"] - 0.3), 0.25)
+        _, _, zc, _ = station_at(x)
+        prism.append((x, w, C["z_base"] + zc * 0.15))
+
+    verts, faces = [], []
+    for (px, w, z) in prism:
+        verts.append((px, -w, z - 0.6))
+        verts.append((px, w, z - 0.6))
+    base = len(verts)
+    for (px, w, z) in prism:
+        verts.append((px, -w, z + 60.0))
+        verts.append((px, w, z + 60.0))
+    for i in range(n - 1):
+        a, b = i * 2, (i + 1) * 2
+        faces.append((a, a + 1, b + 1, b))                      # floor
+        faces.append((base + a, base + b, base + b + 1, base + a + 1))
+        faces.append((a, b, base + b, base + a))                # left wall
+        faces.append((a + 1, base + a + 1, base + b + 1, b + 1))
+    faces.append((0, base, base + 1, 1))                        # front and
+    last = (n - 1) * 2                                          # back caps
+    faces.append((last, last + 1, base + last + 1, base + last))
+    return verts, faces
 
 
 def _bulkheads():

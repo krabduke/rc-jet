@@ -21,10 +21,13 @@ def build():
 
 def _profile(t):
     """Canopy half-width and height as a fraction of length. Peaks just behind
-    the windscreen and fairs into the spine, which is the bubble shape."""
-    w = C["half_width"] * math.sin(math.pi * min(t * 1.12, 1.0)) ** 0.62
-    h = C["height"] * math.sin(math.pi * min(t * 1.06, 1.0)) ** 0.52
-    return max(w, 0.4), max(h, 0.3)
+    the windscreen and fairs into the spine, which is the bubble shape.
+
+    It lives in spec because the fuselage skin has to cut its aperture to the
+    same outline, and two copies of a curve is how a canopy ends up landing
+    half on skin and half on nothing.
+    """
+    return spec.canopy_profile(t)
 
 
 def _glass():

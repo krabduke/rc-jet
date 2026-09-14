@@ -35,7 +35,6 @@ def build():
     out.update(_access_panels())
     out.update(_exhaust_petals())
     out.update(_dischargers())
-    out.update(_cockpit())
     out.update(_speed_kit())
     out.update(_linkages())
     return out
@@ -372,27 +371,6 @@ def _dischargers():
                         p1[2] + d[2] * 0.34)
                 parts.append(mesh.pipe([p1, tip2], 0.16, 6))
     return {"static_dischargers": mesh.join(*parts)}
-
-
-def _cockpit():
-    """Instrument coaming and a seat pan, visible through the canopy."""
-    out = {}
-    C = spec.CANOPY
-    # The cockpit is a moulded insert that drops in under the canopy: it
-    # sits ON the canopy sill, not below it. Hung 4 mm under the sill the
-    # seat pan was in the equipment bay -- which on this aircraft is the
-    # only usable volume there is, and which the flight pack needs.
-    out["instrument_panel"] = shapes.rounded_box(C["x_front"] + 26.0, 0.0,
-                                       C["z_base"] + C["height"] * 0.30,
-                                       12.0, 20.0, C["height"] * 0.48)
-    out["seat_pan"] = shapes.rounded_box(C["x_front"] + 54.0, 0.0,
-                               C["z_base"] + 3.0, 34.0, 24.0, 5.0)
-    # the canopy glass tops out at z_base + height; a taller seat goes
-    # straight through it
-    out["seat_back"] = shapes.rounded_box(C["x_front"] + 66.0, 0.0,
-                                C["z_base"] + C["height"] * 0.26,
-                                6.0, 19.0, C["height"] * 0.52)
-    return out
 
 
 def _speed_kit():
