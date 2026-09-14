@@ -187,6 +187,18 @@
   #thr button:focus-visible{outline:2px solid var(--focus); outline-offset:2px; z-index:1}
   #n1box{font-size:11px; color:#7C8A92; font-variant-numeric:tabular-nums;
          align-self:center; margin-right:10px; min-width:78px}
+
+/* ---- wind tunnel: view switches and the how-to-read line ---- */
+#tunnel .tviews{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;
+  margin:8px 0 2px;padding-top:8px;border-top:1px solid #1E282D}
+#tunnel .tview{display:flex;align-items:center;gap:6px;font-size:11px;
+  color:#9FADB5;cursor:pointer;line-height:1.5}
+#tunnel .tview input{accent-color:#7FB2C9;width:12px;height:12px;margin:0}
+#tunnel .tview:hover{color:#DCE6EB}
+#tunnel .thow{margin:6px 0 0;font-size:10.5px;line-height:1.45;color:#6E7C84}
+@media (prefers-reduced-motion: reduce){
+  #tunnel .tview input#tv-anim{outline:1px dashed #46555E}
+}
 </style>
 </head>
 <body>
@@ -253,6 +265,7 @@
 <script type="importmap">
 {"imports":{
   "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "animejs":"https://cdn.jsdelivr.net/npm/animejs@4.0.2/+esm",
   "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
 }}
 </script>
@@ -260,11 +273,14 @@
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {tweenNumber, fadeObject, flyCamera, revealPanel, revealRows,
+        reducedMotion} from './anim.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {WindTunnel, buildPanel, renderReadout, drawSpanLoad}
   from './tunnel-ui.js';
-import {drawLegend} from './cfd-view.js';
+import {drawLegend, speedColour, pressureColour}
+  from './cfd-view.js';
 
 const MM = 0.001;
 const $ = s => document.querySelector(s);
@@ -278,6 +294,7 @@ const SKIN = ['fuselage_skin', 'canopy_glass'];
 // model on a bench rather than an aeroplane.
 const GEAR_GROUP = '06 Landing Gear';
 
+let keyLight = null;   // cast shadows, and sized to the model in ready()
 let scene, camera, renderer, controls, root, raycaster, clock;
 let data, byGroup = new Map(), info = new Map(), pickable = [];
 let hidden = new Set(), hovered = null, corners = [], viewDir, spinning = false;
@@ -295,8 +312,13 @@ async function init(){
   renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(stage.clientWidth, stage.clientHeight);
-  renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  // Self-shadowing. Without it every recess is exactly as bright as the
+  // surface beside it, which is the difference between an object and a
+  // lit diagram.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
   clock = new THREE.Clock();
 
@@ -305,18 +327,18 @@ async function init(){
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromEquirectangular(studioEnv()).texture;
-  scene.environmentIntensity = 1.0;
+  scene.environmentIntensity = 1.05;
 
   camera = new THREE.PerspectiveCamera(30, stage.clientWidth/stage.clientHeight, 0.02, 60);
 
   // Lit from several directions on purpose: a single key leaves the underside
   // of a fuselage black, and there is nothing to see in a black fuselage.
   scene.add(
-    dir(0xFFF4E8, 1.45, -2.2, 3.4, 2.6),
+    keyLight = dir(0xFFF4E8, 1.45, -2.2, 3.4, 2.6),
     dir(0xC9DCE6, 0.85,  2.6,-1.8,-2.0),
     dir(0xFFFFFF, 0.70,  2.0, 1.6,-2.8),
-    new THREE.HemisphereLight(0xE4EDF0, 0x97A0A6, 1.15),
-    new THREE.AmbientLight(0xC4CED4, 0.40),
+    new THREE.HemisphereLight(0xE4EDF0, 0x97A0A6, 0.34),
+    new THREE.AmbientLight(0xC4CED4, 0.10),
   );
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -327,7 +349,7 @@ async function init(){
   raycaster = new THREE.Raycaster();
 
   try{
-    data = await (await fetch('parts.json')).json();
+    data = await (await fetch('parts.json?nocache=' + Date.now())).json();
   }catch(e){
     return fail('Could not read <code>parts.json</code>. Serve this folder over HTTP: '
               + 'run <code>make viewer</code> from the project root.');
@@ -337,7 +359,7 @@ async function init(){
 
   const draco = new DRACOLoader().setDecoderPath(
     'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/draco/gltf/');
-  new GLTFLoader().setDRACOLoader(draco).load('../build/rcjet.glb',
+  new GLTFLoader().setDRACOLoader(draco).load('../build/rcjet.glb?nocache=' + Date.now(),
     g => ready(g.scene),
     ev => {
       if(!ev.total) return;
@@ -362,20 +384,29 @@ function dir(colour, intensity, x, y, z){
 }
 
 function studioEnv(){
+  // A metal only looks like metal when its reflection has CONTRAST: bright
+  // sky above, dark floor below, and a couple of distinct softboxes that
+  // streak across the surface as it turns. A uniform grey gradient reflects
+  // as a uniform grey surface -- which is why the old lightbox read as clay.
   const w = 1024, h = 512;
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
   const g = cv.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0.00, '#E8EEF1');
-  grad.addColorStop(0.42, '#C2CBD1');
-  grad.addColorStop(0.58, '#A6AFB5');
-  grad.addColorStop(1.00, '#8E969C');
+  grad.addColorStop(0.00, '#FDFEFF');
+  grad.addColorStop(0.30, '#DDE5EA');
+  grad.addColorStop(0.49, '#9AA6AE');
+  grad.addColorStop(0.55, '#2A2F33');
+  grad.addColorStop(1.00, '#0B0D0E');
   g.fillStyle = grad; g.fillRect(0, 0, w, h);
-  const key = g.createRadialGradient(w*0.3, h*0.24, 0, w*0.3, h*0.24, w*0.2);
-  key.addColorStop(0, 'rgba(255,251,244,0.45)');
-  key.addColorStop(1, 'rgba(255,251,244,0)');
-  g.fillStyle = key; g.fillRect(0, 0, w, h);
+  // two overhead softboxes and one low bounce strip: sharp specular streaks
+  for(const [cx, cw, ci] of [[0.22, 0.10, 1.0], [0.62, 0.14, 0.85], [0.88, 0.06, 0.5]]){
+    const p = g.createLinearGradient(0, h * 0.03, 0, h * 0.40);
+    p.addColorStop(0, `rgba(255,252,246,${0.95 * ci})`);
+    p.addColorStop(1, 'rgba(255,252,246,0)');
+    g.fillStyle = p;
+    g.fillRect(w * (cx - cw / 2), h * 0.03, w * cw, h * 0.37);
+  }
   const t = new THREE.CanvasTexture(cv);
   t.mapping = THREE.EquirectangularReflectionMapping;
   t.colorSpace = THREE.SRGBColorSpace;
@@ -438,6 +469,51 @@ function ready(model){
   scene.add(root);
 
   const size = box.getSize(new THREE.Vector3());
+
+
+  /* Shadows, and something for them to land on. A transparent catcher takes
+
+     the ground shadow without putting a visible floor slab in the picture. */
+
+  if(keyLight){
+
+    keyLight.castShadow = true;
+
+    keyLight.shadow.mapSize.set(2048, 2048);
+
+    keyLight.shadow.bias = -0.0006;
+
+    keyLight.shadow.normalBias = 0.012;
+
+    const span = Math.max(size.x, size.y, size.z);
+
+    const sc = keyLight.shadow.camera;
+
+    sc.left = -span * 0.62; sc.right = span * 0.62;
+
+    sc.top = span * 0.62; sc.bottom = -span * 0.62;
+
+    sc.near = 0.05; sc.far = span * 6.0;
+
+    sc.updateProjectionMatrix();
+
+    root.traverse(o => { if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+
+    const catcher = new THREE.Mesh(
+
+      new THREE.PlaneGeometry(span * 4, span * 4),
+
+      new THREE.ShadowMaterial({opacity: 0.32}));
+
+    catcher.rotation.x = -Math.PI / 2;
+
+    catcher.position.y = -size.y * 0.60;
+
+    catcher.receiveShadow = true;
+
+    scene.add(catcher);
+
+  }
   corners = [];
   for(const sx of [-.5,.5]) for(const sy of [-.5,.5]) for(const sz of [-.5,.5])
     corners.push(new THREE.Vector3(size.x*sx, size.y*sy, size.z*sz));
@@ -450,7 +526,7 @@ function ready(model){
   buildPlume();
   buildTunnel(box);
   setGear(false);
-  window.__dbg = {scene, camera, renderer, root, byGroup, tunnel};
+  window.__dbg = {scene, camera, renderer, root, byGroup, tunnel, controls};
   $('#load').classList.add('done');
   renderer.setAnimationLoop(tick);
 }
@@ -485,17 +561,9 @@ function onResize(){
 }
 
 /* The afterburner. A cone of additively blended shells behind the tailpipe,
- * shaded from the near-white shock core out to the deep blue-violet edge that
- * a real augmenter actually produces -- it is not orange, and the shock
+ * shaded from a white-hot shock core through amber and orange-red to a blue
+ * tail -- the same ramp the F110 viewer uses, scaled to the airframe. Shock
  * diamonds are the standing wave pattern in the supersonic exhaust. */
-/* The afterburner, built the same way as the F110 viewer's.
- *
- * A lathed plume with a neck just aft of the nozzle, shaded from a near-white
- * core through blue to a deep violet tail, with standing shock cells and an
- * edge-on brightening -- a ray that crosses the plume tangentially passes
- * through more of it, which is why the silhouette burns brightest. Three
- * nested shells at different gains give it depth.
- */
 function plumeShell(rScale, lScale, gain, seed){
   const pts = [];
   for(let i = 0; i <= 46; i++){
@@ -511,9 +579,10 @@ function plumeShell(rScale, lScale, gain, seed){
     side:THREE.DoubleSide,
     uniforms:{
       uTime:{value:0}, uAb:{value:0}, uGain:{value:gain}, uSeed:{value:seed},
-      uCore:{value:new THREE.Color(0xFFF4DC)},
-      uMid:{value:new THREE.Color(0x6E8CFF)},
-      uTail:{value:new THREE.Color(0x3B1D5E)},
+      uCore:{value:new THREE.Color(0xFFF7E6)},
+      uMid:{value:new THREE.Color(0xFFB347)},
+      uHot:{value:new THREE.Color(0xFF5A1F)},
+      uTail:{value:new THREE.Color(0x4A6CF7)},
     },
     vertexShader:`
       varying vec2 vUv; varying vec3 vN; varying vec3 vV;
@@ -526,20 +595,21 @@ function plumeShell(rScale, lScale, gain, seed){
       }`,
     fragmentShader:`
       uniform float uTime, uAb, uGain, uSeed;
-      uniform vec3 uCore, uMid, uTail;
+      uniform vec3 uCore, uMid, uHot, uTail;
       varying vec2 vUv; varying vec3 vN; varying vec3 vV;
       void main(){
         float t = vUv.y;
         float reach = mix(0.22, 1.0, uAb);
-        float env = smoothstep(0.0, 0.02, t) * pow(max(0.0, 1.0 - t/reach), 1.5);
-        float d = pow(max(0.0, sin(t*30.0 - uTime*1.5 + uSeed)), 8.0)
-                * smoothstep(0.62, 0.06, t);
-        float flick = 0.90 + 0.10*sin(uTime*37.0 + t*23.0 + uSeed);
-        float edge = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.7);
-        float a = env * (0.08 + 0.92*edge) * (0.38 + 0.95*d) * flick * uAb * uGain;
-        vec3 col = mix(uCore, uMid, smoothstep(0.015, 0.28, t));
-        col = mix(col, uTail, smoothstep(0.30, 0.88, t));
-        col = mix(col, uCore, clamp(d*0.92, 0.0, 1.0));
+        float env = smoothstep(0.0, 0.015, t) * pow(max(0.0, 1.0 - t/reach), 1.8);
+        float d = pow(max(0.0, sin(t*26.0 - uTime*1.5 + uSeed)), 6.0)
+                * smoothstep(0.68, 0.05, t);
+        float flick = 0.92 + 0.08*sin(uTime*31.0 + t*19.0 + uSeed);
+        float edge = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.5);
+        float a = env * (0.30 + 0.70*edge) * (0.55 + 0.75*d) * flick * uAb * uGain;
+        vec3 col = mix(uCore, uMid, smoothstep(0.02, 0.30, t));
+        col = mix(col, uHot, smoothstep(0.22, 0.58, t));
+        col = mix(col, uTail, smoothstep(0.55, 1.0, t));
+        col = mix(col, vec3(1.0, 0.95, 0.85), clamp(d*0.8, 0.0, 1.0));
         gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
       }`,
   });
@@ -558,15 +628,17 @@ function buildPlume(){
   for(const [rs, ls, g, sd] of [[1.00, 1.00, 1.00, 0.0],
                                 [0.62, 0.78, 0.85, 2.1],
                                 [1.35, 1.22, 0.34, 4.3]]){
-    const sh = plumeShell(r*rs, r*ls, g, sd);
+    const sh = plumeShell(rs, ls, g, sd);
     plumeMat.push(sh.mat);
     plume.add(sh.mesh);
   }
+  // the shells are authored for a 0.36 m radius engine; scale once to fit
+  plume.scale.setScalar(r / 0.36);
   plume.position.set(b.max.x, (b.max.y+b.min.y)/2, (b.max.z+b.min.z)/2);
   plume.visible = false;
   root.add(plume);
 
-  plumeLight = new THREE.PointLight(0x7A86FF, 0, 0.9, 2);
+  plumeLight = new THREE.PointLight(0xFF8A44, 0, 0.9, 2);
   plumeLight.position.set(b.max.x + r*6, (b.max.y+b.min.y)/2,
                           (b.max.z+b.min.z)/2);
   root.add(plumeLight);
@@ -576,6 +648,37 @@ function setDetent(i){
   detent = i;
   for(const b of document.querySelectorAll('#thr button'))
     b.setAttribute('aria-pressed', String(+b.dataset.d === i));
+  // the engine's appetite is part of the flow field: move the throttle and
+  // the tunnel re-ingests. Ports are read at the commanded detent, not the
+  // ramping N1, so the picture settles with the lever, not three seconds late.
+  if(tunnel && tunnel.state.on) tunnel.retraceProgressive();
+}
+
+/* Flow ports in the solver frame (x aft from the nose, y span, z up, metres).
+ * The belly intake swallows what the engine eats; the tailpipe puts the
+ * exhaust momentum back into the air behind the model. Strength tracks the
+ * detent -- at idle the engine barely disturbs the tunnel, at Max A/B the
+ * streamlines visibly accelerate out of the tail. */
+function flowPorts(state){
+  const want = DETENT[detent];
+  const n1 = want.n1, ab = want.ab;
+  // scale with the tunnel speed so the intake capture ratio -- the thing you
+  // are actually looking at -- does not vanish when the wind comes up
+  const v = state && state.v ? state.v/22 : 1;
+  const q = (0.012 + n1*0.075) * v;
+  /* Volume flux, not mass flux. The solve is incompressible, so the tailpipe
+   * has to pass the same mass through a much lower density: core gas leaves
+   * near 900 K dry and 1900 K reheated against 288 K ambient, so the volume
+   * going out is a few times the volume coming in. That ratio is the reason
+   * the flow behind the tail accelerates, and getting it from the temperature
+   * rather than from taste also closes the mass budget -- the intake sink and
+   * the tailpipe source now describe one engine instead of two unrelated
+   * monopoles leaving a net source in the far field. */
+  const expand = 2.9 + 3.2*ab;
+  return [
+    {p: [0.058, 0.0, -0.017], Q: -q,        r: 0.020},  // intake lip
+    {p: [0.444, 0.0,  0.000], Q:  q*expand, r: 0.016},  // tailpipe
+  ];
 }
 
 function buildTunnel(box){
@@ -589,7 +692,8 @@ function buildTunnel(box){
     cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
     bounds: box.clone().translate(root.position),
     bodyPanels: data.body_panels,
-    nLines: 220,
+    nLines: 420,
+    ports: (state) => flowPorts(state),
     onSolve: r => {
       renderReadout($('#t-readout'), r, data.tunnel, 'plane');
       drawSpanLoad($('#t-span'), r.strips);
@@ -601,7 +705,6 @@ function buildTunnel(box){
           + 'stalls. The solver has no boundary layer, so it keeps predicting '
           + 'lift that the aircraft would not make.';
       }else{
-        n.className = 'tnote';
         n.className = 'tnote';
         n.textContent = 'Inviscid solve, live: a vortex lattice for the '
           + 'lifting surfaces and source panels for the fuselage. No boundary '
@@ -625,20 +728,96 @@ const ABOUT =
   + 'where it is because the solver put it there: the first position sat in '
   + 'the wing wake and left almost no margin at all.';
 
+// --- flow view switches (injected) ---
+
+/* The legend follows whatever is on screen.
+ *
+ * One fixed velocity bar used to be drawn whatever you were looking at, which
+ * meant that with surface pressure up the colours on the model had no key at
+ * all. Speed gets a Turbo bar with freestream marked; pressure gets a
+ * diverging bar with Cp = 0 marked, because those are the two reference values
+ * a reader needs to turn a colour back into a number.
+ */
+function paintLegend(r){
+  const cv = $('#t-legend');
+  if(!cv || !r) return;
+  const showCp = panel && panel.views && panel.views.surface;
+  if(showCp){
+    const cr = tunnel.cpRange() || {lo: -2, hi: 1};
+    /* Label the scale that is drawn, not the extremes that were found.
+     *
+     * The first version printed the observed range, which on the car reads
+     * "Cp -12.49 to 1.00" -- a number set by a single panel sitting on a
+     * point-source singularity, on a bar that actually runs to -1.45. A
+     * legend has one job and that is to let a colour be read back as a
+     * number; labelling it with a range it does not cover fails that job
+     * completely. */
+    panel.setLegendCaption(
+      `Surface pressure · C\u209A ${cr.lo.toFixed(2)} to ${cr.hi.toFixed(2)}`);
+    drawLegend(cv, cr.lo, cr.hi, 'C\u209A [-]',
+               {map: pressureColour, zeroAt: 0});
+    panel.setHow('Blue is below ambient: suction, which is what lifts the '
+               + 'aircraft. Red is stagnation, where the air has been brought '
+               + 'to rest against a surface.');
+  } else {
+    panel.setLegendCaption('Local air speed');
+    drawLegend(cv, r.vmin, r.vmax, 'Velocity [m/s]',
+               {map: speedColour, ref: r.vfs, refLabel: 'V\u221E'});
+    panel.setHow('Colour is speed; the mark is the airspeed itself, so '
+               + 'anything left of it has been slowed and anything right of '
+               + 'it accelerated. The pulses travel at the local speed.');
+  }
+}
+
+/* Every mesh the pressure map can be painted onto. */
+function flowMeshes(){
+  const out = [];
+  if(root) root.traverse(o => { if(o.isMesh && o.visible !== false) out.push(o); });
+  return out;
+}
+
+/* Hand the flow view the geometry it paints on, and connect the switches. */
+function wireFlowViews(){
+  if(!tunnel || !panel || !panel.onView) return;
+  tunnel.setMeshes(flowMeshes());
+  panel.onView((id, on) => {
+    tunnel.setLayer(id, on);
+    if(id === 'surface' || id === 'plane'){
+      const r = tunnel.lastResult;
+      if(r) paintLegend(r);
+    }
+  });
+}
+
 function retrace(){
   if(!tunnel || !tunnel.state.on) return;
   const st = $('#t-status');
   st.className = 'tstatus busy';
   st.textContent = 'Tracing streamlines…';
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const r = tunnel.retrace();
+  /* Trace in slices, drawing as the lines arrive.
+   *
+   * This used to be one blocking call behind two requestAnimationFrames whose
+   * only job was to get the "tracing..." message painted before the tab froze
+   * for several seconds. The work is the same; it is spread over frames now,
+   * so the model can still be orbited while the flow fills in and the progress
+   * is a count rather than a spinner. */
+  tunnel.retraceProgressive((done, total) => {
+    st.textContent = `Tracing streamlines… ${done} of ${total}`;
+  }).then(r => {
     if(r){
-      drawLegend($('#t-legend'), r.vmin, r.vmax, 'Velocity [m/s]');
+      tunnel.lastResult = r;
+      paintLegend(r);
       st.className = 'tstatus';
+      // where the time actually went, rather than a guess in a comment
+      const T = r.timing || {};
+      const ph = ['solve','trace','cp','ribbons','arrows']
+        .filter(k => T[k] > 4)
+        .map(k => `${k} ${T[k].toFixed(0)}`).join(' · ');
+      st.title = ph;
       st.textContent = `${r.lines} streamlines · ${r.ms.toFixed(0)} ms · `
                      + `${data.body_panels.n} body panels`;
     }
-  }));
+  });
 }
 
 function setGear(on){
@@ -658,6 +837,9 @@ function setTunnel(on){
   tunnel.setOn(on);
   if(on){
     panel.sync(tunnel.state);
+    wireFlowViews();
+    // one orchestrated entrance, not a transition on every element
+    revealPanel(panel.el.querySelector('.twrap'));
     retrace();
     spinning = false;
     $('#spin').setAttribute('aria-pressed','false');
@@ -678,10 +860,12 @@ function tick(){
   if(plume){
     plume.visible = rpm.ab > 0.004;
     for(const m of plumeMat){ m.uniforms.uTime.value += dt; m.uniforms.uAb.value = rpm.ab; }
-    plumeLight.intensity = rpm.ab * 5.0;
+    plumeLight.intensity = rpm.ab * 12.0;
   }
   $('#n1').textContent = Math.round(rpm.n1 * 100);
 
+  // the travelling pulse on the streamlines runs off this clock, so
+  // the flow keeps moving without retracing anything
   if(tunnel) tunnel.update(dt);
   if(spinning && root) root.rotation.y += dt * 0.35;
   controls.update();

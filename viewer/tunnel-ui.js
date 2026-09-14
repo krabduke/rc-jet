@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { Tunnel } from './windtunnel.js';
 import { CFDView, drawLegend } from './cfd-view.js';
+import { tweenNumber, revealRows } from './anim.js';
 
 const MM = 0.001;
 
@@ -30,6 +31,10 @@ export class WindTunnel {
     this.manifest = opts.manifest;       // data.parts (for pivots)
     this.bounds = opts.bounds;           // THREE.Box3 of the model, metres
     this.onSolve = opts.onSolve || (() => {});
+    // A callback returning the current flow ports (intake sinks, exhaust and
+    // fan sources) in solver frame, metres. The viewer's throttle and fan
+    // state feed it; the tunnel re-solves through them.
+    this.portsFn = opts.ports || null;
     this.solver = new Tunnel(this.cfg);
     this.slowmo = opts.slowmo || 0.02;
 
@@ -47,7 +52,7 @@ export class WindTunnel {
     if(opts.bodyPanels){
       this.cfd = new CFDView({
         cfg: this.cfg, root: this.root, bounds: this.bounds,
-        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 150,
+        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 420,
       });
     }
     this.group.visible = false;
@@ -193,10 +198,11 @@ export class WindTunnel {
 
   /* Retrace the streamlines through the freshly solved field.
    *
-   * This costs of the order of a second, so it is not done while a slider is
-   * moving -- the numbers update on every input, the flow picture updates
-   * when the slider is released. Streamlines are steady anyway: the point of
-   * drawing them is that they stand still and can be read.
+   * It costs a few hundred milliseconds, so it is not done while a slider is
+   * moving: the numbers update on every input, the flow picture updates when
+   * the slider is released. The picture itself is not static once it is drawn
+   * -- the pulse travelling along each line runs off the render clock, so the
+   * flow keeps moving between retraces for the cost of one uniform write.
    */
   retrace(){
     if(!this.cfg || !this.cfd || !this.state.on) return null;
@@ -205,12 +211,52 @@ export class WindTunnel {
     const b = this.state.beta * Math.PI/180;
     const vinf = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
     const lat = this.solver.inducedVelocity();
+    const ports = this.portsFn ? this.portsFn(this.state) : null;
     const t0 = performance.now();
-    const r = this.cfd.run(vinf, lat);
+    const r = this.cfd.run(vinf, lat, ports);
     return r ? {...r, ms: performance.now() - t0} : null;
   }
 
-  update(dt){ /* streamlines are steady: nothing to animate */ }
+  /* The same retrace, spread across frames.
+   *
+   * The field costs about 45 microseconds per evaluation -- nearly all of it
+   * the vortex lattice -- and a full set of lines needs of the order of a
+   * hundred thousand of them. Done in one call that is a multi-second frozen
+   * tab. Done in slices it is the same arithmetic with the page still
+   * responding and the streamlines appearing as they are traced.
+   */
+  async retraceProgressive(onProgress){
+    if(!this.cfg || !this.cfd || !this.state.on) return null;
+    const a = this.state.alpha * Math.PI/180;
+    const v = this.state.v;
+    const b = this.state.beta * Math.PI/180;
+    const vinf = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
+    const lat = this.solver.inducedVelocity();
+    const ports = this.portsFn ? this.portsFn(this.state) : null;
+    const t0 = performance.now();
+    const r = await this.cfd.runProgressive(vinf, lat, onProgress, {ports});
+    return r ? {...r, ms: performance.now() - t0} : null;
+  }
+
+  /* Advance the travelling pulse. This used to be a no-op with a comment
+   * saying streamlines are steady and there was nothing to animate -- which
+   * is true of the geometry and beside the point: a wind tunnel where you
+   * cannot see which way the air moves is not showing you the air. */
+  update(dt){ if(this.cfd) this.cfd.tick(dt); }
+
+  /* Which layers are drawn: streamlines, direction arrows, surface pressure,
+   * the cutting plane. `meshes` has to be handed over before surface pressure
+   * can be painted, because it is painted onto the real model geometry. */
+  setMeshes(meshes){ if(this.cfd) this.cfd._meshes = meshes; }
+
+  setLayer(which, on){
+    if(!this.cfd) return;
+    if(which === 'anim') this.cfd.setAnim(on);
+    else this.cfd.setLayer(which, on);
+  }
+
+  layerState(){ return this.cfd ? this.cfd.show : {}; }
+  cpRange(){ return this.cfd ? this.cfd.cpRange : null; }
 }
 
 /* ---------------------------------------------------------------- the panel */
@@ -227,9 +273,12 @@ export function buildPanel(host, cfg, onChange, onCommit){
       <div class="tstatus" id="t-status">
       </div>
       <div class="tsliders" id="t-sliders"></div>
+      <div class="tviews" id="t-views"></div>
       <div class="treadout" id="t-readout"></div>
       <div class="tplot">
-        <canvas id="t-legend" width="276" height="46"></canvas>
+        <div class="tcap" id="t-legcap">Local speed</div>
+        <canvas id="t-legend" width="276" height="50"></canvas>
+        <p class="thow" id="t-how"></p>
       </div>
       <div class="tplot">
         <div class="tcap">Spanwise load</div>
@@ -262,6 +311,31 @@ export function buildPanel(host, cfg, onChange, onCommit){
   }
   el.querySelector('#t-sliders').innerHTML = rows.join('');
 
+  /* What you are looking at, as switches rather than as a fixed picture.
+   *
+   * The old panel had airspeed, incidence and the control surfaces and nothing
+   * else: one view, always on, no way to ask a different question. These are
+   * the four things a post-processor lets you turn on, plus the animation --
+   * which is the difference between a flow field you watch and a picture of
+   * one.
+   */
+  const views = [
+    ['ribbons', 'Streamlines', true, 'lines through the flow, coloured by speed'],
+    ['arrows', 'Direction arrows', true, 'which way the air is going'],
+    ['surface', 'Surface pressure', false,
+     'Cₚ on the car: blue is suction, which is where the load comes from'],
+    ['plane', 'Cutting plane', false, 'the whole field on one slice'],
+    ['undisturbed', 'Undisturbed air', false,
+     'also draw the lines that pass by unchanged'],
+    ['anim', 'Animate', true, 'the pulse travels at the local flow speed'],
+  ];
+  el.querySelector('#t-views').innerHTML = views.map(
+    ([id, label, on, hint]) => `
+      <label class="tview" for="tv-${id}" title="${hint}">
+        <input type="checkbox" id="tv-${id}" ${on ? 'checked' : ''}>
+        <span>${label}</span>
+      </label>`).join('');
+
   const wire = (id) => {
     const inp = el.querySelector('#ts-' + id);
     const out = el.querySelector('#to-' + id);
@@ -286,8 +360,24 @@ export function buildPanel(host, cfg, onChange, onCommit){
     out.textContent = (+v).toFixed(1) + (id === 'v' ? ' m/s' : '\u00B0');
   };
 
+  const viewState = {};
+  for(const [id, , on] of views) viewState[id] = on;
+  const onView = (fn) => {
+    for(const [id] of views){
+      const box = el.querySelector('#tv-' + id);
+      box.addEventListener('change', () => {
+        viewState[id] = box.checked;
+        fn(id, box.checked);
+      });
+    }
+  };
+
   return {
     el,
+    views: viewState,
+    onView,
+    setLegendCaption(t){ el.querySelector('#t-legcap').textContent = t; },
+    setHow(t){ el.querySelector('#t-how').textContent = t; },
     setSlider,
     /* Show a state the tunnel arrived at on its own -- the trim incidence,
        say -- without firing the change handler back into the solver. */
@@ -327,8 +417,30 @@ export function renderReadout(el, r, cfg, kind){
     ['Neutral point', `${(r.np*100).toFixed(1)} % MAC`],
     ['Static margin', `${(r.margin*100).toFixed(1)} % MAC`],
   ];
-  el.innerHTML = rows.map(([k, v]) =>
-    `<div class="tr"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  /* Build the rows once, then count the values across on every later solve.
+   *
+   * This used to rewrite innerHTML on every update, which throws the elements
+   * away and replaces each number with a different number. A value that jumps
+   * tells you it changed; a value that counts across tells you which way and
+   * by how much -- which, on a readout whose whole job is answering "did that
+   * slider help?", is the entire point.
+   */
+  const want = rows.map(([k]) => k).join('|');
+  if(el.dataset.keys !== want){
+    el.innerHTML = rows.map(([k, v]) =>
+      `<div class="tr"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+    el.dataset.keys = want;
+    revealRows(el.querySelectorAll('.tr'));
+    return;
+  }
+  const dds = el.querySelectorAll('.tr dd');
+  rows.forEach(([, v], i) => {
+    const dd = dds[i];
+    if(!dd) return;
+    const m = String(v).match(/^(-?[\d.]+)(.*)$/);
+    if(!m){ dd.textContent = v; return; }
+    tweenNumber(dd, parseFloat(m[1]), {suffix: m[2]});
+  });
 }
 
 export function drawSpanLoad(cv, strips){

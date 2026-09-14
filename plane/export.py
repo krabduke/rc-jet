@@ -12,6 +12,44 @@ import sys
 
 import bpy
 
+def flatten_pbr_for_gltf():
+    """Unlink procedural inputs from every Principled BSDF before writing glTF.
+
+    materials.py links a noise texture into Roughness (and, on the hot
+    section, into Base Color) so large machined surfaces do not read as flat
+    CG plastic under Cycles. glTF cannot express a procedural, so the
+    exporter's answer is to write no factor at all -- and an absent
+    roughnessFactor does not mean "keep what the .blend had", it means 1.0.
+
+    Every metal in the file therefore arrived in the browser as metalness 1.0
+    with roughness 1.0. A fully rough metal has no diffuse term, so wherever it
+    fails to catch a light it goes black; on a cylinder that is the top and the
+    bottom. That is the "black bands" this project spent a commit working
+    around by abandoning PBR altogether and baking lambert shading into vertex
+    colours.
+
+    The BSDF's own default_value still holds the palette number, so simply
+    dropping the link restores a correct factor. Cycles renders run from the
+    unmodified .blend; only the export path sees this.
+    """
+    import bpy
+    n = 0
+    for mat in bpy.data.materials:
+        if not mat.use_nodes or not mat.node_tree:
+            continue
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf is None:
+            continue
+        for slot in ("Roughness", "Metallic", "Base Color"):
+            sock = bsdf.inputs.get(slot)
+            if sock is None:
+                continue
+            for link in list(sock.links):
+                mat.node_tree.links.remove(link)
+                n += 1
+    return n
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BUILD = os.path.join(ROOT, "build")
@@ -56,6 +94,8 @@ def export_glb(name="rcjet.glb", draco=True):
     if draco:
         kw = {"export_draco_mesh_compression_enable": True,
               "export_draco_mesh_compression_level": 6}
+    n_flat = flatten_pbr_for_gltf()
+    print(f"  unlinked {n_flat} procedural material inputs for glTF")
     bpy.ops.export_scene.gltf(
         filepath=path, export_format="GLB", use_selection=False,
         export_apply=True, export_yup=True, export_materials="EXPORT", **kw)
