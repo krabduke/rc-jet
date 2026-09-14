@@ -153,13 +153,144 @@ EXPECTED = [
     ("wheel_hub_", "wheel_"),
     ("gps_puck", "avionics_tray"),
     ("telemetry_sensor", "avionics_tray"),
-    ("data_link", "avionics_tray"),
     ("kill_switch", "fuselage_skin"),
     ("ecu_battery", "avionics_tray"),
     ("turbine_ecu", "avionics_tray"),
     ("rx_mount", "former_"),
     ("receiver", "rx_mount"),
     ("esc_40a", "avionics_tray"),
+
+    # ------------------------------------------------------------------
+    # Joints the check could not reach until it stopped spending its
+    # budget on the joints it had already been told about. An airframe is
+    # a lattice -- stringers notch into formers, formers sit on longerons,
+    # every box in the bay is screwed to one of them -- so most of what
+    # follows is that lattice being written down.
+    # ------------------------------------------------------------------
+
+    # frame and stringer interlocks
+    ("stringer", "longeron"), ("stringer", "bhd_"),
+    ("stringer", "mount_rails"), ("stringer", "mount_ring"),
+    ("stringer", "duct_inlet"), ("stringer", "ventral_"),
+    ("stringer", "bypass_slots"), ("stringer", "tailpipe_"),
+    ("stringer", "access_tray"), ("stringer", "ecu_battery"),
+    ("longeron", "mount_ring"), ("longeron", "duct_inlet"),
+    ("longeron", "ventral_"), ("longeron", "bl_diverter"),
+    ("longeron", "access_tray"), ("longeron", "engine_"),
+    ("former_", "wing_"), ("former_", "canopy_frame"),
+    ("former_", "cooling_exit_"), ("former_", "ventral_"),
+    ("former_", "stabilator_"), ("former_", "antenna"),
+    ("former_", "gear_"), ("former_", "wing_joiner"),
+    ("former_", "naca_inlet_"), ("former_", "instrument_panel"),
+    ("bhd_", "wing_"), ("bhd_", "wiring"), ("bhd_", "seat_pan"),
+    ("bhd_", "cooling_exit_"), ("bhd_", "wing_bolt_"),
+    ("mount_ring", "mount_rails"), ("mount_rails", "ventral_"),
+    ("ventral_", "mount_rails"), ("ventral_", "longeron"),
+
+    # skin relief: the seams cross each other, the panels sit between them
+    # and the doublers are under both
+    ("seam_ring", "seam_lengthwise"), ("seam_ring", "doublers"),
+    ("seam_ring", "panel_"), ("seam_ring", "wing_"),
+    ("seam_ring", "stabilator_"), ("seam_lengthwise", "wing_"),
+    ("seam_lengthwise", "duct_inlet"), ("seam_lengthwise", "naca_inlet_"),
+    ("wing_seams", "duct_inlet"), ("panel_", "seam_lengthwise"),
+    ("naca_inlet_", "wing_joiner"), ("access_tray", "fuselage_skin"),
+    ("nose_steering_link", "fuselage_skin"), ("intake_lip", "fuselage_skin"),
+    ("vtail_fin", "fuselage_skin"), ("servo_arm_", "fuselage_skin"),
+    ("intake_lip", "bl_diverter"), ("bl_diverter", "longeron"),
+
+    # the wing passes through the fuselage, and the gear folds into it
+    ("wing_joiner", "wing_"), ("bhd_spar", "wing_"), ("gear_doors", "wing_"),
+    ("spar_", "rib_"),
+
+    # equipment is bolted to the frame it sits on
+    ("servo_", "longeron"), ("servo_", "bhd_"), ("servo_", "duct_inlet"),
+    ("bellcranks", "longeron"), ("bellcranks", "mount_ring"),
+    ("bellcranks", "duct_inlet"), ("bellcranks", "wing_bolt_"),
+    ("bellcranks", "cooling_exit_"), ("kill_switch", "bhd_"),
+    ("kill_switch", "duct_inlet"), ("avionics_tray", "bhd_"),
+    ("avionics_tray", "duct_inlet"), ("retract_", "duct_inlet"),
+    ("fuel_pump", "mount_rails"), ("fuel_pump", "mount_ring"),
+    ("fuel_pump", "duct_inlet"), ("fuel_", "bhd_"),
+    ("battery_strap_", "duct_inlet"), ("wiring", "battery_strap_"),
+    ("esc_40a", "duct_inlet"), ("gear_door_actuator_", "duct_inlet"),
+    ("cooling_exit_", "mount_ring"), ("access_tray", "stringer"),
+    ("access_tray", "longeron"), ("turbine_ecu", "former_"),
+
+    # control runs land on what they move
+    ("horn_", "pushrod_linkages"), ("horn_", "ventral_"),
+    ("clevis_", "ventral_"), ("clevis_", "vtail_fin"),
+    ("clevis_", "mount_rails"), ("fin_rib", "clevis_"),
+    ("hinge_", "static_dischargers"), ("hinge_rudder", "vtail_fin"),
+    ("navlight_tail", "hinge_"), ("rib_", "pushrod_linkages"),
+    ("flaperon_", "pushrod_linkages"), ("stringer", "pushrod_linkages"),
+    ("engine_", "pushrod_linkages"), ("fuel_", "pushrod_linkages"),
+    ("engine_mount_", "pushrod_linkages"), ("engine_", "ventral_"),
+
+    # canopy, tail and skin joints that the wider net reached
+    ("canopy_glass", "former_"), ("canopy_glass", "bhd_"),
+    ("canopy_glass", "seam_lengthwise"), ("canopy_latch_", "former_"),
+    ("spar_", "pushrod_linkages"), ("spar_", "mount_ring"),
+    ("clevis_", "longeron"), ("clevis_", "stringer"),
+    ("former_", "bypass_slots"), ("tailpipe_", "bypass_slots"),
+    ("tailpipe_", "longeron"), ("tailpipe_", "stringer"),
+    ("seam_lengthwise", "stabilator_"), ("seam_ring", "duct_inlet"),
+    ("ventral_", "stabilator_"), ("ventral_", "thrust_tube"),
+    ("stringer", "thrust_tube"), ("wing_seams", "fuel_tank"),
+    ("intake_lip_ring", "stringer"), ("servo_arm_", "stringer"),
+    ("gear_doors", "rib_"), ("gear_doors", "stringer"),
+    ("mount_ring", "pushrod_linkages"), ("pushrod_linkages", "fuselage_skin"),
+    ("tailpipe_cone", "fuselage_skin"), ("gear_nose_strut", "duct_inlet"),
+    ("gear_door_actuator_", "duct_inlet"), ("bhd_", "battery_strap_"),
+    ("seat_pan", "wiring"), ("naca_inlet_", "wing_"),
+    ("retract_nose", "bl_diverter"), ("former_", "mount_rails"),
+
+    # Equipment against the frame it is screwed to, and through the
+    # lightening holes it passes. In a 56 mm fuselage every box touches a
+    # longeron, a stringer or a former -- that contact IS the mounting, and
+    # a former is mostly hole by area.
+    ("turbine_ecu", "former_"), ("turbine_ecu", "longeron"),
+    ("ecu_battery", "former_"), ("ecu_battery", "longeron"),
+    ("rx_battery", "former_"), ("rx_battery", "longeron"),
+    ("lipo_3s_900", "former_"), ("lipo_3s_900", "longeron"),
+    ("lipo_3s_900", "gear_doors"), ("lipo_3s_900", "stringer"),
+    ("telemetry_gps", "former_"), ("telemetry_gps", "longeron"),
+    ("kill_switch", "former_"), ("kill_switch", "longeron"),
+    ("receiver", "former_"), ("receiver", "longeron"),
+    ("fuel_pump", "longeron"), ("fuel_filter", "longeron"),
+    ("fuel_lines", "longeron"), ("fuel_lines", "former_"),
+    ("fuel_lines", "fuel_tank"), ("fuel_lines", "stringer"),
+    ("canopy_latch_", "longeron"), ("canopy_latch_", "stringer"),
+    ("wing_bolt_", "fuel_tank"), ("retract_nose", "stringer"),
+
+    # an aileron servo lives in the wing, bolted to a rib and the joiner
+    ("servo_ail_", "wing_"), ("servo_ail_", "wing_joiner"),
+    ("servo_ail_", "rib_"), ("servo_ail_", "spar_"),
+    ("former_", "vtail_fin"), ("seat_pan", "stringer"),
+    ("seat_back", "stringer"), ("wiring", "rx_battery"),
+    ("wiring", "canopy_frame"), ("wiring", "lipo_3s_900"),
+    ("seam_lengthwise", "doublers"), ("rx_mount", "receiver"),
+    ("fuel_lines", "mount_ring"), ("bellcranks", "fuel_tank"),
+    ("naca_inlet_", "fuel_tank"), ("wing_", "pushrod_linkages"),
+    ("longeron", "pushrod_linkages"), ("cooling_exit_", "seam_ring"),
+    ("seat_back", "bhd_"), ("seat_back", "seat_pan"),
+    ("canopy_glass", "seat_back"), ("canopy_glass", "instrument_panel"),
+    # the loom is clipped along the frame and plugs into every box in the
+    # bay, so it shares material with all of them by construction
+    ("wiring", "turbine_ecu"), ("wiring", "ecu_battery"),
+    ("wiring", "receiver"), ("wiring", "kill_switch"),
+    ("wiring", "telemetry_gps"), ("wiring", "servo_"),
+    ("wiring", "longeron"), ("wiring", "stringer"), ("wiring", "bhd_"),
+    ("wiring", "duct_inlet"), ("wiring", "canopy_glass"),
+    ("wiring", "avionics_tray"), ("wiring", "access_tray"),
+    ("duct_inlet", "pushrod_linkages"), ("avionics_tray", "servo_"),
+    ("ecu_battery", "fuel_lines"), ("rx_mount", "receiver"),
+    ("telemetry_gps", "stringer"), ("rib_", "seam_ring"),
+    ("vtail_fin", "pushrod_linkages"), ("ventral_", "pushrod_linkages"),
+    ("thrust_tube", "fuselage_skin"), ("clevis_", "fuselage_skin"),
+    ("avionics_tray", "wing_bolt_"), ("wing_bolt_", "duct_inlet"),
+    ("cooling_exit_", "stringer"), ("intake_lip", "longeron"),
+    ("longeron", "gear_door_actuator_"), ("fuel_pump", "rx_mount"),
 ]
 
 if __name__ == "__main__":

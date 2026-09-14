@@ -121,8 +121,28 @@ def _expected(a, b, rules):
     return False
 
 
-def run(root, pkg, expected=(), limit=110, report=90, threshold=0.20):
+def closed(verts, faces):
+    """Is this mesh watertight -- every edge shared by exactly two faces?
+
+    The inside test is a ray-parity test, and parity only means anything
+    against a closed surface. Shoot a ray at an open shell -- a duct with no
+    end caps, a relief band laid on the skin, a blade row -- and a point
+    outside it reads as inside whenever the ray happens to leave through the
+    hole. That produced a long tail of overlaps that were not there.
+    """
+    edge = {}
+    for f in faces:
+        n = len(f)
+        for i in range(n):
+            a, b = f[i], f[(i + 1) % n]
+            k = (a, b) if a < b else (b, a)
+            edge[k] = edge.get(k, 0) + 1
+    return all(c == 2 for c in edge.values())
+
+
+def run(root, pkg, expected=(), limit=400, report=90, threshold=0.20):
     parts = load_parts(root, pkg)
+    open_shells = {k for k, (v, f) in parts.items() if not closed(v, f)}
     allv = [p for (v, _f) in parts.values() for p in v]
     lo = [min(p[i] for p in allv) for i in range(3)]
     hi = [max(p[i] for p in allv) for i in range(3)]
@@ -142,15 +162,32 @@ def run(root, pkg, expected=(), limit=110, report=90, threshold=0.20):
             for j in range(i + 1, len(u)):
                 pair[(u[i], u[j])] += 1
 
+    # Rank the UNDECLARED pairs, then take the budget from those.
+    #
+    # This used to take the top `limit` contacts and then skip the declared
+    # ones inside the loop. The declared joints are the biggest contacts on
+    # the model -- a hub in an upright shares far more voxels than a strut
+    # clipping a duct -- so they ate almost the whole budget and the check
+    # only ever looked at a handful of real candidates. Six overlaps that
+    # had been in the model all along surfaced the moment two parts got
+    # thinner and stopped crowding the list.
+    ranked = [ab for ab, _n in pair.most_common()
+              if not _expected(ab[0], ab[1], expected)]
     found = []
-    for (a, b), _shared in pair.most_common(limit):
-        if _expected(a, b, expected):
+    for (a, b) in ranked[:limit]:
+        # B is the container and has to be closed. If only one of the two
+        # is closed it takes that role whatever its size; if both are, the
+        # smaller mesh is the one sampled.
+        if a in open_shells and b in open_shells:
             continue
-        va, fa = parts[a]
-        vb, fb = parts[b]
-        A, B = a, b
-        if len(va) > len(vb):
-            A, B, va, fa, vb, fb = b, a, vb, fb, va, fa
+        if b in open_shells:
+            A, B = b, a
+        elif a in open_shells:
+            A, B = a, b
+        else:
+            A, B = ((b, a) if len(parts[a][0]) > len(parts[b][0]) else (a, b))
+        va, fa = parts[A]
+        vb, fb = parts[B]
         keys = {k for k, n in vox.items() if A in n and B in n}
         cand = [p for p in va
                 if (int(p[0] // h), int(p[1] // h), int(p[2] // h)) in keys]
@@ -164,11 +201,30 @@ def run(root, pkg, expected=(), limit=110, report=90, threshold=0.20):
             for iy in range(int(y0 // cell), int(y1 // cell) + 1):
                 for iz in range(int(z0 // cell), int(z1 // cell) + 1):
                     buckets.setdefault((iy, iz), []).append(tri)
+        # Nudge the sample off the lattice before firing the ray.
+        #
+        # The ray runs along +x and counts crossings, which is only valid if
+        # it misses every edge and vertex of the target. Symmetric hardware
+        # breaks that constantly: two connecting rods on one crankpin share
+        # the big-end bore, so every vertex round rod one's bore has exactly
+        # the same (y, z) as a vertex round rod two's, and the ray threads
+        # the seam between triangles and comes out odd. That reported all
+        # eight rod pairs, and all eight cap pairs, as 69 percent inside each
+        # other while their bounding boxes did not even overlap. A jitter of
+        # a thousandth of a voxel is far below any real clearance and misses
+        # the lattice.
+        # The x nudge matters as much as the other two. Two parts that butt
+        # against each other share a plane, and a sample point lying exactly
+        # on it enters the target at t = 0 -- which the epsilon test drops --
+        # and leaves at t > 0, so it counts one crossing and reads as inside.
+        # That is every pair of connecting rods on a shared crankpin.
+        jx, jy, jz = h * 0.0011, h * 0.0013, h * 0.0007
         samp = cand[::max(1, len(cand) // 200)]
         n_in = 0
         for pt in samp:
-            tb = buckets.get((int(pt[1] // cell), int(pt[2] // cell)))
-            if tb and _inside(pt, tb):
+            q = (pt[0] - jx, pt[1] + jy, pt[2] + jz)
+            tb = buckets.get((int(q[1] // cell), int(q[2] // cell)))
+            if tb and _inside(q, tb):
                 n_in += 1
         frac = n_in / len(samp)
         if frac >= threshold:
@@ -176,7 +232,12 @@ def run(root, pkg, expected=(), limit=110, report=90, threshold=0.20):
 
     found.sort(reverse=True)
     print(f"{len(parts)} parts, {len(pair)} pairs in contact, "
+          f"{len(ranked)} undeclared ({min(len(ranked), limit)} tested), "
           f"voxel {h:.1f} mm")
+    if open_shells:
+        print(f"{len(open_shells)} parts are open shells and cannot be "
+              f"tested as containers: {', '.join(sorted(open_shells)[:6])}"
+              + (" ..." if len(open_shells) > 6 else ""))
     if found:
         print(f"\n{len(found)} pairs share material that nothing declared:")
         for frac, ni, ns, a, b in found[:report]:

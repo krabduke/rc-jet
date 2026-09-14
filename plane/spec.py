@@ -126,6 +126,7 @@ HTAIL = {
     "sweep_le":     34.0,
     "thickness":     0.072,
     "thickness_tip": 0.045,
+    "root_y":       21.0,   # the fuselage side at this station
     "anhedral":     -6.0,
     "deflect":      -4.0,       # all-moving stabilator, modelled position
 }
@@ -229,23 +230,68 @@ BULKHEADS = [
 # (name, x_centre, y_centre, z_centre, length, width, height, mass_g)
 # --------------------------------------------------------------------------
 
+# The equipment bay, as a layout rather than a pile.
+#
+# Every box below was previously positioned on its own, by eye, against the
+# fuselage section -- and the section is not what decides where there is room.
+# The intake duct is: it fills the bottom of the body from the chin inlet all
+# the way to the engine and climbs as it goes, so the usable volume is a
+# wedge above it that is 30 mm deep at the cockpit and 7 mm deep at the
+# firewall. Placed independently, twenty-five items produced sixty-seven
+# box-on-box overlaps: both batteries in the same place, the fuel filter
+# inside the duct, the fuel lines inside the engine's LP shaft.
+#
+# These positions were solved against the duct and the skin together, and
+# `verify.py` fails if any two of them overlap or if one leaves the body.
+#
+# (x, y, z centre, length, width, height, mass g)
+EQUIPMENT = [
+    ("lipo_3s_900",   117.0,   0.0,  10.0, 58.0, 32.0, 20.0,  75.0),
+    ("retract_nose",   74.0,   0.0,   1.0, 28.0, 15.0, 13.0,  22.0),
+    ("fuel_filter",   166.0, -20.5,  11.5, 28.0, 13.0, 13.0,  12.0),
+    ("turbine_ecu",   169.0,   0.0,  10.0, 34.0, 22.0, 11.0,  26.0),
+    ("fuel_pump",     164.0,  20.5,  11.5, 24.0, 13.0, 13.0,  34.0),
+    ("receiver",      166.0,   0.0,  19.0, 22.0, 16.0,  6.0,   7.0),
+    ("kill_switch",   187.0,   4.0,  23.0, 16.0, 10.0,  8.0,   6.0),
+    ("telemetry_gps", 202.0, -12.0,  16.0, 24.0, 14.0,  8.0,  24.0),
+    ("rx_battery",    208.0,   5.0,  19.0, 36.0, 18.0, 12.0,  46.0),
+    ("ecu_battery",   254.0,   0.0,  22.7, 32.0, 18.0,  7.0,  38.0),
+]
+
+
+def equipment(name):
+    """(x, y, z, length, width, height) for one bay item."""
+    for e in EQUIPMENT:
+        if e[0] == name:
+            return e[1:7]
+    raise KeyError(name)
+
+
+# A turbine aircraft has no electronic speed controller -- that is the part
+# that drives a brushless motor, and there is no motor. It had one, a 45 mm
+# box in the middle of the bay, left over from when this was an EDF. What a
+# turbine needs instead is the ECU and its own battery, which are both here.
 HARDWARE = [
-    # z lifted from -4 to 10: this far forward the intake duct fills the
-    # bottom of the section (z -26 to -2) and the pack was sitting in it
-    ("lipo_3s_1300",  132.0,  0.0,  10.0, 72.0, 35.0, 22.0, 105.0),
-    ("esc_40a",       232.0,  0.0,  14.0, 45.0, 25.0, 10.0,  28.0),
-    ("receiver",      252.0, 16.0,  12.0, 22.0, 16.0,  6.0,   7.0),
-    ("servo_ail_l",   285.0,-19.0,  -3.0, 23.0, 12.0, 22.0,   5.5),
-    ("servo_ail_r",   285.0, 19.0,  -3.0, 23.0, 12.0, 22.0,   5.5),
-    ("servo_stab",    288.0, -8.0,  12.0, 23.0, 12.0, 22.0,   5.5),
-    ("servo_rudder",  288.0,  8.0,  12.0, 23.0, 12.0, 22.0,   5.5),
+    # In the wing, lying flat in its 19 mm of thickness, which is where an
+    # aileron servo goes. At y +/-19 in the fuselage they were inside the
+    # saddle tanks and inside the main gear retracts, and there is no
+    # station at that width that is not one or the other.
+    ("servo_ail_l",   261.0,-55.0,  -6.0, 23.0, 22.0, 12.0,   5.5),
+    ("servo_ail_r",   261.0, 55.0,  -6.0, 23.0, 22.0, 12.0,   5.5),
+    ("servo_stab",    288.0, -8.0,   7.0, 23.0, 12.0, 22.0,   5.5),
+    ("servo_rudder",  288.0,  8.0,   7.0, 23.0, 12.0, 22.0,   5.5),
 ]
 
 # Distributed masses that are not discrete boxes: (name, x_centre, mass_g)
 DISTRIBUTED = [
     ("airframe_skin",   232.0, 62.0),
     ("wing_structure",  218.0, 18.0),
-    ("engine",          370.0, 62.0),
+    # 62 g was the figure that let this aircraft balance while a third of
+    # its hardware went uncounted. A turbine with its shaft, discs, casings,
+    # mount ring, thrust tube and tailpipe cannot weigh what a phone weighs;
+    # the smallest turbine anyone actually flies is six hundred grams, and
+    # 140 g is the lightest this one could credibly be built.
+    ("engine",          370.0, 140.0),
     ("wiring_misc",     250.0, 12.0),
     ("gear_assembly",   219.0, 14.0),
 ]
@@ -282,8 +328,7 @@ MATERIAL_MAP = {
     "wheel_hub_": "alu",
     "wing_fence_": "airframe",
     "vg_": "airframe",
-    "telemetry_sensor": "board",
-    "gps_puck": "board",
+    "telemetry_gps": "board",
     "antenna_": "carbon",
     "bypass_slots": "duct",
     "mount_rails": "carbon",
@@ -297,7 +342,6 @@ MATERIAL_MAP = {
     "cooling_exit": "duct",
     "naca_inlet": "duct",
     "avionics_tray": "ply",
-    "data_link": "board",
     "kill_switch": "board",
     "ecu_battery": "lipo",
     "turbine_ecu": "board",
@@ -482,6 +526,7 @@ def all_masses():
     """(name, x, mass) for every mass in the aircraft."""
     out = [(n, x, m) for (n, x, m) in DISTRIBUTED]
     out += [(h[0], h[1], h[7]) for h in HARDWARE]
+    out += [(e[0], e[1], e[7]) for e in EQUIPMENT]
     return out
 
 
@@ -563,7 +608,7 @@ SKIN_DETAIL = {
     # (x0, x1, angle_from, angle_to, standoff) -- panels follow the section
     "panels": [
         ("battery",   188.0, 268.0,  58.0, 122.0, 0.9),
-        ("receiver",  166.0, 202.0,  18.0,  62.0, 0.8),
+        ("receiver",  166.0, 202.0,  16.0,  54.0, 0.8),
         ("avionics",  272.0, 312.0,  58.0, 122.0, 0.9),
         ("gearbay",   258.0, 300.0, 236.0, 304.0, 0.8),
         ("fuel",      312.0, 352.0, 236.0, 304.0, 0.8),

@@ -21,24 +21,30 @@ def _wiring():
     """Servo leads and the motor phase wires, run along the inside of the
     fuselage past the bulkhead lightening holes."""
     runs = []
-    esc = [h for h in spec.HARDWARE if h[0] == "esc_40a"][0]
-    lipo = [h for h in spec.HARDWARE if h[0] == "lipo_3s_1300"][0]
+    lipo = spec.equipment("lipo_3s_900")
+    ecu = spec.equipment("turbine_ecu")
+    eb = spec.equipment("ecu_battery")
 
-    # battery to ESC
-    runs.append(mesh.pipe([(lipo[1] - 20, 6.0, lipo[3] + 11),
-                           (esc[1] + 10, 4.0, esc[3] - 4),
-                           (esc[1], 0.0, esc[3] - 4)], 1.5, 16, subdiv=3))
-    # ESC to the engine
-    runs.append(mesh.pipe([(esc[1] + 20, -4.0, esc[3] - 3),
-                           (280.0, -6.0, 4.0),
-                           (spec.ENGINE_X + 6, -4.0, 2.0)], 1.4, 16, subdiv=3))
+    # flight pack back to the ECU, which is what runs the turbine
+    runs.append(mesh.pipe([(lipo[0] + 24, 6.0, lipo[2] + 8),
+                           (ecu[0] - 18, 4.0, ecu[2] + 4),
+                           (ecu[0] - 8, 0.0, ecu[2] + 3)], 1.5, 16, subdiv=3))
+    # ECU battery forward to the ECU, on its own circuit: losing the flight
+    # pack should not stop the fuel pump mid-flameout
+    runs.append(mesh.pipe([(eb[0] - 14, 5.0, eb[2] - 3),
+                           (ecu[0] + 26, 3.0, ecu[2] + 4),
+                           (ecu[0] + 14, 0.0, ecu[2] + 4)], 1.4, 16, subdiv=3))
+    # ECU aft to the engine's starter and its sensors
+    runs.append(mesh.pipe([(ecu[0] + 16, -4.0, ecu[2] - 2),
+                           (280.0, -6.0, 12.0),
+                           (spec.ENGINE_X + 6, -4.0, 4.0)], 1.4, 16, subdiv=3))
     # receiver out to each servo
-    rx = [h for h in spec.HARDWARE if h[0] == "receiver"][0]
+    rx = spec.equipment("receiver")
     for h in spec.HARDWARE:
         if not h[0].startswith("servo_"):
             continue
-        runs.append(mesh.pipe([(rx[1], rx[2], rx[3]),
-                               (rx[1] + 60, h[2] * 0.4, 6.0),
+        runs.append(mesh.pipe([(rx[0], rx[1], rx[2]),
+                               (rx[0] + 60, h[2] * 0.4, 14.0),
                                (h[1] - 8, h[2], h[3] + 8)], 0.8, 16, subdiv=3))
     return {"wiring": mesh.join(*runs)}
 

@@ -39,7 +39,7 @@ CFG = {
     # two GPS aerials for one receiver.
     "singletons": {
         "control linkage set": (("pushrods", "pushrod_linkages"), 1),
-        "GPS aerial": (("gps_puck", "gps_patch"), 1),
+        "GPS aerial": (("telemetry_gps", "gps_puck", "gps_patch"), 1),
         "UHF aerial": (("antennas",), 1),
         "diversity aerials": (("antenna_a", "antenna_b"), 2),
         "receiver": (("receiver",), 1),

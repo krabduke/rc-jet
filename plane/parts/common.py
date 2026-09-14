@@ -230,3 +230,68 @@ def surface_z_frac(sect, u, upper=True):
         if best is None or d < best:
             best, bv = d, sv
     return bv
+
+
+def shrink_ring(ring, zc, k):
+    return [(x, y * k, zc + (z - zc) * k) for (x, y, z) in ring]
+
+
+
+def lightened_ring(front, back, zc, k_bore, k_hub, n_holes, web_frac=0.34):
+    """A former web with a ring of lightening holes cut out of it.
+
+    A former is defined by what is taken out of it. These were solid annular
+    plates with a single central bore -- flat, two x-stations, no other
+    feature -- so the web between the bore and the skin said nothing at all.
+
+    Built as a rim out at the skin, a hub ring round the bore, and `n_holes`
+    spokes bridging the two. The gaps between the spokes are the lightening
+    holes, and because both rings follow the fuselage section the holes come
+    out shaped like the frame instead of as circles stamped through a disc.
+    """
+    n = len(front)
+    hub_f, hub_b = shrink_ring(front, zc, k_hub), shrink_ring(back, zc, k_hub)
+    bore_f, bore_b = shrink_ring(front, zc, k_bore), shrink_ring(back, zc, k_bore)
+
+    verts, faces = [], []
+
+    def closed_band(of, ob, if_, ib):
+        """A full annular band between an outer and an inner ring."""
+        base = len(verts)
+        verts.extend(of); verts.extend(ob); verts.extend(if_); verts.extend(ib)
+        a, b, c, d = base, base + n, base + 2 * n, base + 3 * n
+        for s in range(n):
+            s2 = (s + 1) % n
+            faces.append((a + s, a + s2, c + s2, c + s))     # front face
+            faces.append((b + s, d + s, d + s2, b + s2))     # back face
+            faces.append((a + s, b + s, b + s2, a + s2))     # outer edge
+            faces.append((c + s, c + s2, d + s2, d + s))     # inner edge
+
+    # the rim: from the skin in to the hub ring. Everything inboard of the hub
+    # is open except where a spoke crosses it.
+    closed_band(front, back, hub_f, hub_b)
+
+    span = max(2, int(n * web_frac / max(n_holes, 1)))
+    for h in range(n_holes):
+        s0 = int(n * h / n_holes)
+        idx = [(s0 + j) % n for j in range(span + 1)]
+        m = len(idx)
+        base = len(verts)
+        verts.extend([hub_f[i] for i in idx])
+        verts.extend([hub_b[i] for i in idx])
+        verts.extend([bore_f[i] for i in idx])
+        verts.extend([bore_b[i] for i in idx])
+        hf, hb, bf, bb = base, base + m, base + 2 * m, base + 3 * m
+        for j in range(m - 1):
+            faces.append((hf + j, hf + j + 1, bf + j + 1, bf + j))   # front
+            faces.append((hb + j, bb + j, bb + j + 1, hb + j + 1))   # back
+            faces.append((bf + j, bf + j + 1, bb + j + 1, bb + j))   # bore edge
+            faces.append((hf + j + 1, hf + j, hb + j, hb + j + 1))   # hub edge
+        # the two radial cut faces that make this a spoke and not a band
+        faces.append((hf, bf, bb, hb))
+        e = m - 1
+        faces.append((bf + e, hf + e, hb + e, bb + e))
+    return verts, faces
+
+
+

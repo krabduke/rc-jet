@@ -28,6 +28,8 @@ from parts import (fuselage as fus, internals, structure, systems, detail,
 # to it. Now the default is "must be inside", and each exception is named with
 # the reason it is allowed out.
 OUTSIDE = {
+    "wiring": "runs out into the wing to the aileron servos",
+    "servo_ail_": "in the wing, not the fuselage",
     # lifting surfaces and their hardware, checked against their own sections
     "wing": "a wing is outside the fuselage by definition",
     "flaperon": "on the wing",

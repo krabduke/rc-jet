@@ -48,30 +48,62 @@ def _proud_ring(x, h, segments=SEG):
     return ring
 
 
-def _band(x, width, h):
-    """A raised band around the body: skin ring, out, along, back in."""
-    half = width / 2
-    inner_f = fus.section_ring(x - half)
-    inner_b = fus.section_ring(x + half)
-    outer_f = _proud_ring(x - half, h)
-    outer_b = _proud_ring(x + half, h)
-    verts = inner_f + inner_b + outer_f + outer_b
+def _swept_band(x, half, h, profile):
+    """A relief band round the body, swept from a section profile.
+
+    `profile` is a list of (dx, dr) in multiples of the half-width and the
+    standoff: dx walks forward to aft across the joint, dr lifts the strip
+    off the skin. Both ends sit at dr = 0 so the band dies into the skin
+    instead of ending on a wall.
+    """
+    # The profile is walked as a closed loop: out along the relief and back
+    # along the skin, so the band is a watertight ring whose underside lies
+    # on the surface. Left open at the two ends it was a tube with two holes
+    # in it, and a ray fired at it could come out through either.
+    loop = list(profile) + [(dx, 0.0) for (dx, _dr) in
+                            reversed(profile[1:-1])]
+    rings = [_proud_ring(x + dx * half, dr * h) for (dx, dr) in loop]
+    verts = [v for r in rings for v in r]
     n = SEG
-    i_f, i_b, o_f, o_b = 0, n, 2 * n, 3 * n
     faces = []
-    for s in range(n):
-        s2 = (s + 1) % n
-        faces.append((i_f + s, i_f + s2, o_f + s2, o_f + s))   # front wall
-        faces.append((o_b + s, o_b + s2, i_b + s2, i_b + s))   # rear wall
-        faces.append((o_f + s, o_f + s2, o_b + s2, o_b + s))   # crown
+    for k in range(len(rings)):
+        a0, b0 = k * n, ((k + 1) % len(rings)) * n
+        for s in range(n):
+            s2 = (s + 1) % n
+            faces.append((a0 + s, a0 + s2, b0 + s2, b0 + s))
     return verts, faces
+
+
+# A moulded composite joint is not a flat band stuck on the skin. The two
+# shells butt together, the bond line itself is a shallow groove, and a strap
+# is laid over it and faired in -- so the section is a low shelf, a proud
+# strap either side, and the groove down the middle. The section splits (at
+# the bulkheads, where the fuselage comes apart for transport) get a wider
+# strap and a deeper groove than the panel joints.
+
+_JOINT_MINOR = [
+    (-1.70, 0.00), (-1.50, 0.30), (-0.55, 0.34), (-0.40, 0.95),
+    (-0.16, 1.00), (-0.07, 0.40), (0.07, 0.40), (0.16, 1.00),
+    (0.40, 0.95), (0.55, 0.34), (1.50, 0.30), (1.70, 0.00),
+]
+
+_JOINT_MAJOR = [
+    (-2.60, 0.00), (-2.38, 0.24), (-1.15, 0.30), (-0.92, 0.88),
+    (-0.66, 1.00), (-0.26, 1.00), (-0.13, 0.34), (0.13, 0.34),
+    (0.26, 1.00), (0.66, 1.00), (0.92, 0.88), (1.15, 0.30),
+    (2.38, 0.24), (2.60, 0.00),
+]
 
 
 def _circumferential_seams():
     """One band per production joint, where the fuselage sections butt."""
     out = {}
+    splits = [b[1] for b in spec.BULKHEADS]
     for i, x in enumerate(SD["seam_x"], start=1):
-        out[f"seam_ring_{i:02d}"] = _band(x, SD["seam_w"], SD["seam_h"])
+        major = any(abs(x - xb) < 4.0 for xb in splits)
+        out[f"seam_ring_{i:02d}"] = _swept_band(
+            x, SD["seam_w"] * 0.5, SD["seam_h"],
+            _JOINT_MAJOR if major else _JOINT_MINOR)
     return out
 
 
@@ -172,12 +204,68 @@ def _wing_seams():
     return {"wing_seams": mesh.join(*parts)}
 
 
+def _ply_pad(x0, x1, a0, a1, h, nx=18, na=20, edge=0.22, plies=3):
+    """A doubler laminated onto the skin, with the plies dropping off.
+
+    A composite doubler is a stack of cloth plies, each one smaller than the
+    last, so the edge is a staircase that fairs the load into the skin rather
+    than a wall that concentrates it. The pad follows the section, so it sits
+    down on the surface everywhere.
+    """
+    def thickness(fx, fa):
+        d = min(fx, 1.0 - fx, fa, 1.0 - fa) / edge
+        if d >= 1.0:
+            return h
+        step = math.ceil(max(d, 0.0) * plies) / plies
+        return h * max(step, 1.0 / (plies + 2))
+
+    inner, outer = [], []
+    for i in range(nx):
+        fx = i / (nx - 1)
+        x = x0 + (x1 - x0) * fx
+        for j in range(na):
+            fa = j / (na - 1)
+            a = a0 + (a1 - a0) * fa
+            inner.append(fus.surface_point(x, a, 0.0))
+            outer.append(fus.surface_point(x, a, thickness(fx, fa)))
+    verts = inner + outer
+    off = len(inner)
+    faces = []
+    for i in range(nx - 1):
+        for j in range(na - 1):
+            k = i * na + j
+            faces.append((k, k + 1, k + na + 1, k + na))
+            faces.append((off + k, off + k + na, off + k + na + 1, off + k + 1))
+    for i in range(nx - 1):
+        for j in (0, na - 1):
+            k = i * na + j
+            if j == 0:
+                faces.append((k, k + na, off + k + na, off + k))
+            else:
+                faces.append((k + na, k, off + k, off + k + na))
+    for j in range(na - 1):
+        for i in (0, nx - 1):
+            k = i * na + j
+            if i == 0:
+                faces.append((k + 1, k, off + k, off + k + 1))
+            else:
+                faces.append((k, k + 1, off + k + 1, off + k))
+    return verts, faces
+
+
 def _doublers():
-    """Reinforcing doubler plates: gear bay, spar carry-through, tail joint."""
-    parts = []
-    for (x, lx, ly) in ((spec.GEAR["main_x"], 70.0, 104.0),
-                        (spec.BULKHEADS[2][1], 44.0, 58.0),
-                        (V["x_root_le"] + 12.0, 62.0, 26.0)):
-        w, hh, zc, _ = fus.station_at(x)
-        parts.append(shapes.rounded_box(x, 0.0, zc - hh - 0.4, lx, min(ly, w * 1.9), 1.0))
+    """Reinforcing doublers: gear bay, spar carry-through, fin root.
+
+    Each one is where a point load goes into the shell -- the gear legs, the
+    wing carry-through, the fin post -- so each is laid over that spot on the
+    skin, not floated under the belly on a bounding box.
+    """
+    pads = [
+        # (x0, x1, angle from, angle to, plies)
+        (spec.GEAR["main_x"] - 34.0, spec.GEAR["main_x"] + 34.0, 228.0, 312.0, 4),
+        (spec.BULKHEADS[2][1] - 20.0, spec.BULKHEADS[2][1] + 26.0, 236.0, 304.0, 3),
+        (V["x_root_le"] - 4.0, V["x_root_le"] + 30.0, 66.0, 114.0, 3),
+    ]
+    parts = [_ply_pad(x0, x1, a0, a1, spec.FUSELAGE_SKIN * 0.75, plies=n)
+             for (x0, x1, a0, a1, n) in pads]
     return {"doublers": mesh.join(*parts)}

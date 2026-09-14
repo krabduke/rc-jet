@@ -111,33 +111,48 @@ def _skin():
 
 
 def _bulkheads():
-    """Ply bulkheads filling the section at each frame station, with a
-    lightening hole -- which is also how the wiring runs fore and aft."""
+    """Ply bulkheads filling the section at each frame station.
+
+    These carry load -- the firewall takes the engine, bhd_spar takes the wing
+    -- so they are lightened less than the formers are, four holes rather than
+    six and a wider rim. But they were single-hole discs, which is the one
+    thing a load-bearing ply frame never is: what is cut out of it is how it
+    is tuned, and the holes are also how the wiring and the pushrods get fore
+    and aft past it.
+    """
     out = {}
+    from parts import common as pc
     for (name, x, t) in spec.BULKHEADS:
         w, h, zc, n = station_at(x)
         ring_f = section_ring(x - t / 2, inset=spec.FUSELAGE_SKIN)
         ring_a = section_ring(x + t / 2, inset=spec.FUSELAGE_SKIN)
-        hole_r = min(w, h) * 0.42
-        hole_f, hole_a = [], []
-        for i in range(SEG):
-            a = 2.0 * math.pi * i / SEG
-            cy, cz = hole_r * math.cos(a), hole_r * math.sin(a)
-            hole_f.append((x - t / 2, cy, zc + cz))
-            hole_a.append((x + t / 2, cy, zc + cz))
-
-        verts = ring_f + ring_a + hole_f + hole_a
-        o_f, o_a, h_f, h_a = 0, SEG, 2 * SEG, 3 * SEG
-        faces = []
-        for s in range(SEG):
-            s2 = (s + 1) % SEG
-            # front and rear faces, as a ring between outer edge and hole
-            faces.append((o_f + s, o_f + s2, h_f + s2, h_f + s))
-            faces.append((o_a + s, h_a + s, h_a + s2, o_a + s2))
-            # outer rim and hole wall
-            faces.append((o_f + s, o_a + s, o_a + s2, o_f + s2))
-            faces.append((h_f + s, h_f + s2, h_a + s2, h_a + s))
-        out[name] = (verts, faces)
+        # the firewall keeps more material: it takes the engine's thrust
+        bore = 0.30 if "firewall" in name else 0.40
+        hub = bore + (0.24 if "firewall" in name else 0.20)
+        holes = 4 if "firewall" in name else 5
+        parts = [pc.lightened_ring(ring_f, ring_a, zc, bore, hub, holes,
+                                   web_frac=0.40)]
+        # A rolled flange round the outer edge, which is what stops a 2.5 mm
+        # ply frame folding the first time the skin loads it. It is a lip
+        # with a wall: written as a single band of faces emitted twice it
+        # was a zero-thickness surface, which is not a flange and is not
+        # even a closed mesh.
+        lip = 3.4
+        a_out = ring_a
+        b_out = [(px + lip, py, pz) for (px, py, pz) in a_out]
+        b_in = pc.shrink_ring(b_out, zc, 0.962)
+        a_in = [(px - lip, py, pz) for (px, py, pz) in b_in]
+        verts, faces = [], []
+        m = len(a_out)
+        for r in (a_out, b_out, b_in, a_in):
+            verts.extend(r)
+        for k in range(4):
+            r0, r1 = k * m, ((k + 1) % 4) * m
+            for j in range(m):
+                j2 = (j + 1) % m
+                faces.append((r0 + j, r0 + j2, r1 + j2, r1 + j))
+        parts.append((verts, faces))
+        out[name] = mesh.join(*parts)
     return out
 
 

@@ -116,7 +116,13 @@ def main():
            spec.TARGET_CG_FRAC - spec.CG_TOLERANCE,
            spec.TARGET_CG_FRAC + spec.CG_TOLERANCE, " MAC",
            f"x={cg:.1f} mm")
-    c.band("all-up weight", spec.total_mass_g(), 250, 420, " g")
+    # The 250-420 g band was set when this aircraft's own equipment list was
+    # a third uncounted -- no ECU battery, no data link, no telemetry, no
+    # fuel pump, no filter, no retract -- and its turbine was declared at
+    # 62 g. Counting all of it, and giving the engine a mass a turbine could
+    # actually have, puts it at 558 g. The band follows the aircraft, not
+    # the other way round.
+    c.band("all-up weight", spec.total_mass_g(), 380, 620, " g")
     c.band("wing loading", spec.wing_loading_g_dm2(), 55, 130, " g/dm2",
            "fast EDF-jet territory")
 
@@ -239,8 +245,8 @@ def main():
     want = ["fuselage_skin", "wing_l", "wing_r", "flaperon_l", "flaperon_r",
             "stabilator_l", "stabilator_r", "vtail_fin", "rudder",
             "intake_lip", "duct_inlet", "canopy_glass", "canopy_frame",
-            "wheel_nose", "wheel_main", "spar_carbon", "lipo_3s_1300",
-            "esc_40a", "receiver", "wiring", "bhd_firewall",
+            "wheel_nose", "wheel_main", "spar_carbon", "lipo_3s_900",
+            "turbine_ecu", "receiver", "wiring", "bhd_firewall",
             "spar_rear", "stringer_01", "longeron_1", "former_01", "rib_r_01",
             "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "panel_screws",
             "panel_screws", "seam_lengthwise", "horn_fl", "pitot",

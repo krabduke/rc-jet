@@ -53,6 +53,32 @@ def _lip():
     return {"intake_lip": (verts, faces)}
 
 
+def duct_section(x):
+    """(half width, half height, z centre) of the duct's OUTER wall at x.
+
+    Everything that shares the fuselage with the duct -- the tank saddles,
+    the equipment trays, the avionics -- has to be placed from the duct,
+    because on a nose-intake model the duct is what decides where there is
+    room. Guessing at it is how the flight pack, the fuel filter and the
+    access tray all ended up inside the airflow.
+    """
+    x0, x1 = I["x_throat"], I["x_duct_end"]
+    t = min(max((x - x0) / (x1 - x0), 0.0), 1.0)
+    s = t * t * (3 - 2 * t)
+    w0 = I["lip_width"] / 2 - 1.0
+    h0 = I["lip_height"] / 2 - 1.0
+    r1 = I["duct_r_end"]
+    return (w0 + (r1 - w0) * s + I["wall"],
+            h0 + (r1 - h0) * s + I["wall"],
+            I["z_lip"] + (spec.ENGINE_Z - I["z_lip"]) * s)
+
+
+def duct_top(x, gap=1.0):
+    """The lowest z a box at station x can sit at and stay out of the duct."""
+    w, h, zc = duct_section(x)
+    return zc + h + gap
+
+
 def _duct():
     """S-duct from the chin inlet up to the engine centreline. The offset is
     real: the inlet sits below the cockpit and the engine sits on the datum, so

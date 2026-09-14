@@ -34,7 +34,12 @@ def _stabilators():
             semi_span=H["semi_span"], sweep_le=H["sweep_le"],
             dihedral=H["anhedral"], thickness=H["thickness"],
             thickness_tip=H["thickness_tip"], tip_cap=6, camber=0.0,
-            n_span=18, n_chord=NC, pivot=0.25, mirror=mir)
+            # Start at the fuselage side, not on the centreline. Rooted at
+            # y = 0 the two stabilators were the same surface twice, sharing
+            # the whole of their root thickness with each other and with the
+            # tailpipe running between them.
+            n_span=18, n_chord=NC, pivot=0.25, mirror=mir,
+            span0=H["root_y"] / H["semi_span"])
         out[f"stabilator_{side}"] = (v, f)
     return out
 

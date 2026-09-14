@@ -378,16 +378,20 @@ def _cockpit():
     """Instrument coaming and a seat pan, visible through the canopy."""
     out = {}
     C = spec.CANOPY
+    # The cockpit is a moulded insert that drops in under the canopy: it
+    # sits ON the canopy sill, not below it. Hung 4 mm under the sill the
+    # seat pan was in the equipment bay -- which on this aircraft is the
+    # only usable volume there is, and which the flight pack needs.
     out["instrument_panel"] = shapes.rounded_box(C["x_front"] + 26.0, 0.0,
-                                       C["z_base"] + 2.0, 12.0, 26.0,
-                                       C["height"] * 0.60)
-    out["seat_pan"] = shapes.rounded_box(C["x_front"] + 62.0, 0.0, C["z_base"] - 4.0,
-                               34.0, 24.0, 6.0)
+                                       C["z_base"] + C["height"] * 0.30,
+                                       12.0, 20.0, C["height"] * 0.48)
+    out["seat_pan"] = shapes.rounded_box(C["x_front"] + 54.0, 0.0,
+                               C["z_base"] + 3.0, 34.0, 24.0, 5.0)
     # the canopy glass tops out at z_base + height; a taller seat goes
     # straight through it
-    out["seat_back"] = shapes.rounded_box(C["x_front"] + 80.0, 0.0,
-                                C["z_base"] + C["height"] * 0.30,
-                                6.0, 24.0, C["height"] * 0.70)
+    out["seat_back"] = shapes.rounded_box(C["x_front"] + 66.0, 0.0,
+                                C["z_base"] + C["height"] * 0.26,
+                                6.0, 19.0, C["height"] * 0.52)
     return out
 
 

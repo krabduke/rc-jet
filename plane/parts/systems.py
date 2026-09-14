@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import spec
 import mesh
 import shapes
-from parts import common, fuselage as fus
+from parts import common, fuselage as fus, intake
 
 W = spec.WING
 V = spec.VTAIL
@@ -75,7 +75,7 @@ def _fuel_system():
     consumable mass.
     """
     out = {}
-    x0, x1 = 196.0, 292.0
+    x0, x1 = 196.0, 282.0
 
     # Two saddle tanks, one each side of the intake duct.
     #
@@ -140,28 +140,32 @@ def _fuel_system():
     # A hopper's job is to be the one place the pump never sees air, so it is
     # domed at both ends, has a standpipe vent out of the top and takes its
     # feed from the very bottom.
-    out["fuel_hopper"] = mesh.join(
-        mesh.revolve_closed(
-            [(0.0, 0.0), (2.0, 0.0), (3.4, 5.2), (5.0, 8.0), (7.0, 9.0),
-             (19.0, 9.0), (21.0, 8.0), (22.6, 5.2), (24.0, 0.0),
-             (26.0, 0.0), (24.6, 5.6), (22.6, 8.4), (20.0, 8.0),
-             (6.0, 8.0), (3.4, 8.4), (1.4, 5.6)], 30),
-        mesh.revolve_closed(
-            [(26.0, 0.0), (32.0, 0.0), (32.0, 2.4), (30.0, 3.0),
-             (28.0, 3.0), (26.0, 2.4)], 16),
-        mesh.revolve_closed(
-            [(-5.0, 0.0), (0.0, 0.0), (0.0, 2.4), (-3.0, 2.8),
-             (-5.0, 2.8)], 16))
-    # The lathe runs along its own +x, and the remap below sends that to z --
-    # so the part is 26 mm TALL, not 26 mm long, and its half-extent in z is
-    # 13 mm about a centre 13 mm above the placed point. Placing it as if it
-    # were 9 mm in every direction pushed it through the top of the fuselage.
-    hx, hy, hz = fits(300.0, 0.45, 0.0, 9.0, 13.0, 3.0)
-    out["fuel_hopper"] = ([(pz + hx, py + hy, px + hz - 13.0)
-                           for (px, py, pz) in out["fuel_hopper"][0]],
-                          out["fuel_hopper"][1])
-    out["fuel_pump"] = shapes.rounded_box(
-        *fits(302.0, -0.45, -0.30, 7.0, 7.0), 26.0, 14.0, 14.0, 3.0)
+    #
+    # It lives INSIDE the tank -- which is what a hopper is on an
+    # installation this size: a baffled compartment with the clunk in it.
+    # As a separate 37 mm bottle standing on end there was nowhere aft of
+    # the tank for it to go that was not already duct, firewall or engine,
+    # and it was in all three at once. The saddle it sits in is seven
+    # millimetres wide, so it is a slim cylinder lying along the tank, not
+    # a bottle.
+    k = 0.36
+    hop = [mesh.revolve_closed(
+        [(x, r * k) for (x, r) in
+         [(0.0, 0.0), (2.0, 0.0), (3.4, 5.2), (5.0, 8.0), (7.0, 9.0),
+          (19.0, 9.0), (21.0, 8.0), (22.6, 5.2), (24.0, 0.0),
+          (26.0, 0.0), (24.6, 5.6), (22.6, 8.4), (20.0, 8.0),
+          (6.0, 8.0), (3.4, 8.4), (1.4, 5.6)]], 26)]
+    # the standpipe vent out of the top and the feed union at the bottom,
+    # which are the two things that make it a hopper and not a can
+    hop.append(mesh.revolve_closed(
+        [(9.0, 0.0), (9.0, 1.0), (15.0, 1.0), (15.0, 0.0)], 12))
+    hv, hf = mesh.join(*hop)
+    tank_mid = (x0 + x1) / 2
+    hx, hy, hz = tank_mid - 10.0, -(DUCT_Y + 3.2), 0.0
+    out["fuel_hopper"] = ([(px + hx - 13.0, py + hy, pz + hz)
+                           for (px, py, pz) in hv], hf)
+    px_, py_, pz_, pl, pw, ph = spec.equipment("fuel_pump")
+    out["fuel_pump"] = shapes.rounded_box(px_, py_, pz_, pl, pw, ph, 3.0)
     # a filter is a clear bowl with a threaded cap at each end and the mesh
     # element visible inside it -- the element is the reason it exists
     out["fuel_filter"] = mesh.join(
@@ -176,19 +180,33 @@ def _fuel_system():
         mesh.revolve_closed(
             [(22.0, 0.0), (26.0, 0.0), (26.0, 3.0), (24.4, 3.0),
              (22.0, 2.6)], 16))
-    fx, fy_, fz_ = fits(296.0, -0.55, 0.0, 6.0, 11.0, 4.0)
-    out["fuel_filter"] = ([(pz + fx, py + fy_, px + fz_ - 11.0)
+    # lying along the bay above the duct, not standing in it
+    fx, fy_, fz_ = spec.equipment("fuel_filter")[:3]
+    out["fuel_filter"] = ([(px + fx - 11.0, py + fy_, pz + fz_)
                            for (px, py, pz) in out["fuel_filter"][0]],
                           out["fuel_filter"][1])
-    a = inside(292.0, 0.0, -0.25, 3.0)
-    b = inside(300.0, 0.45, 0.30, 4.0)
-    c = inside(302.0, -0.45, -0.30, 4.0)
-    d = inside(296.0, -0.55, 0.30, 5.0)
+    # tank -> filter -> pump -> the engine's fuel inlet, which is a union on
+    # the OUTSIDE of the casing. The last run used to end on the engine's
+    # centreline 24 mm inside the inlet flange, which put the fuel line
+    # through the fan disc and down the LP shaft.
+    fil = spec.equipment("fuel_filter")
+    pmp = spec.equipment("fuel_pump")
+    inlet = (spec.ENGINE_X + 16.0, 0.0, 22.0)
     out["fuel_lines"] = mesh.join(
-        mesh.pipe([a, b], 1.8, 16, subdiv=3),
-        mesh.pipe([b, c], 1.8, 16, subdiv=3),
-        mesh.pipe([c, d], 1.8, 16, subdiv=3),
-        mesh.pipe([d, (spec.ENGINE_X + 24.0, 0.0, 0.0)], 1.8, 16, subdiv=3))
+        # hopper -> filter, forward along the tank's own saddle
+        mesh.pipe([(hx - 4.0, hy, hz + 2.0),
+                   (210.0, hy + 2.0, 6.0),
+                   (fil[0] - 14.0, fil[1], fil[2])], 1.8, 16, subdiv=3),
+        # filter -> pump, round the FRONT of the ECU rather than through it
+        mesh.pipe([(fil[0] - 14.0, fil[1], fil[2]),
+                   (149.0, fil[1] * 0.5, fil[2]),
+                   (149.0, pmp[1] * 0.5, pmp[2]),
+                   (pmp[0] - 12.0, pmp[1], pmp[2])], 1.8, 16, subdiv=3),
+        # pump -> the engine's fuel union, over the tank and inboard of the
+        # receiver pack
+        mesh.pipe([(pmp[0] + 12.0, pmp[1], pmp[2]),
+                   (205.0, 19.0, 23.0), (250.0, 13.5, 25.0),
+                   (292.0, 2.0, 24.0), inlet], 1.8, 16, subdiv=3))
     return out
 
 
@@ -197,11 +215,11 @@ def _retracts():
     forward into the nose and inboard into the wing root, which is the only
     place a 300 mm span leaves for it."""
     out = {}
-    out["retract_nose"] = shapes.rounded_box(
-        *fits(G["nose_x"] + 12.0, 0.0, -0.45, 9.0, 8.0), 34.0, 18.0, 16.0, 3.0)
+    rx_, ry_, rz_, rl, rw, rh = spec.equipment("retract_nose")
+    out["retract_nose"] = shapes.rounded_box(rx_, ry_, rz_, rl, rw, rh, 3.0)
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         out[f"retract_main_{side}"] = shapes.rounded_box(
-            *fits(G["main_x"] + 10.0, sgn * 0.50, -0.40, 10.0, 8.0),
+            *fits(G["main_x"] + 10.0, sgn * 0.40, -0.40, 10.0, 8.0),
             36.0, 20.0, 16.0, 3.0)
         out[f"gear_door_actuator_{side}"] = shapes.linear_actuator(
             inside(G["main_x"] - 16.0, sgn * 0.45, -0.35, 4.0),
@@ -217,17 +235,14 @@ def _avionics():
     its own controller and its own power, separate from the flight pack --
     losing the receiver should not stop the fuel pump mid-flameout."""
     out = {}
-    out["turbine_ecu"] = shapes.rounded_box(
-        *fits(268.0, 0.48, 0.34, 12.0, 6.0), 42.0, 24.0, 12.0, 3.0)
-    # on the crown, above the duct. The side slots beside the duct are about
-    # ten millimetres wide and the fuel is in them; there is nowhere else at
-    # this station for a pack this size to go.
-    out["ecu_battery"] = shapes.rounded_box(
-        *fits(258.0, 0.0, 0.95, 13.0, 4.0), 38.0, 26.0, 8.0, 2.0)
-    out["kill_switch"] = shapes.rounded_box(
-        *fits(236.0, 0.60, 0.46, 5.0, 4.0), 16.0, 10.0, 8.0, 2.0)
-    out["data_link"] = shapes.rounded_box(
-        *fits(246.0, -0.60, 0.42, 7.0, 4.0), 22.0, 14.0, 8.0, 2.0)
+    # every box here comes out of spec.EQUIPMENT, which is the one place
+    # the bay is laid out and the only one that knows where the duct is
+    for name, r in (("turbine_ecu", 3.0), ("ecu_battery", 2.0),
+                    ("kill_switch", 2.0),
+                    ("receiver", 1.6), ("rx_battery", 3.0),
+                    ("lipo_3s_900", 3.0)):
+        x, y, z, l, w, h = spec.equipment(name)
+        out[name] = shapes.rounded_box(x, y, z, l, w, h, r)
     # the tray has to fit the narrowest station it spans, not the widest
     w_min = min(fus.station_at(x)[0] for x in (214.0, 256.0, 298.0))
     tw = (w_min - spec.FUSELAGE_SKIN - 3.0) * 1.5
@@ -277,17 +292,23 @@ def _cockpit():
     C = spec.CANOPY
     cx = (C["x_front"] + C["x_rear"]) / 2
 
+    # The tray the flight pack straps to. It sits ON the duct's upper wall,
+    # which is what the bay floor actually is this far forward -- it used to
+    # be set from the section and ended up 2 mm inside the airflow.
+    lx, ly, lz, ll, lw, lh = spec.equipment("lipo_3s_900")
+    floor = intake.duct_top(lx + ll / 2) - 1.0
     out["access_tray"] = shapes.rounded_box(
-        *fits(cx, 0.0, -0.35, 30.0, 2.0), 96.0, 56.0, 3.0, 6.0)
-    out["rx_battery"] = shapes.rounded_box(
-        *fits(cx - 26.0, 0.0, 0.10, 16.0, 8.0), 46.0, 30.0, 14.0, 4.0)
-    # under the flight pack, which now sits high because the intake duct has
-    # the bottom of the section this far forward
-    out["rx_mount"] = shapes.rounded_box(
-        *fits(cx + 24.0, 0.0, -0.62, 13.0, 6.0), 30.0, 24.0, 10.0, 3.0)
+        lx, 0.0, floor - 1.5, ll + 26.0, lw + 18.0, 3.0, 6.0)
+    # the ply tray the receiver and its pack sit on, aft of the bulkhead
+    # `rx_mount` used to be a second mounting block for the receiver pack,
+    # placed under a flight pack that has since moved. The receiver sits on
+    # the avionics tray with everything else, and a part whose only job was
+    # to hold something that is no longer above it is not a part.
     for side, sgn in (("l", -1.0), ("r", 1.0)):
+        # on the canopy's own sill, not out at the fuselage's widest point:
+        # at 0.72 of the section they were down in the equipment bay
         out[f"canopy_latch_{side}"] = shapes.rounded_box(
-            *fits(C["x_rear"] - 12.0, sgn * 0.72, 0.45, 4.0, 3.0),
+            *fits(C["x_rear"] - 12.0, sgn * 0.56, 0.83, 4.0, 3.0),
             14.0, 7.0, 6.0, 1.6)
     return out
 
@@ -357,16 +378,17 @@ def _aerials():
     out["antenna_b"] = shapes.whip_antenna((250.0, -12.0, 18.0),
                                           (250.0, -18.0, 44.0), 0.9)
     # a GPS module is a ceramic patch under a domed radome on a base plate
-    gx, gy, gz = fits(214.0, 0.0, 0.62, 9.0, 3.0)
+    # One unit, not two. A separate GPS puck and a separate telemetry box
+    # were two 19 mm boxes fighting for the same 16 mm of crown; every
+    # receiver of this class has the GPS and the telemetry on one board.
+    gx, gy, gz, gl, gw, gh = spec.equipment("telemetry_gps")
     dome = mesh.revolve_closed(
         [(0.0, 0.0), (1.6, 0.0), (1.6, 8.6), (3.4, 8.6), (4.6, 7.6),
          (5.2, 5.4), (5.4, 0.0)], 30)
-    out["gps_puck"] = mesh.join(
-        ([(px + gx, py + gy, pz + gz - 2.4) for (pz, py, px) in dome[0]],
-         dome[1]),
-        shapes.rounded_box(gx, gy, gz - 3.0, 19.0, 19.0, 1.8, 2.0, seg=5))
-    out["telemetry_sensor"] = shapes.rounded_box(
-        *fits(276.0, 0.56, 0.40, 4.0, 3.0), 14.0, 8.0, 6.0, 2.0)
+    out["telemetry_gps"] = mesh.join(
+        shapes.rounded_box(gx, gy, gz, gl, gw, gh, 2.0),
+        ([(px + gx, py + gy, pz + gz + gh / 2) for (pz, py, px) in dome[0]],
+         dome[1]))
     return out
 
 

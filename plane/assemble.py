@@ -57,8 +57,8 @@ def collection_for(name):
         return "07 Engine"
     if n.startswith(("lipo", "esc", "receiver", "servo", "wiring",
                      "turbine_ecu", "ecu_battery", "kill_switch",
-                     "data_link", "avionics_tray", "antenna_", "gps_puck",
-                     "telemetry_sensor", "fuel_", "retract_",
+                     "avionics_tray", "antenna_",
+                     "telemetry_gps", "fuel_", "retract_",
                      "gear_door_actuator")):
         return "08 RC Systems"
     if n.startswith(("bhd_", "spar", "former_", "longeron_", "stringers",
