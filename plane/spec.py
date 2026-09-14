@@ -397,6 +397,8 @@ PALETTE = {
 # wing a 532-vertex object closed off with a flat rib at the tip, which is
 # what made it read as blocky. These are the numbers the sibling F110 project
 # uses for its blade rows.
+TESS = 2.0   # global tessellation multiplier, applied in mesh.py
+
 RES = {"fuse_sections": 80, "fuse_stations": 72, "airfoil_pts": 72,
        "wing_stations": 30, "revolve": 72, "small_revolve": 28}
 

@@ -39,12 +39,17 @@ def _load_engine():
         # came out as a 128-vertex prism, which is a worse surface than
         # anything else on the airframe and the engine is the thing people
         # open the cutaway to look at. Two thirds of full resolution.
+        # Raised from 20/6/64/16/12. The turbofan is 82 per cent of this
+        # aircraft's geometry and the whole point of the cutaway, so it was
+        # the one thing being coarsened hardest. These are close to the
+        # engine's own settings now; it is still the engine that dominates
+        # the file, which is the right thing for it to dominate.
         espec.RES.update({
-            "airfoil_chord_pts": 20,
-            "airfoil_span_pts": 6,
-            "revolve_segments": 64,
-            "small_revolve": 16,
-            "pipe_segments": 12,
+            "airfoil_chord_pts": 38,
+            "airfoil_span_pts": 12,
+            "revolve_segments": 140,
+            "small_revolve": 34,
+            "pipe_segments": 20,
         })
         mods = [importlib.import_module(f"parts.{m}") for m in
                 ("rotating", "statics", "combustor", "turbine",

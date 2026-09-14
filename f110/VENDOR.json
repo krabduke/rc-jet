@@ -1,7 +1,7 @@
 {
  "source": "3d jet engine",
  "files": {
-  "spec.py": "0081c7b611a2",
+  "spec.py": "610855a3bae4",
   "mesh.py": "4ec24fa6933b",
   "airfoil.py": "5fe74f1ea560",
   "materials.py": "84cf36cfe5f6",
@@ -15,5 +15,5 @@
   "parts/nozzle.py": "4ad388070c63",
   "parts/accessories.py": "a80460f9ec50"
  },
- "commit": "904548e"
+ "commit": "388d0d3"
 }

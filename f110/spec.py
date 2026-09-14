@@ -453,11 +453,16 @@ PALETTE = {
 # --------------------------------------------------------------------------
 
 RES = {
-    "airfoil_chord_pts": 28,   # points around one airfoil section
-    "airfoil_span_pts":   9,   # spanwise sections per blade
-    "revolve_segments":  96,   # segments for full-revolution surfaces
-    "small_revolve":     24,   # segments for bolts, pipes, small cylinders
-    "pipe_segments":     16,
+    # Raised from 28/9/96/24/16. At 96 segments a 1.18 m fan case is drawn
+    # with 39 mm facets, which the eye reads as a faceted tube rather than a
+    # turned surface; 144 puts that at 26 mm. The aerofoils dominate the
+    # count -- 2,044 of them -- so chord and span points are what actually
+    # move the total.
+    "airfoil_chord_pts": 40,
+    "airfoil_span_pts": 13,
+    "revolve_segments": 144,
+    "small_revolve": 36,
+    "pipe_segments": 22,
 }
 
 

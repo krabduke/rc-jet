@@ -10,6 +10,24 @@ which is what the spinner and flowpath walls want.
 """
 
 import math
+import spec
+
+# Global tessellation multiplier.
+#
+# Almost none of this model's geometry goes through spec.RES: the segment
+# counts live at the call sites, a few hundred of them, as literals like
+# `mesh.cylinder(0, 26, 11, 10)`. Raising RES therefore moved the vertex
+# total by four per cent on one of these models and eight on another.
+#
+# Scaling here instead lifts every revolve, tube, cylinder, torus and swept
+# pipe at once, without editing a single call site and without changing any
+# shape -- a 10-sided boss becomes a 16-sided boss, it does not become a
+# different boss. Counts that are NOT tessellation (how many bolts are in a
+# ring, how many times a blade is replicated) are deliberately not touched.
+def _T(n):
+    return max(3, int(round(n * spec.TESS)))
+
+
 
 
 # --------------------------------------------------------------------------
@@ -17,6 +35,7 @@ import math
 # --------------------------------------------------------------------------
 
 def revolve_closed(profile, segments=96, phase=0.0, sweep=None):
+    segments = _T(segments)
     """Revolve a CLOSED meridional loop [(x, r), ...] into a watertight solid.
 
     The loop must not cross the axis. Winding is preserved, so order the loop
@@ -50,6 +69,7 @@ def revolve_closed(profile, segments=96, phase=0.0, sweep=None):
 
 
 def revolve_open(profile, segments=96, cap_start=False, cap_end=False, phase=0.0):
+    segments = _T(segments)
     """Revolve an OPEN meridional polyline into a shell. Caps close the ends
     with a fan to the axis (use where the profile meets r=0, e.g. a nose cone)."""
     n = len(profile)
@@ -87,22 +107,26 @@ def revolve_open(profile, segments=96, cap_start=False, cap_end=False, phase=0.0
 # --------------------------------------------------------------------------
 
 def tube(x0, x1, r_in, r_out, segments=96):
+    segments = _T(segments)
     """Annular tube -- the workhorse for casings, ducts and shafts."""
     return revolve_closed([(x0, r_in), (x1, r_in), (x1, r_out), (x0, r_out)], segments)
 
 
 def cone_tube(x0, x1, r_in0, r_out0, r_in1, r_out1, segments=96):
+    segments = _T(segments)
     """Tube whose inner and outer radii vary linearly -- tapered casings."""
     return revolve_closed(
         [(x0, r_in0), (x1, r_in1), (x1, r_out1), (x0, r_out0)], segments)
 
 
 def cylinder(x0, x1, r, segments=32):
+    segments = _T(segments)
     return revolve_open([(x0, 0.001), (x0, r), (x1, r), (x1, 0.001)],
                         segments, cap_start=True, cap_end=True)
 
 
 def ring_torus(x, r_centre, r_tube, segments=64, tube_segments=14):
+    segments = _T(segments); tube_segments = _T(tube_segments)
     """A torus lying in the YZ plane at station x -- seal rings, manifolds."""
     prof = []
     for i in range(tube_segments):
@@ -138,6 +162,7 @@ def _cross(a, b):
 
 
 def pipe(path, radius, segments=16, caps=True, subdiv=1):
+    segments = _T(segments)
     """Sweep a circular section along a 3D polyline using parallel transport,
     so the tube does not twist around corners.
 
