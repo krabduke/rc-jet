@@ -507,7 +507,15 @@ export class CFDView {
      * stops reading as a ribbon and starts flickering.
      */
     const ink = Math.sqrt(170 / Math.max(this.nLines, 1));
-    const width = Math.max(0.0013, this.domain.L * 0.0016 * ink);
+    /* The floor is a fraction of the model, not a number of metres.
+     *
+     * It used to be 0.0013 m, chosen on a car 4.98 m long. On a 0.44 m model
+     * that floor is what sets the width, so the ribbons came out 3.4 times
+     * fatter relative to their subject than the same code drew on the car --
+     * which is most of why one of these two reads clearly and the other does
+     * not. The floor only exists to stop a sub-pixel ribbon flickering, so it
+     * belongs in the model's own units. */
+    const width = Math.max(this.domain.L * 0.0005, this.domain.L * 0.0016 * ink);
     /* Opacity falls with the count too.
      *
      * Width alone is not enough: a hundred thin opaque ribbons stacked along
@@ -631,7 +639,9 @@ export class CFDView {
     // dominant: at 0.0022 of model length they were wider than the ribbons
     // they sit on and the picture became a field of cones with an aircraft
     // somewhere inside it.
-    const r = Math.max(0.0022, this.domain.L * 0.0013);
+    // same scale trap: 0.0022 m was 1.3 per mille of the car and 5.0 of the
+    // aeroplane, so the glyphs were four times the size relative to the model
+    const r = Math.max(this.domain.L * 0.0004, this.domain.L * 0.0013);
     const geo = new THREE.ConeGeometry(r, r*2.8, 7, 1);
     geo.translate(0, -r*0.4, 0);          // pivot nearer the base
     const mat = new THREE.MeshBasicMaterial({

@@ -107,7 +107,14 @@ export class BodyField {
     //
     // The 5x options are tempting and wrong: 5 % of freestream bends a
     // streamline visibly over a five-metre trace. 0.45 % worst case does not.
-    this.lumpCell = Math.max(0.08, ex * 0.085);
+    /* Far-field lumping cell, in the body's own units.
+     *
+     * The 0.08 m floor was swept and chosen on a car; on a 0.44 m aeroplane
+     * it is 18 per cent of the model rather than 8, so the far field was
+     * being approximated twice as coarsely on the smaller body. The sweep
+     * that picked 0.085 was in units of the extent, and that is the part
+     * that transfers between models. */
+    this.lumpCell = Math.max(ex * 0.02, ex * 0.085);
     this.nearCells = 3;
     this.L = null;
     // Flow ports: engine intakes, exhausts and fan mouths. Each is a known
