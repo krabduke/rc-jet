@@ -44,7 +44,7 @@ export class CFDView {
     this.root = opts.root;
     this.bounds = opts.bounds;
     this.bodyPanels = opts.bodyPanels;
-    this.nLines = opts.nLines || 420;
+    this.nLines = opts.nLines || 560;
     this.group = new THREE.Group();
     this.group.name = 'cfd';
     this.root.add(this.group);
@@ -77,7 +77,7 @@ export class CFDView {
      * deflection alone would throw away. What comes out are the lines that
      * pass wide: at this cut the discarded seeds sit 3.1 m off the centreline
      * on average against 0.9 m for the ones kept, on a car 4.6 m long. */
-    this.disturb = {speed: 0.04, deflect: 0.05};
+    this.disturb = {speed: 0.09, deflect: 0.085};
     this.anim = {on: true, rate: 0.55, dash: 0.9, pulse: 1.0};
     this.range = {auto: true, lo: 0.35, hi: 1.45};   // x freestream
     this.cpRange = {lo: -3.0, hi: 1.0};
@@ -500,7 +500,15 @@ export class CFDView {
      * stops reading as a ribbon and starts flickering.
      */
     const ink = Math.sqrt(170 / Math.max(this.nLines, 1));
-    const width = Math.max(0.0016, this.domain.L * 0.0016 * ink);
+    const width = Math.max(0.0013, this.domain.L * 0.0016 * ink);
+    /* Opacity falls with the count too.
+     *
+     * Width alone is not enough: a hundred thin opaque ribbons stacked along
+     * the line of sight are still opaque, and the model disappears behind
+     * its own flow field. Letting each line be more transparent as the
+     * seeding gets denser keeps the total the eye receives about constant,
+     * so raising the line count buys resolution instead of fog. */
+    const alpha = Math.max(0.30, Math.min(0.96, 0.96 * ink));
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         uTime:  {value: 0},
@@ -508,7 +516,7 @@ export class CFDView {
         uDash:  {value: this.anim.dash},
         uRate:  {value: this.anim.rate},
         uPulse: {value: this.anim.on ? this.anim.pulse : 0},
-        uOpacity: {value: 0.96},
+        uOpacity: {value: alpha},
         uFogNear: {value: this.domain.L * 1.3},
         uFogFar:  {value: this.domain.L * 3.6},
       },
@@ -587,7 +595,18 @@ export class CFDView {
    * anyone who has motion reduced. */
   _drawArrows(traced){
     traced = this._shown(traced);
-    const stride = 22;
+    /* A fixed budget of arrows, not a fixed spacing along each line.
+     *
+     * At a stride of 22 the arrow count rose with the line count, so seeding
+     * more densely produced thousands of cones and the glyphs became the
+     * picture -- a swarm with a model somewhere inside it. The job of an
+     * arrow here is only to say which way the flow goes when the animation
+     * is paused, and about four hundred of them does that at any density.
+     */
+    const BUDGET = 230;
+    let total = 0;
+    for(const L of traced) total += Math.max(0, L.spd.length - 8);
+    const stride = Math.max(18, Math.round(total / Math.max(BUDGET, 1)));
     const picks = [];
     for(const L of traced){
       const n = L.spd.length;
@@ -601,11 +620,15 @@ export class CFDView {
     }
     if(!picks.length) return;
 
-    const r = Math.max(0.0035, this.domain.L * 0.0022);
-    const geo = new THREE.ConeGeometry(r, r*2.6, 7, 1);
+    // Smaller than they were. A direction glyph has to be readable, not
+    // dominant: at 0.0022 of model length they were wider than the ribbons
+    // they sit on and the picture became a field of cones with an aircraft
+    // somewhere inside it.
+    const r = Math.max(0.0022, this.domain.L * 0.0013);
+    const geo = new THREE.ConeGeometry(r, r*2.8, 7, 1);
     geo.translate(0, -r*0.4, 0);          // pivot nearer the base
     const mat = new THREE.MeshBasicMaterial({
-      vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false,
+      vertexColors: true, transparent: true, opacity: 0.72, depthWrite: false,
     });
     const inst = new THREE.InstancedMesh(geo, mat, picks.length);
     inst.frustumCulled = false;

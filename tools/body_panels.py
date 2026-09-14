@@ -77,7 +77,27 @@ def fuselage(n_x=20, n_theta=16):
         x = ring[0][0]
         w, h, zc, nn = fus.station_at(x)
         out.extend(_cap(ring, (x, 0.0, zc), nrm))
-    return out
+    return [q for q in out if not _in_inlet(q)]
+
+
+# The intake mouth is a hole, so the panels have to stop at its edge.
+#
+# The body was panelised as a closed shell, which meant the solver saw a
+# solid nose: the boundary condition said no flow crosses the skin, including
+# across the inlet. The air could not get in however hard the engine pulled,
+# and the intake sink in the viewer was fighting a wall. Panels whose centre
+# falls in the mouth are dropped, which leaves the aperture open and lets the
+# capture streamtube form.
+_LIP = spec.INTAKE_LIP if hasattr(spec, "INTAKE_LIP") else None
+
+
+def _in_inlet(q):
+    c = q[0]
+    x, y, z = c[0] / MM, c[1] / MM, c[2] / MM
+    # the lip sits low on the nose, around x 52-60
+    if not (44.0 <= x <= 68.0):
+        return False
+    return (y * y) / (23.0 ** 2) + ((z + 17.0) ** 2) / (13.5 ** 2) <= 1.0
 
 
 def _loft(r0, r1):
@@ -90,8 +110,88 @@ def _loft(r0, r1):
     return out
 
 
+def from_mesh(verts, faces):
+    """Source panels straight off a built surface.
+
+    Any closed part can be a flow obstacle; it only has to hand over a
+    centroid, an outward normal and an area per face. This is how the
+    lifting surfaces get into the solve without re-deriving their geometry
+    from a second set of numbers.
+    """
+    out = []
+    for f in faces:
+        pts = [verts[i] for i in f]
+        for k in range(1, len(pts) - 1):
+            a, b, c = pts[0], pts[k], pts[k + 1]
+            cx = (a[0] + b[0] + c[0]) / 3.0
+            cy = (a[1] + b[1] + c[1]) / 3.0
+            cz = (a[2] + b[2] + c[2]) / 3.0
+            ux, uy, uz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+            vx, vy, vz = c[0] - a[0], c[1] - a[1], c[2] - a[2]
+            nx = uy * vz - uz * vy
+            ny = uz * vx - ux * vz
+            nz = ux * vy - uy * vx
+            m = math.sqrt(nx * nx + ny * ny + nz * nz)
+            if m < 1e-12:
+                continue
+            out.append(((cx * MM, cy * MM, cz * MM),
+                        [nx / m, ny / m, nz / m],
+                        0.5 * m * MM * MM))
+    return out
+
+
+def lifting_surfaces():
+    """Wings, flaperons, stabilators, fin and ventrals as flow obstacles.
+
+    Only the fuselage was panelised, so the source solve made the air go
+    round the body and straight THROUGH everything else -- streamlines
+    passed through the wings and the tail as if they were not there. The
+    vortex lattice makes their lift, but a lattice is invisible to a
+    streamline: it has no thickness for the air to flow around.
+
+    Built coarse on purpose. The solve is a dense LU on the panel count, so
+    these are the shape of the surface rather than its finish.
+    """
+    from parts import common as pc
+    W, V = spec.WING, spec.VTAIL
+    out = []
+
+    for mir in (False, True):
+        v, f = pc.panel(
+            root_le=(W["x_root_le"], 0.0, W["z_root"]),
+            root_chord=W["root_chord"], tip_chord=W["tip_chord"],
+            semi_span=W["semi_span"], sweep_le=W["sweep_le"],
+            dihedral=W["dihedral"], thickness=W["thickness"],
+            planform=spec.WING_PLANFORM, thickness_tip=W["thickness_tip"],
+            tip_cap=4, camber=W["camber"], twist_root=W["incidence"],
+            twist_tip=W["incidence"] - W["washout"],
+            u0=0.0, u1=1.0, n_span=9, n_chord=12, mirror=mir)
+        out += from_mesh(v, f)
+
+    v, f = pc.panel(
+        root_le=(V["x_root_le"], 0.0, V["z_root"]),
+        root_chord=V["root_chord"], tip_chord=V["tip_chord"],
+        semi_span=V["height"], sweep_le=V["sweep_le"],
+        thickness=V["thickness"], thickness_tip=V["thickness_tip"],
+        tip_cap=4, n_span=7, n_chord=10, vertical=True)
+    out += from_mesh(v, f)
+
+    T = spec.HTAIL
+    for mir in (False, True):
+        v, f = pc.panel(
+            root_le=(T["x_root_le"], 0.0, T["z_root"]),
+            root_chord=T["root_chord"], tip_chord=T["tip_chord"],
+            semi_span=T["semi_span"], sweep_le=T["sweep_le"],
+            dihedral=T["anhedral"], thickness=T["thickness"],
+            thickness_tip=T["thickness_tip"], tip_cap=4,
+            twist_root=T["deflect"], twist_tip=T["deflect"],
+            n_span=6, n_chord=9, mirror=mir)
+        out += from_mesh(v, f)
+    return out
+
+
 def build():
-    panels = fuselage()
+    panels = fuselage() + lifting_surfaces()
     return {
         "n": len(panels),
         "c": [v for (c, n, a) in panels for v in c],

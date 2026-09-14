@@ -692,7 +692,7 @@ function buildTunnel(box){
     cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
     bounds: box.clone().translate(root.position),
     bodyPanels: data.body_panels,
-    nLines: 420,
+    nLines: 560,
     ports: (state) => flowPorts(state),
     onSolve: r => {
       renderReadout($('#t-readout'), r, data.tunnel, 'plane');

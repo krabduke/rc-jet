@@ -52,7 +52,7 @@ export class WindTunnel {
     if(opts.bodyPanels){
       this.cfd = new CFDView({
         cfg: this.cfg, root: this.root, bounds: this.bounds,
-        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 420,
+        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 560,
       });
     }
     this.group.visible = false;
