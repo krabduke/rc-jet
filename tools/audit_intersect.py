@@ -41,19 +41,10 @@ EXPECTED = [
     ("wing_bolt_", "wing_"),
     ("wing_bolt_", "fuselage_skin"),
 
-    # The wing panels are lofted to the centreline rather than stopped at the
-    # fuselage side, so their inboard ends run through the fuselage and
-    # through each other at y=0. That is a modelling convention, not an
-    # assembly: the carry-through that actually exists is spar_carbon, which
-    # does span the fuselage. It is declared here because trimming the panels
-    # at the fuselage side would change the wing area the whole aerodynamic
-    # verification is built on.
-    ("wing_l", "wing_r"),
+    # The wing panels start at the fuselage side now, so they no longer run
+    # through the body, the tanks in it, or each other. Only the skin joint
+    # remains, which is the joint.
     ("wing_", "fuselage_skin"),
-    ("wing_", "duct_inlet"),
-    ("wing_", "fuel_tank"),
-    ("wing_", "former_"),
-    ("wing_", "bhd_"),
 
     # A longeron runs the whole length of the fuselage, so everything that
     # crosses the fuselage crosses it: the wing carry-through and the engine
@@ -68,7 +59,6 @@ EXPECTED = [
     ("stringer", "wing_"),
     # and the wing root ribs reach into the fuselage for the same reason the
     # panels do -- they are lofted to the centreline
-    ("rib_", "fuel_tank"),
     ("rib_", "fuselage_skin"),
     ("rib_", "former_"),
 
@@ -87,6 +77,8 @@ EXPECTED = [
     ("canopy_frame", "fuselage_skin"),
 
     # engine installation: the tube is clamped to the rails that carry it
+    # the tailpipe passes through the tail bulkhead, which is an aperture
+    ("tailpipe_shroud", "bhd_tail"), ("tailpipe_cone", "bhd_tail"),
     ("thrust_tube", "mount_rails"),
     ("thrust_tube", "mount_ring"),
     ("thrust_tube", "engine_"),

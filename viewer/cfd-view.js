@@ -110,11 +110,18 @@ export class CFDView {
     const L = x1 - x0, W = 2*y1, Hh = z1 - z0;
     const diag = 0.5*Math.hypot(L, W, Hh);
     const zc = 0.5*(z0 + z1);
-    const spanY = diag * 1.9, spanZ = diag * 1.7;
+    /* The rake covers the model and a margin, not the whole domain.
+     *
+     * At 1.9 and 1.7 diagonals it threw most of its lines into clear air
+     * either side, where they run straight and tell you nothing: a third of
+     * the frame was undisturbed sheets. Tighter, and bunched harder towards
+     * the centre, so the same budget buys resolution where the flow is
+     * actually doing something. */
+    const spanY = diag * 1.25, spanZ = diag * 1.10;
     const xs = x0 - L * 0.55;
 
     // bunch f towards the middle without leaving the edges empty
-    const bunch = (f) => 0.5 + (f - 0.5) * (0.62 + 0.38*Math.abs(2*f - 1));
+    const bunch = (f) => 0.5 + (f - 0.5) * (0.42 + 0.58*Math.abs(2*f - 1));
 
     const seeds = [];
     const nRake = Math.round(this.nLines * 0.55);

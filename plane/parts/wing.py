@@ -27,6 +27,21 @@ def _hinge_u():
     return 1.0 - FL["chord_frac"]
 
 
+def _root_span0():
+    """Span fraction at which the wing panel starts: the fuselage side.
+
+    The panels used to run to y = 0, so both wings passed through the
+    fuselage, through the saddle tanks in it and through each other. The
+    carry-through that exists is spar_carbon, which does span the body.
+    Reference wing area is unchanged -- that is the gross planform, and it
+    always included the covered centre section.
+    """
+    from parts import fuselage as fus
+    x_mid = W["x_root_le"] + W["root_chord"] * 0.5
+    w, h, zc, n = fus.station_at(x_mid)
+    return min(0.45, max(0.0, (w - 2.0) / W["semi_span"]))
+
+
 def _panels():
     """Main wing, trimmed at the flaperon hinge line."""
     out = {}
@@ -40,7 +55,8 @@ def _panels():
             thickness_tip=W["thickness_tip"], tip_cap=7,
             camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
-            u0=0.0, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir)
+            u0=0.0, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir,
+            span0=_root_span0())
         out[f"wing_{side}"] = (v, f)
     return out
 

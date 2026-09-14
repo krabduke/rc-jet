@@ -57,7 +57,8 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
           dihedral=0.0, thickness=0.06, camber=0.0,
           twist_root=0.0, twist_tip=0.0, u0=0.0, u1=1.0,
           n_span=12, n_chord=40, pivot=0.25, vertical=False,
-          mirror=False, planform=None, thickness_tip=None, tip_cap=0):
+          mirror=False, planform=None, thickness_tip=None, tip_cap=0,
+          span0=0.0):
     """Loft one lifting surface. Span runs +y, or +z when vertical.
 
     Twist is applied about `pivot` chord so washout does not also move the
@@ -70,6 +71,12 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
     that is where the spar has to be deep, and thin at the tip because that
     is where thickness is only drag. Constant thickness root to tip is the
     clearest sign a wing was extruded rather than designed.
+
+    `span0` starts the loft part-way out, so a wing can begin at the fuselage
+    side instead of at the centreline. Lofted to the centreline the panels run
+    through the fuselage, through the tanks in it and through each other, and
+    the root rib ends up inside the body. The carry-through that actually
+    exists is the spar.
 
     `tip_cap` closes the tip with that many rings of a rounded cap instead of
     a flat rib. A flat-cut tip is the single thing that makes a lofted wing
@@ -124,7 +131,7 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
 
     verts = []
     for j in range(n_span):
-        f = j / (n_span - 1)
+        f = span0 + (1.0 - span0) * j / (n_span - 1)
         verts.extend(ring(f, (semi_span - bulge) * f))
 
     if tip_cap:
