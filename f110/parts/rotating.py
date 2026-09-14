@@ -105,17 +105,56 @@ def _hpc_rotor():
 
     x_front = rotors[0].x - rotors[0].chord * 0.9
     x_rear = rotors[-1].x + rotors[-1].chord * 1.9
-    prof = [(x_front, bore)] + prof_outer + [(x_rear, bore)]
-    # close the loop back along the bore
-    prof = prof + [(x_rear, bore - 22.0), (x_front, bore - 22.0)]
+
+    # A drum is a drum: a shell under the blade platforms, 26 mm thick. It was
+    # modelled solid all the way down to the shaft bore, which left nothing
+    # for the cones to do -- and so the front cone came out 0.6 mm long and
+    # 340 mm across, a washer with a cone's name on it.
+    wall = 26.0
+    inner = [(x, r - wall) for (x, r) in reversed(prof_outer)]
+    rim0 = prof_outer[0][1]
+    rim1 = prof_outer[-1][1]
+    prof = ([(x_front, rim0)] + prof_outer + [(x_rear, rim1),
+             (x_rear, rim1 - wall)] + inner + [(x_front, rim0 - wall)])
     out["hpc_drum"] = mesh.revolve_closed(prof, SEG)
 
-    # front and rear cones tying the drum to the HP shaft
-    out["hpc_front_cone"] = mesh.cone_tube(
-        spec.SHAFTS["hp_x0"], x_front, hp_r, hp_r + 20.0, bore - 22.0, bore, SEG)
-    out["hpc_rear_cone"] = mesh.cone_tube(
-        x_rear, spec.STATION["diffuser_exit"], bore - 22.0, bore,
-        hp_r, hp_r + 20.0, SEG)
+    # The cones are the conical webs that actually carry the drum on the
+    # shaft: each one runs from the drum's inner surface down and away to the
+    # shaft OD at its bearing, which is a 180 mm radial drop over about the
+    # same axially. That is a cone.
+    # Both webs slope aft-and-inboard from the drum bore to the shaft, over
+    # 150 mm for a 157 mm radial drop -- a 46 degree cone. The No.3 thrust
+    # bearing then sits on the stub of shaft that cantilevers forward of the
+    # front web, which is where it goes.
+    web = 14.0
+    run = 150.0
+    # The drive cones carry the whole HP compressor torque into the shaft, so
+    # they are not plain sheet: each has a thickened rim land where it bolts to
+    # the drum, a thickened hub land at the shaft, a scalloped balance flange,
+    # and a web that thins between the two. Modelled as cone_tube they were
+    # two x-stations of constant thickness.
+    def _cone(xa, xb, ra, rb, ta, tb, flange_at):
+        L = xb - xa
+        r_at = lambda f: ra + (rb - ra) * f
+        t_at = lambda f: ta + (tb - ta) * f
+        outer = [(0.000, t_at(0.0) * 1.9), (0.055, t_at(0.055) * 1.9),
+                 (0.085, t_at(0.085))]
+        outer += [(flange_at - 0.035, t_at(flange_at) * 1.0),
+                  (flange_at - 0.020, t_at(flange_at) * 2.4),
+                  (flange_at + 0.020, t_at(flange_at) * 2.4),
+                  (flange_at + 0.035, t_at(flange_at) * 1.0)]
+        outer += [(0.915, t_at(0.915)), (0.945, t_at(0.945) * 1.9),
+                  (1.000, t_at(1.0) * 1.9)]
+        outer.sort()
+        prof = [(xa, r_at(0.0)), (xb, r_at(1.0))]
+        for (f, t) in reversed(outer):
+            prof.append((xa + L * f, r_at(f) + t))
+        return mesh.revolve_closed(prof, segments=SEG)
+
+    out["hpc_front_cone"] = _cone(
+        x_front, x_front + run, rim0 - wall - web, hp_r, web, web, 0.42)
+    out["hpc_rear_cone"] = _cone(
+        x_rear - run, x_rear, hp_r, rim1 - wall - web, web, web, 0.58)
 
     seals = []
     for a, b in zip(rotors, rotors[1:]):
@@ -129,11 +168,18 @@ def _hpc_rotor():
 
 def _shafts():
     s = spec.SHAFTS
+    # journal fractions follow where the bearings actually sit on each spool
     return {
-        "shaft_lp": mesh.tube(s["lp_x0"], s["lp_x1"],
-                              s["lp_inner_r"], s["lp_outer_r"], 64),
-        "shaft_hp": mesh.tube(s["hp_x0"], s["hp_x1"],
-                              s["hp_inner_r"], s["hp_outer_r"], 64),
+        "shaft_lp": mesh.revolve_closed(
+            common.shaft_profile(s["lp_x0"], s["lp_x1"],
+                                 s["lp_inner_r"], s["lp_outer_r"],
+                                 journals=(0.09, 0.26, 0.93),
+                                 flange_at=0.80), segments=72),
+        "shaft_hp": mesh.revolve_closed(
+            common.shaft_profile(s["hp_x0"], s["hp_x1"],
+                                 s["hp_inner_r"], s["hp_outer_r"],
+                                 journals=(0.07, 0.88),
+                                 flange_at=0.20), segments=72),
     }
 
 

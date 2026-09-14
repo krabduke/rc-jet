@@ -141,7 +141,8 @@ def _seals_and_shrouds():
     out["turbine_interstage_seals"] = mesh.join(*seals)
 
     # the hot-section flowpath inner wall, between the disc rims
-    out["turbine_inner_flowpath"] = mesh.cone_tube(
-        spec.STATION["hpt_inlet"] - 10.0, spec.STATION["lpt_exit"] + 10.0,
-        296.0, 306.0, 286.0, 296.0, SEG)
+    out["turbine_inner_flowpath"] = mesh.revolve_closed(
+        common.shell_profile(spec.STATION["hpt_inlet"] - 10.0,
+                             spec.STATION["lpt_exit"] + 10.0,
+                             296.0, 286.0, 10.0, ribs=False), segments=SEG)
     return out

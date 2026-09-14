@@ -11,6 +11,11 @@ build:
 
 verify:
 	python3 plane/verify.py
+	python3 tools/audit_structure.py
+	python3 tools/audit_geometry.py
+	python3 tools/audit_fit.py
+	python3 tools/check_vendor.py
+	node tools/validate_viewer.mjs .
 
 render:
 	$(BLENDER) -b $(BLEND) -P plane/render.py -- all $(SAMPLES)
@@ -42,3 +47,6 @@ validate:
 
 aero:
 	$(BPY) aero/analyse.py
+
+vendor-viewer:
+	python3 tools/vendor_viewer.py

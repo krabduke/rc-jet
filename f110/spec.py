@@ -365,6 +365,21 @@ ACCESSORIES = {
 # --------------------------------------------------------------------------
 
 MATERIAL_MAP = {
+    # externally mounted line-replaceable units
+    "oil_tank":            "steel",
+    "heat_exchanger":      "steel",
+    "engine_control":      "casing_alloy",
+    "ignition_exciters":   "steel",
+    "vbv_doors":           "casing_alloy",
+    "borescope_ports":     "steel",
+    "t5_harness":          "steel",
+    "antiice_duct":        "steel",
+    "mount_links_rear":    "titanium",
+    "fan_containment":     "titanium",
+    "inlet_probes":        "steel",
+    "turbine_cooling_manifold": "steel",
+    "bearing_sumps":       "steel",
+
     "spinner":     "titanium",
     "fan_r":       "titanium",
     "fan_s":       "titanium",
@@ -424,11 +439,11 @@ DEFAULT_MATERIAL = "casing_alloy"
 # --------------------------------------------------------------------------
 
 PALETTE = {
-    "titanium":        ((0.412, 0.432, 0.462), 1.00, 0.31),
-    "steel":           ((0.480, 0.492, 0.510), 1.00, 0.26),
-    "casing_alloy":    ((0.338, 0.346, 0.362), 1.00, 0.44),
-    "hot_nickel":      ((0.310, 0.246, 0.196), 1.00, 0.54),
-    "thermal_barrier": ((0.430, 0.404, 0.352), 0.25, 0.70),
+    "titanium":        ((0.360, 0.372, 0.398), 1.00, 0.20),
+    "steel":           ((0.520, 0.532, 0.552), 1.00, 0.14),
+    "casing_alloy":    ((0.216, 0.226, 0.244), 1.00, 0.46),
+    "hot_nickel":      ((0.300, 0.210, 0.150), 1.00, 0.50),
+    "thermal_barrier": ((0.470, 0.440, 0.384), 0.15, 0.72),
     "composite":       ((0.170, 0.176, 0.190), 0.00, 0.48),
     "rubber":          ((0.055, 0.055, 0.059), 0.00, 0.88),
 }

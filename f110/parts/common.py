@@ -103,3 +103,86 @@ def labyrinth_seal(x0, x1, r, n_fins=4, fin_h=5.0, fin_w=2.5, segments=64):
             parts.append(mesh.tube(fx - fin_w / 2, fx + fin_w / 2,
                                    r, r + fin_h, segments))
     return mesh.join(*parts)
+
+
+def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None):
+    """Meridional loop for a casing can or a flowpath shell.
+
+    A casing is not a tube. It is a rolled and machined can with a thick
+    bolting land at each end, a wall that steps where the pressure does, and
+    hoop stiffeners in between to keep it round under case load. Built as a
+    straight taper it reads as turned bar stock -- which is exactly what every
+    shell in this engine was: two x-stations each, no feature anywhere along.
+
+    The inner surface stays exactly on the taper, because it is the flowpath
+    and the blade tip clearances are set from it. Everything added is outside.
+
+    `ribs=False` for a shell whose outer surface is itself an aerodynamic
+    surface -- the bypass duct inner wall, the inlet case -- where hoop
+    stiffeners would sit in the airflow instead of behind it.
+
+    Stiffener height is held under 4 mm on purpose: the bolted access panels
+    in accessories.py sit on the nominal outer radius with a 5 mm lip, and a
+    rib taller than that lip would stand through them.
+    """
+    L = x1 - x0
+    r_in = lambda x: r0 + (r1 - r0) * (x - x0) / L
+    land = wall * 0.85
+    rib = min(4.0, wall * 0.30)
+    step = wall * 0.12
+
+    outer = [(0.000, land), (0.030, land), (0.055, step)]
+    if ribs:
+        n = n_rib if n_rib is not None else max(3, int(abs(L) / 320.0))
+        for i in range(n):
+            f = 0.14 + (0.72 * (i + 0.5) / n)
+            base = step if f < 0.45 else 0.0
+            outer += [(f - 0.013, base), (f - 0.009, base + rib),
+                      (f + 0.009, base + rib), (f + 0.013, base)]
+    else:
+        outer += [(0.45, step), (0.47, 0.0)]
+    outer += [(0.945, 0.0), (0.970, land), (1.000, land)]
+    outer.sort()
+
+    prof = [(x0, r_in(x0)), (x1, r_in(x1))]
+    for (f, extra) in reversed(outer):
+        x = x0 + L * f
+        prof.append((x, r_in(x) + wall + extra))
+    return prof
+
+
+def shaft_profile(x0, x1, r_in, r_out, journals=(), flange_at=None):
+    """Meridional loop for a spool shaft.
+
+    A spool is not a plain tube. It carries a bearing journal wherever a
+    bearing sits, a spline at each drive end, a curvic coupling flange where
+    it bolts to a disc, and a bore that steps to keep the section where the
+    torque is. Both shafts in this engine were single `mesh.tube` calls: two
+    x-stations, constant wall, nothing to say which end drove what.
+
+    `journals` are fractions along the shaft that carry a raised bearing land.
+    """
+    L = x1 - x0
+    spl = (r_out - r_in) * 0.34          # spline land height
+    jr = (r_out - r_in) * 0.26           # journal land height
+
+    outer = [(0.000, spl), (0.022, spl), (0.030, 0.0)]
+    for f in journals:
+        outer += [(f - 0.020, 0.0), (f - 0.015, jr),
+                  (f + 0.015, jr), (f + 0.020, 0.0)]
+    if flange_at is not None:
+        outer += [(flange_at - 0.010, 0.0), (flange_at - 0.006, spl * 2.1),
+                  (flange_at + 0.006, spl * 2.1), (flange_at + 0.010, 0.0)]
+    # the section steps down aft of mid-span, where the torque has been taken
+    outer += [(0.56, 0.0), (0.60, -(r_out - r_in) * 0.13),
+              (0.965, -(r_out - r_in) * 0.13), (0.970, spl), (1.000, spl)]
+    outer.sort()
+
+    # bore steps with it, so the wall stays roughly constant
+    inner = [(0.000, 0.0), (0.58, 0.0), (0.62, -(r_out - r_in) * 0.10),
+             (1.000, -(r_out - r_in) * 0.10)]
+
+    prof = [(x0 + L * f, r_in + d) for (f, d) in inner]
+    for (f, extra) in reversed(outer):
+        prof.append((x0 + L * f, r_out + extra))
+    return prof

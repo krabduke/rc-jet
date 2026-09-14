@@ -1,0 +1,19 @@
+{
+ "source": "3d jet engine",
+ "files": {
+  "spec.py": "0081c7b611a2",
+  "mesh.py": "4ec24fa6933b",
+  "airfoil.py": "5fe74f1ea560",
+  "materials.py": "84cf36cfe5f6",
+  "parts/__init__.py": "e3b0c44298fc",
+  "parts/common.py": "36966500c1d7",
+  "parts/rotating.py": "81f66ba664f6",
+  "parts/statics.py": "d8c81036a387",
+  "parts/combustor.py": "96db150fecd2",
+  "parts/turbine.py": "fa36de5dee4d",
+  "parts/augmentor.py": "13e6741d96d1",
+  "parts/nozzle.py": "4ad388070c63",
+  "parts/accessories.py": "e2ba6f6d7124"
+ },
+ "commit": "f133a90"
+}

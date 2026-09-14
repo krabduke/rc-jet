@@ -75,7 +75,10 @@ def main():
 
     print("\nENGINE REUSE")
     eng = [r for r in rows if r["name"].startswith("engine_")]
-    c.true("engine objects present", len(eng) == 99, f"{len(eng)} objects")
+    # exact, not a floor: this catches parts silently dropping out of the
+    # vendored build as well as arriving. Bump it when the turbofan gains
+    # parts upstream and you have re-vendored and re-checked the fit.
+    c.true("engine objects present", len(eng) == 113, f"{len(eng)} objects")
     ex0 = min(f(r, "x_min_mm") for r in eng)
     ex1 = max(f(r, "x_max_mm") for r in eng)
     c.band("engine installed length", ex1 - ex0,
@@ -93,9 +96,12 @@ def main():
             continue
         w, h, zc, _ = fus.station_at(x)
         inner = min(w, h) - spec.FUSELAGE_SKIN
-        need = max(abs(f(r, "y_max_mm")) for r in eng if
-                   f(r, "x_min_mm") <= x <= f(r, "x_max_mm")) if any(
-                   f(r, "x_min_mm") <= x <= f(r, "x_max_mm") for r in eng) else 0
+        # both sides: the accessory gearbox hangs off one flank, so testing
+        # only the positive extreme would miss a part leaving the fuselage on
+        # the other one
+        at = [r for r in eng if f(r, "x_min_mm") <= x <= f(r, "x_max_mm")]
+        need = max(max(abs(f(r, "y_max_mm")), abs(f(r, "y_min_mm")))
+                   for r in at) if at else 0
         if need and inner - need < worst:
             worst, worst_x = inner - need, x
     c.true("engine clears fuselage internals", worst > 0.5,
@@ -209,9 +215,11 @@ def main():
     c.true("seams inside the body",
            all(spec.FUSELAGE[0][0] < x < spec.FUSELAGE[-1][0]
                for x in SD["seam_x"]), f"{len(SD['seam_x'])} stations")
-    c.true("rivet heads smaller than their seam",
-           SD["rivet_r"] * 2 < SD["seam_w"] + 3.2,
-           f"rivet d {SD['rivet_r'] * 2:.1f} mm")
+    # A bonded composite joint has no fasteners in it. This airframe carried
+    # 720 rivet heads flanking its seams, which is a sheet-metal convention
+    # that says the wrong thing about how the aeroplane is made.
+    c.true("no rivets on bonded joints", "rivets" not in by,
+           "seams are bonded; hatches are screwed")
 
     # Nothing inside the aircraft may poke out through its skin. Bounding
     # boxes cannot answer this -- a stringer's box is as wide as the widest
@@ -234,7 +242,7 @@ def main():
             "wheel_nose", "wheel_main", "spar_carbon", "lipo_3s_1300",
             "esc_40a", "receiver", "wiring", "bhd_firewall",
             "spar_rear", "stringer_01", "longeron_1", "former_01", "rib_r_01",
-            "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "rivets",
+            "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "panel_screws",
             "panel_screws", "seam_lengthwise", "horn_fl", "pitot",
             "wheel_hub_n", "gear_doors", "navlight_port", "tailpipe_shroud",
             "panel_battery", "panel_gearbay", "antennas",
@@ -250,6 +258,15 @@ def main():
         c.fails.append(f"missing part: {m}")
     c.true("every object has a material",
            all(r["material"] for r in rows), f"{len(rows)} objects")
+    # A name in MATERIAL_MAP that is not in PALETTE silently falls back to
+    # the default, so a part comes out the wrong material and nothing says
+    # so. Caught exactly that on the turbofan: six parts were assigned a
+    # "steel_polished" that does not exist.
+    unknown = sorted({v for v in spec.MATERIAL_MAP.values()
+                      if v not in spec.PALETTE})
+    c.true("every material name is real", not unknown,
+           f"{len(spec.PALETTE)} in palette"
+           + (f", unknown: {', '.join(unknown)}" if unknown else ""))
     c.true("no empty meshes", all(int(r["verts"]) > 0 for r in rows), "all non-empty")
 
     print("\n" + "=" * 66)

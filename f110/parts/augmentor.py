@@ -73,7 +73,24 @@ def _liner():
     x0, x1 = A["spraybar_x"] - 60.0, spec.STATION["augmentor_exit"]
     r = A["liner_r"]
     t = A["liner_thickness"]
-    liner = mesh.tube(x0, x1, r - t, r, SEG)
+    # A screech liner is not a plain tube. It is a corrugated sleeve hung off
+    # the casing in overlapping segments, each stepping out over the one aft
+    # of it so cooling air is fed in behind every joint. The perforations are
+    # cut in below; this is the shell they are cut from, and it was two
+    # x-stations of constant radius.
+    L = x1 - x0
+    n_seg = 6
+    prof = [(x0, r - t), (x1, r - t)]
+    outer = []
+    for k in range(n_seg):
+        f0 = k / n_seg
+        f1 = (k + 1) / n_seg
+        step = t * 0.55 * (n_seg - k) / n_seg
+        outer += [(f0, step), (f0 + 0.012, step + t * 0.5),
+                  (f1 - 0.012, step + t * 0.5), (f1, step)]
+    for (f, extra) in reversed(outer):
+        prof.append((x0 + L * f, r + extra))
+    liner = mesh.revolve_closed(prof, SEG)
 
     n_ax, n_rad = 18, 48
     cutters = []

@@ -37,7 +37,8 @@ def _vane_rows():
 def _casings():
     out = {}
     for (name, x0, x1, r0, r1, wall) in spec.CASINGS:
-        out[name] = mesh.cone_tube(x0, x1, r0, r0 + wall, r1, r1 + wall, SEG)
+        out[name] = mesh.revolve_closed(
+            common.shell_profile(x0, x1, r0, r1, wall), segments=SEG)
     return out
 
 
@@ -85,9 +86,12 @@ def _bypass_duct():
     x0, x1 = spec.STATION["splitter"], spec.STATION["mixer_front"]
     out = {}
 
-    out["bypass_inner_wall"] = mesh.cone_tube(
-        x0, x1, b["inner_radius_fwd"] - 7.0, b["inner_radius_fwd"],
-        b["inner_radius_aft"] - 7.0, b["inner_radius_aft"], SEG)
+    # ribs off: the outside of this wall is the bypass duct, so a hoop
+    # stiffener here would sit in the airflow rather than behind it
+    out["bypass_inner_wall"] = mesh.revolve_closed(
+        common.shell_profile(x0, x1, b["inner_radius_fwd"] - 7.0,
+                             b["inner_radius_aft"] - 7.0, 7.0, ribs=False),
+        segments=SEG)
 
     # splitter leading edge -- the knife that divides core from bypass flow
     nose = []
@@ -112,9 +116,9 @@ def _frames():
     mounts. Inlet case, fan frame hub, and the turbine rear frame."""
     out = {}
 
-    out["inlet_case"] = mesh.cone_tube(
-        spec.STATION["inlet_lip"], spec.STATION["fan_face"],
-        586.0, 596.0, 586.0, 596.0, SEG)
+    out["inlet_case"] = mesh.revolve_closed(
+        common.shell_profile(spec.STATION["inlet_lip"], spec.STATION["fan_face"],
+                             586.0, 586.0, 10.0, ribs=False), segments=SEG)
 
     # inlet lip -- rolled-over leading edge
     lip = []
@@ -128,13 +132,28 @@ def _frames():
 
     # fan frame hub: carries No.1 and No.2 bearings
     xf = spec.STATION["fan_frame"]
-    out["fan_frame_hub"] = mesh.tube(xf - 90.0, xf + 90.0, 104.0, 170.0, 64)
+    # A frame hub is a bearing housing, not a ring of pipe: it has a bore step
+    # for each race, a bolted retainer flange at the front and a web out to the
+    # strut roots. Both hubs in this engine were single mesh.tube calls.
+    out["fan_frame_hub"] = mesh.revolve_closed(
+        [(xf - 90.0, 104.0), (xf - 30.0, 104.0), (xf - 30.0, 112.0),
+         (xf + 40.0, 112.0), (xf + 40.0, 104.0), (xf + 90.0, 104.0),
+         (xf + 90.0, 152.0), (xf + 74.0, 152.0), (xf + 74.0, 138.0),
+         (xf + 30.0, 138.0), (xf + 30.0, 170.0), (xf - 40.0, 170.0),
+         (xf - 40.0, 140.0), (xf - 74.0, 140.0), (xf - 74.0, 166.0),
+         (xf - 90.0, 166.0)], segments=72)
     fv, ff = radial_strut(xf, 150.0, 24.0, 168.0, spec.BYPASS["inner_radius_fwd"] - 6.0)
     out["fan_frame_struts"] = mesh.replicate(fv, ff, 8)
 
     # turbine rear frame: carries No.5 bearing, takes the aft mount load
     xt = spec.STATION["turbine_frame"]
-    out["turbine_frame_hub"] = mesh.tube(xt - 70.0, xt + 70.0, 104.0, 190.0, 64)
+    out["turbine_frame_hub"] = mesh.revolve_closed(
+        [(xt - 70.0, 104.0), (xt - 20.0, 104.0), (xt - 20.0, 114.0),
+         (xt + 34.0, 114.0), (xt + 34.0, 104.0), (xt + 70.0, 104.0),
+         (xt + 70.0, 168.0), (xt + 54.0, 168.0), (xt + 54.0, 150.0),
+         (xt + 24.0, 150.0), (xt + 24.0, 190.0), (xt - 30.0, 190.0),
+         (xt - 30.0, 152.0), (xt - 56.0, 152.0), (xt - 56.0, 180.0),
+         (xt - 70.0, 180.0)], segments=72)
     tv, tf = radial_strut(xt, 170.0, 32.0, 188.0, 466.0)
     out["turbine_frame_struts"] = mesh.replicate(tv, tf, 8)
 
