@@ -6,13 +6,13 @@
   500.0,
   300.0
  ],
- "mass_g": 330.0,
- "wing_loading": 66.52520335865394,
+ "mass_g": 558.0,
+ "wing_loading": 112.48807113372393,
  "wing_area_cm2": 496.05259862324334,
  "mac": 178.9076797101669,
  "mac_le": 189.59445979949209,
- "cg_x": 229.5060606060606,
- "cg_frac": 0.22308489423833514,
+ "cg_x": 234.6415770609319,
+ "cg_frac": 0.2517897349874349,
  "cg_target": 0.25,
  "cg_tol": 0.03,
  "engine_scale": 0.030303030303030304,
@@ -239,7 +239,7 @@
    "parts": 6,
    "faces": 8272,
    "x0": 330.0,
-   "x1": 463.9
+   "x1": 463.8
   },
   {
    "key": "04 Intake and Duct",
@@ -254,10 +254,10 @@
    "key": "05 Canopy",
    "label": "Canopy",
    "color": "#79A6B4",
-   "parts": 7,
-   "faces": 3104,
-   "x0": 77.4,
-   "x1": 178.0
+   "parts": 6,
+   "faces": 2934,
+   "x0": 75.0,
+   "x1": 226.0
   },
   {
    "key": "06 Landing Gear",
@@ -281,17 +281,17 @@
    "key": "08 RC Systems",
    "label": "RC systems",
    "color": "#4F8A5E",
-   "parts": 32,
-   "faces": 16612,
-   "x0": 81.9,
-   "x1": 324.8
+   "parts": 29,
+   "faces": 16462,
+   "x0": 60.0,
+   "x1": 316.2
   },
   {
    "key": "09 Structure",
    "label": "Structure",
    "color": "#9A7B4A",
    "parts": 50,
-   "faces": 34712,
+   "faces": 36968,
    "x0": 26.7,
    "x1": 434.6
   },
@@ -309,9 +309,9 @@
    "label": "Skin detail",
    "color": "#98A0A6",
    "parts": 14,
-   "faces": 7406,
+   "faces": 25210,
    "x0": 17.8,
-   "x1": 416.8
+   "x1": 417.3
   }
  ],
  "parts": {
@@ -319,36 +319,36 @@
    "g": "09 Structure",
    "mat": "ply",
    "x0": 149.0,
-   "x1": 151.0,
-   "f": 320
+   "x1": 154.4,
+   "f": 770
   },
   "bhd_firewall": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 296.5,
-   "x1": 299.5,
-   "f": 320
+   "x1": 302.9,
+   "f": 776
   },
   "bhd_nose": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 65.0,
-   "x1": 67.0,
-   "f": 320
+   "x1": 70.4,
+   "f": 770
   },
   "bhd_spar": {
    "g": "09 Structure",
    "mat": "carbon",
    "x0": 228.8,
-   "x1": 231.3,
-   "f": 320
+   "x1": 234.7,
+   "f": 770
   },
   "bhd_tail": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 429.0,
-   "x1": 431.0,
-   "f": 320
+   "x1": 434.4,
+   "f": 770
   },
   "fuselage_skin": {
    "g": "01 Fuselage",
@@ -458,8 +458,8 @@
   "stabilator_l": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 392.0,
-   "x1": 463.9,
+   "x0": 405.8,
+   "x1": 463.8,
    "f": 1612,
    "pivot": {
     "p": [
@@ -479,8 +479,8 @@
   "stabilator_r": {
    "g": "03 Tail",
    "mat": "control",
-   "x0": 392.0,
-   "x1": 463.9,
+   "x0": 405.8,
+   "x1": 463.8,
    "f": 1612,
    "pivot": {
     "p": [
@@ -574,39 +574,18 @@
    "x1": 103.4,
    "f": 308
   },
-  "esc_40a": {
-   "g": "08 RC Systems",
-   "mat": "board",
-   "x0": 209.5,
-   "x1": 254.5,
-   "f": 170
-  },
-  "lipo_3s_1300": {
-   "g": "08 RC Systems",
-   "mat": "lipo",
-   "x0": 96.0,
-   "x1": 168.0,
-   "f": 170
-  },
-  "receiver": {
-   "g": "08 RC Systems",
-   "mat": "board",
-   "x0": 241.0,
-   "x1": 263.0,
-   "f": 170
-  },
   "servo_ail_l": {
    "g": "08 RC Systems",
    "mat": "servo",
-   "x0": 273.5,
-   "x1": 296.5,
+   "x0": 249.5,
+   "x1": 272.5,
    "f": 170
   },
   "servo_ail_r": {
    "g": "08 RC Systems",
    "mat": "servo",
-   "x0": 273.5,
-   "x1": 296.5,
+   "x0": 249.5,
+   "x1": 272.5,
    "f": 170
   },
   "servo_rudder": {
@@ -626,9 +605,9 @@
   "wiring": {
    "g": "08 RC Systems",
    "mat": "airframe",
-   "x0": 111.9,
-   "x1": 312.7,
-   "f": 1164
+   "x0": 140.4,
+   "x1": 306.4,
+   "f": 1358
   },
   "engine_access_panels": {
    "g": "07 Engine",
@@ -1942,22 +1921,22 @@
   "pushrod_linkages": {
    "g": "10 Detail",
    "mat": "carbon",
-   "x0": 294.2,
-   "x1": 416.1,
+   "x0": 270.4,
+   "x1": 416.0,
    "f": 4030
   },
   "seat_back": {
    "g": "10 Detail",
    "mat": "fabric",
-   "x0": 155.0,
-   "x1": 161.0,
+   "x0": 141.0,
+   "x1": 147.0,
    "f": 170
   },
   "seat_pan": {
    "g": "10 Detail",
    "mat": "fabric",
-   "x0": 123.0,
-   "x1": 157.0,
+   "x0": 115.0,
+   "x1": 149.0,
    "f": 170
   },
   "static_dischargers": {
@@ -2586,9 +2565,9 @@
   "doublers": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 208.0,
-   "x1": 373.0,
-   "f": 510
+   "x0": 210.0,
+   "x1": 360.0,
+   "f": 2154
   },
   "panel_screws": {
    "g": "11 Skin",
@@ -2607,72 +2586,72 @@
   "seam_ring_01": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 41.3,
-   "x1": 42.8,
-   "f": 240
+   "x0": 40.7,
+   "x1": 43.3,
+   "f": 1760
   },
   "seam_ring_02": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 67.2,
-   "x1": 68.8,
-   "f": 240
+   "x0": 66.1,
+   "x1": 69.9,
+   "f": 2080
   },
   "seam_ring_03": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 97.2,
-   "x1": 98.8,
-   "f": 240
+   "x0": 96.7,
+   "x1": 99.3,
+   "f": 1760
   },
   "seam_ring_04": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 149.3,
-   "x1": 150.7,
-   "f": 240
+   "x0": 148.0,
+   "x1": 152.0,
+   "f": 2080
   },
   "seam_ring_05": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 199.2,
-   "x1": 200.7,
-   "f": 240
+   "x0": 198.7,
+   "x1": 201.3,
+   "f": 1760
   },
   "seam_ring_06": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 251.2,
-   "x1": 252.8,
-   "f": 240
+   "x0": 250.7,
+   "x1": 253.3,
+   "f": 1760
   },
   "seam_ring_07": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 297.3,
-   "x1": 298.8,
-   "f": 240
+   "x0": 296.1,
+   "x1": 300.0,
+   "f": 2080
   },
   "seam_ring_08": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 339.2,
-   "x1": 340.8,
-   "f": 240
+   "x0": 338.7,
+   "x1": 341.3,
+   "f": 1760
   },
   "seam_ring_09": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 383.2,
-   "x1": 384.8,
-   "f": 240
+   "x0": 382.7,
+   "x1": 385.3,
+   "f": 1760
   },
   "seam_ring_10": {
    "g": "11 Skin",
    "mat": "airframe",
-   "x0": 415.3,
-   "x1": 416.8,
-   "f": 240
+   "x0": 414.7,
+   "x1": 417.3,
+   "f": 1760
   },
   "wing_seams": {
    "g": "11 Skin",
@@ -2684,8 +2663,8 @@
   "access_tray": {
    "g": "05 Canopy",
    "mat": "ply",
-   "x0": 80.0,
-   "x1": 176.0,
+   "x0": 75.0,
+   "x1": 159.0,
    "f": 170
   },
   "antenna_a": {
@@ -2744,53 +2723,46 @@
    "x1": 318.3,
    "f": 654
   },
-  "data_link": {
-   "g": "08 RC Systems",
-   "mat": "board",
-   "x0": 235.0,
-   "x1": 257.0,
-   "f": 170
-  },
   "ecu_battery": {
    "g": "08 RC Systems",
    "mat": "lipo",
-   "x0": 239.0,
-   "x1": 277.0,
+   "x0": 238.0,
+   "x1": 270.0,
    "f": 170
   },
   "fuel_filter": {
    "g": "08 RC Systems",
    "mat": "alu",
-   "x0": 290.0,
-   "x1": 302.0,
+   "x0": 151.0,
+   "x1": 181.0,
    "f": 960
   },
   "fuel_hopper": {
    "g": "08 RC Systems",
    "mat": "lipo",
-   "x0": 291.0,
-   "x1": 309.0,
-   "f": 1312
+   "x0": 216.0,
+   "x1": 242.0,
+   "f": 928
   },
   "fuel_lines": {
    "g": "08 RC Systems",
    "mat": "carbon",
-   "x0": 290.4,
-   "x1": 324.8,
-   "f": 392
+   "x0": 147.2,
+   "x1": 316.2,
+   "f": 870
   },
   "fuel_pump": {
    "g": "08 RC Systems",
    "mat": "servo",
-   "x0": 289.0,
-   "x1": 315.0,
+   "x0": 152.0,
+   "x1": 176.0,
    "f": 170
   },
   "fuel_tank": {
    "g": "08 RC Systems",
    "mat": "lipo",
    "x0": 196.0,
-   "x1": 292.0,
+   "x1": 282.0,
    "f": 2104
   },
   "gear_door_actuator_l": {
@@ -2814,18 +2786,18 @@
    "x1": 266.1,
    "f": 1396
   },
-  "gps_puck": {
-   "g": "08 RC Systems",
-   "mat": "board",
-   "x0": 204.5,
-   "x1": 223.5,
-   "f": 518
-  },
   "kill_switch": {
    "g": "08 RC Systems",
    "mat": "board",
-   "x0": 228.0,
-   "x1": 244.0,
+   "x0": 179.0,
+   "x1": 195.0,
+   "f": 170
+  },
+  "lipo_3s_900": {
+   "g": "08 RC Systems",
+   "mat": "lipo",
+   "x0": 88.0,
+   "x1": 146.0,
    "f": 170
   },
   "mount_rails": {
@@ -2856,6 +2828,13 @@
    "x1": 270.0,
    "f": 252
   },
+  "receiver": {
+   "g": "08 RC Systems",
+   "mat": "board",
+   "x0": 155.0,
+   "x1": 177.0,
+   "f": 170
+  },
   "retract_main_l": {
    "g": "08 RC Systems",
    "mat": "steel",
@@ -2873,36 +2852,29 @@
   "retract_nose": {
    "g": "08 RC Systems",
    "mat": "steel",
-   "x0": 93.0,
-   "x1": 127.0,
+   "x0": 60.0,
+   "x1": 88.0,
    "f": 170
   },
   "rx_battery": {
    "g": "05 Canopy",
    "mat": "lipo",
-   "x0": 79.0,
-   "x1": 125.0,
+   "x0": 190.0,
+   "x1": 226.0,
    "f": 170
   },
-  "rx_mount": {
-   "g": "05 Canopy",
-   "mat": "board",
-   "x0": 137.0,
-   "x1": 167.0,
-   "f": 170
-  },
-  "telemetry_sensor": {
+  "telemetry_gps": {
    "g": "08 RC Systems",
    "mat": "board",
-   "x0": 269.0,
-   "x1": 283.0,
-   "f": 170
+   "x0": 190.0,
+   "x1": 214.0,
+   "f": 590
   },
   "turbine_ecu": {
    "g": "08 RC Systems",
    "mat": "board",
-   "x0": 247.0,
-   "x1": 289.0,
+   "x0": 152.0,
+   "x1": 186.0,
    "f": 170
   },
   "battery_strap_lipo": {
@@ -2992,9 +2964,14 @@
  },
  "masses": [
   {
-   "name": "lipo_3s_1300",
-   "x": 132.0,
-   "m": 105.0
+   "name": "engine",
+   "x": 370.0,
+   "m": 140.0
+  },
+  {
+   "name": "lipo_3s_900",
+   "x": 117.0,
+   "m": 75.0
   },
   {
    "name": "airframe_skin",
@@ -3002,14 +2979,34 @@
    "m": 62.0
   },
   {
-   "name": "engine",
-   "x": 370.0,
-   "m": 62.0
+   "name": "rx_battery",
+   "x": 208.0,
+   "m": 46.0
   },
   {
-   "name": "esc_40a",
-   "x": 232.0,
-   "m": 28.0
+   "name": "ecu_battery",
+   "x": 254.0,
+   "m": 38.0
+  },
+  {
+   "name": "fuel_pump",
+   "x": 164.0,
+   "m": 34.0
+  },
+  {
+   "name": "turbine_ecu",
+   "x": 169.0,
+   "m": 26.0
+  },
+  {
+   "name": "telemetry_gps",
+   "x": 202.0,
+   "m": 24.0
+  },
+  {
+   "name": "retract_nose",
+   "x": 74.0,
+   "m": 22.0
   },
   {
    "name": "wing_structure",
@@ -3027,18 +3024,28 @@
    "m": 12.0
   },
   {
+   "name": "fuel_filter",
+   "x": 166.0,
+   "m": 12.0
+  },
+  {
    "name": "receiver",
-   "x": 252.0,
+   "x": 166.0,
    "m": 7.0
   },
   {
+   "name": "kill_switch",
+   "x": 187.0,
+   "m": 6.0
+  },
+  {
    "name": "servo_ail_l",
-   "x": 285.0,
+   "x": 261.0,
    "m": 5.5
   },
   {
    "name": "servo_ail_r",
-   "x": 285.0,
+   "x": 261.0,
    "m": 5.5
   },
   {
@@ -3058,7 +3065,7 @@
   "c_ref": 0.17890767971016688,
   "b_ref": 0.3,
   "x_le_mac": 0.18959445979949208,
-  "mass_kg": 0.33,
+  "mass_kg": 0.558,
   "v_default": 22.0,
   "v_min": 8.0,
   "v_max": 45.0,
@@ -3070,8 +3077,8 @@
   "beta_max": 15.0,
   "stall_alpha": 12.0,
   "ground": false,
-  "cg_frac": 0.22308489423833514,
-  "cg_x": 0.2295060606060606,
+  "cg_frac": 0.2517897349874349,
+  "cg_x": 0.2346415770609319,
   "controls": [
    {
     "id": "flaperon",

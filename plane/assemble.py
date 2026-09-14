@@ -291,4 +291,17 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Blender exits 0 even when a background script raises, so a build that
+    # dropped a whole module printed a traceback into the log and then
+    # reported success. `make verify` then ran against a model with those
+    # parts missing and passed, because the gates only see what is there.
+    # Fail loudly instead: print the traceback and hand back a non-zero
+    # status that make will stop on.
+    try:
+        main()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

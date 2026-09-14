@@ -90,7 +90,10 @@ def main():
         "tunnel": tunnel_config.config(),
         "body_panels": body_panels.build(),
     }
-    p = os.path.join(ROOT, "viewer", "parts.json")
+    # argv[1] lets the drift check regenerate to a scratch file and
+    # compare, without touching the copy the viewer loads.
+    p = (sys.argv[1] if len(sys.argv) > 1
+         else os.path.join(ROOT, "viewer", "parts.json"))
     json.dump(out, open(p, "w"), indent=1)
     print(f"  -> {p}  ({len(parts)} parts, {len(groups)} groups, "
           f"{len(masses)} masses)")
