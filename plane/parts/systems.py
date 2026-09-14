@@ -76,29 +76,65 @@ def _fuel_system():
     """
     out = {}
     x0, x1 = 196.0, 292.0
-    rings = []
-    n_st = 22
-    for i in range(n_st):
-        f = i / (n_st - 1)
-        x = x0 + (x1 - x0) * f
-        w, h, zc, n = fus.station_at(x)
-        # domed at both ends: a flat-ended bladder would balloon
-        dome = math.sin(math.pi * min(1.0, 0.06 + 0.94 * f)) ** 0.30
-        ring = []
-        for k in range(30):
-            a = 2 * math.pi * k / 30
-            ring.append((x, (w - 7.0) * 0.80 * dome * math.cos(a),
-                         zc + (h - 7.0) * 0.62 * dome * math.sin(a) - 2.0))
-        rings.append(ring)
-    tank = [_loft(rings)]
-    # filler and vent stand-pipes out of the top, and the pickup out the back
-    for (fx, r_) in ((x0 + 18.0, 3.4), (x1 - 14.0, 2.6)):
-        w, h, zc, n = fus.station_at(fx)
-        sv, sf = mesh.revolve_closed(
-            [(0.0, 0.0), (10.0, 0.0), (10.0, r_), (8.0, r_ * 1.35),
-             (6.0, r_ * 1.35), (6.0, r_), (0.0, r_)], 18)
-        tank.append(([(pz + fx, py, px + zc + (h - 7.0) * 0.52)
-                      for (px, py, pz) in sv], sf))
+
+    # Two saddle tanks, one each side of the intake duct.
+    #
+    # This was a single lofted bladder on the centreline, 20 mm of half-width
+    # and 14 of half-height at its widest -- which is inside the duct, whose
+    # section here is y +/-20.6 and nearly the full height of the fuselage.
+    # The fuel was in the airflow. What is actually free at these stations is
+    # a slot about 10 mm wide between the duct wall and the skin on each side,
+    # so that is where the fuel goes: the arrangement a nose-intake model of
+    # this size has to use.
+    DUCT_Y = 21.6                      # duct half-width plus a wall
+    tank = []
+    for side in (-1.0, 1.0):
+        rings = []
+        n_st = 22
+        for i in range(n_st):
+            f = i / (n_st - 1)
+            x = x0 + (x1 - x0) * f
+            w, h, zc, n = fus.station_at(x)
+            dome = math.sin(math.pi * min(1.0, 0.06 + 0.94 * f)) ** 0.30
+            y_in = DUCT_Y
+            # station_at gives the OUTER half-width, so the skin and a
+            # bonding clearance come off before the tank wall
+            y_out = max(y_in + 1.0, w - spec.FUSELAGE_SKIN - 3.5)
+            hz = (h - spec.FUSELAGE_SKIN * 2 - 6.0) * 0.50 * dome
+            cy = side * (y_in + y_out) / 2.0
+            hy = max(0.6, (y_out - y_in) / 2.0 * dome)
+            # The fuselage is a superellipse, so the section pulls in at the
+            # corners: a slot that reaches full width at full height is
+            # outside the skin even though both extents look legal on their
+            # own. Each point is clamped to the width the section actually
+            # has at its own height.
+            iw = w - spec.FUSELAGE_SKIN - 1.6
+            ih = h - spec.FUSELAGE_SKIN - 1.6
+            ring = []
+            for k in range(26):
+                ang = 2 * math.pi * k / 26
+                ca, sa = math.cos(ang), math.sin(ang)
+                zz = zc - 1.0 + hz * sa
+                t = min(1.0, abs(zz - zc) / max(ih, 1e-6))
+                y_lim = iw * max(0.0, 1.0 - t ** n) ** (1.0 / n)
+                yy = cy + hy * ca
+                if abs(yy) > y_lim:
+                    yy = math.copysign(max(y_in + 0.5, y_lim), yy)
+                ring.append((x, yy, zz))
+            rings.append(ring)
+        tank.append(_loft(rings))
+        # filler on the outboard shoulder of each saddle
+        # filler and vent standpipes, on the inboard shoulder of each saddle.
+        # On the outboard shoulder their collar reached y = 29.7 where the
+        # section only allows 28.9, so they were the part poking through.
+        for (fx, r_) in ((x0 + 18.0, 3.0), (x1 - 14.0, 2.4)):
+            w, h, zc, n = fus.station_at(fx)
+            sv, sf = mesh.revolve_closed(
+                [(0.0, 0.0), (10.0, 0.0), (10.0, r_), (8.0, r_ * 1.35),
+                 (6.0, r_ * 1.35), (6.0, r_), (0.0, r_)], 18)
+            tank.append(([(pz + fx, py + side * (DUCT_Y + 1.5),
+                           px + zc + 5.0)
+                          for (px, py, pz) in sv], sf))
     out["fuel_tank"] = mesh.join(*tank)
 
     # A hopper's job is to be the one place the pump never sees air, so it is
@@ -183,8 +219,11 @@ def _avionics():
     out = {}
     out["turbine_ecu"] = shapes.rounded_box(
         *fits(268.0, 0.48, 0.34, 12.0, 6.0), 42.0, 24.0, 12.0, 3.0)
+    # on the crown, above the duct. The side slots beside the duct are about
+    # ten millimetres wide and the fuel is in them; there is nowhere else at
+    # this station for a pack this size to go.
     out["ecu_battery"] = shapes.rounded_box(
-        *fits(258.0, -0.48, 0.34, 10.0, 6.0), 38.0, 20.0, 12.0, 3.0)
+        *fits(258.0, 0.0, 0.95, 13.0, 4.0), 38.0, 26.0, 8.0, 2.0)
     out["kill_switch"] = shapes.rounded_box(
         *fits(236.0, 0.60, 0.46, 5.0, 4.0), 16.0, 10.0, 8.0, 2.0)
     out["data_link"] = shapes.rounded_box(
@@ -242,8 +281,10 @@ def _cockpit():
         *fits(cx, 0.0, -0.35, 30.0, 2.0), 96.0, 56.0, 3.0, 6.0)
     out["rx_battery"] = shapes.rounded_box(
         *fits(cx - 26.0, 0.0, 0.10, 16.0, 8.0), 46.0, 30.0, 14.0, 4.0)
+    # under the flight pack, which now sits high because the intake duct has
+    # the bottom of the section this far forward
     out["rx_mount"] = shapes.rounded_box(
-        *fits(cx + 24.0, 0.0, 0.10, 13.0, 6.0), 30.0, 24.0, 10.0, 3.0)
+        *fits(cx + 24.0, 0.0, -0.62, 13.0, 6.0), 30.0, 24.0, 10.0, 3.0)
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         out[f"canopy_latch_{side}"] = shapes.rounded_box(
             *fits(C["x_rear"] - 12.0, sgn * 0.72, 0.45, 4.0, 3.0),

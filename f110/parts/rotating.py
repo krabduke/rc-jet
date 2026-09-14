@@ -102,7 +102,11 @@ def _hpc_rotor():
     prof_outer = common.hpc_drum_profile()
 
     x_front = rotors[0].x - rotors[0].chord * 0.9
-    x_rear = rotors[-1].x + rotors[-1].chord * 1.9
+    # Stop at the compressor exit. Running 1.9 chords past the last rotor put
+    # the drum's aft end at 1599, and the diffuser starts at 1540 and the
+    # combustor dome at 1556 -- so the drum ran 59 mm into both of them.
+    x_rear = min(rotors[-1].x + rotors[-1].chord * 1.9,
+                 spec.STATION["hpc_exit"] - 4.0)
 
     # A drum is a drum: a shell under the blade platforms, 26 mm thick. It was
     # modelled solid all the way down to the shaft bore, which left nothing

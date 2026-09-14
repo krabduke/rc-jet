@@ -216,11 +216,15 @@ def hpc_drum_profile():
     through the rotating drum, by up to 23 mm.
     """
     rotors = [r for r in spec.HPC_ROWS if r.rotor]
+    # The drum surface stops at the compressor exit. The last rotor's segment
+    # ran 1.25 chords past it to 1583, and the diffuser begins at 1540 and the
+    # combustor dome at 1556 -- so the drum ran into both.
+    aft = spec.STATION["hpc_exit"] - 4.0
     prof = []
     for row in rotors:
         rim = min(row.r_hub_le, row.r_hub_te) - platform_h(row)
-        prof.append((row.x - row.chord * 0.25, rim))
-        prof.append((row.x + row.chord * 1.25, rim))
+        prof.append((min(row.x - row.chord * 0.25, aft), rim))
+        prof.append((min(row.x + row.chord * 1.25, aft), rim))
     return prof
 
 

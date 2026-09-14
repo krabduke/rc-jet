@@ -161,7 +161,11 @@ def _longerons():
     stiffest, running nose to tail."""
     out = {}
     r = ST["longeron_r"]
-    for i, ang in enumerate((42.0, 138.0, 222.0, 318.0), start=1):
+    # The lower pair used to sit at 222 and 318 -- the bottom corners, which
+    # in the forward fuselage is exactly where the intake duct is. Moved out
+    # towards the widest point of the section, past the duct's y = 20.6, so
+    # they run around it instead of through it.
+    for i, ang in enumerate((42.0, 138.0, 205.0, 335.0), start=1):
         # a longeron is a rectangular strip, laid on edge against the skin --
         # a round rod of the same area would be half as stiff in bending and
         # would give the skin a line contact to be glued to instead of a face

@@ -589,7 +589,10 @@ def _systems():
     # ---- fan containment wrap: the case is only half the story -------------
     # over the fan disc plane only: run aft to x=330 it sat under the oil tank
     # and the cowl door, both of which mount on the same stretch of case
-    xc0, xc1 = 26.0, 250.0
+    # The variable-vane actuation carries unison rings out at r 632-635 over
+    # x -100..0 and x 200..300, with a clear band between them. The wrap ran
+    # to 250 and went straight through the aft ring.
+    xc0, xc1 = 20.0, 190.0
     layers = []
     for i, (f0, f1) in enumerate(((0.0, 1.0), (0.08, 0.92), (0.16, 0.84))):
         a0 = xc0 + (xc1 - xc0) * f0

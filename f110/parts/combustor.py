@@ -156,7 +156,10 @@ def _fuel_system():
         nozzles.append((mesh.rot_x(one_v, a), one_f))
     out["fuel_nozzles"] = mesh.join(*nozzles)
 
-    out["fuel_manifold"] = mesh.ring_torus(x - 62.0, r_out + 6.0, 13.0, SEG, 14)
+    # r_out + 6 put the ring at 513-539, and the bypass casing wall is at
+    # 528-537 at this station -- the manifold was embedded in the duct wall.
+    # Brought inboard into the gap between the compressor casing and the duct.
+    out["fuel_manifold"] = mesh.ring_torus(x - 62.0, r_out - 22.0, 13.0, SEG, 14)
     return out
 
 
