@@ -95,12 +95,17 @@ def collect_corners():
             w = o.matrix_world @ V(c)
             xs.append(w.x); ys.append(w.y); zs.append(w.z)
     cen = V(((min(xs)+max(xs))/2, (min(ys)+max(ys))/2, (min(zs)+max(zs))/2))
-    size = V((max(xs)-min(xs), max(ys)-min(ys), max(zs)-min(zs)))
+    # Every part's own box, not one box round the whole model.
+    #
+    # The framing is fitted to these corners, so what they enclose is what
+    # ends up filling the frame -- and a single box has corners that are
+    # empty air a long way outside the model at any three-quarter angle, so
+    # the camera backs off to keep that air in shot. The union of the parts'
+    # own boxes still contains every vertex and hugs the shape instead.
     CORNERS.clear()
-    for sx in (-.5, .5):
-        for sy in (-.5, .5):
-            for sz in (-.5, .5):
-                CORNERS.append(V((size.x*sx, size.y*sy, size.z*sz)))
+    for o in meshes():
+        for c in o.bound_box:
+            CORNERS.append((o.matrix_world @ V(c)) - cen)
     return cen
 
 
