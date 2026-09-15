@@ -69,10 +69,10 @@ def _hardware():
     w, h, zc = duct_section(x1)
     r = I["duct_r_end"]
     parts = []
-    fv, ff = mesh.revolve_open(
+    fv, ff = mesh.revolve_ring(
         [(x1 - 10.0, r + 1.0), (x1 - 10.0, r + 5.5),
          (x1 - 3.0, r + 5.5), (x1 - 3.0, r + 1.0)],
-        SEG // 2, cap_start=True, cap_end=True)
+        SEG // 2)
     parts.append(([(px, py, pz + zc) for (px, py, pz) in fv], ff))
     for k in range(10):
         a = 2 * math.pi * k / 10

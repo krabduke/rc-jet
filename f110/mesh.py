@@ -82,6 +82,32 @@ def revolve_open(profile, segments=96, cap_start=False, cap_end=False, phase=0.0
     return verts, faces
 
 
+def revolve_ring(profile, segments=96, phase=0.0):
+    """Revolve a closed meridional loop that does NOT touch the axis.
+
+    This is the shape almost every flange, boss, union and clamp on an engine
+    actually is: a section with a hole down the middle. The obvious way to
+    build one -- revolve_open on the loop with cap_start and cap_end -- is
+    wrong, and quietly so. Those caps are fans to the AXIS, which is right for
+    a profile that ends at r = 0 and closes a nose cone, and for one that ends
+    at r = 21 it lays a flat disc straight across the bore. The part comes out
+    a solid puck, and in a render it is a blank circle with no feature on it
+    at all: the mouth of the tailpipe, the hole in every bolt boss, the well
+    the spark plug drops into.
+
+    The loop's winding is fixed here rather than at each call site, from the
+    sign of its area in (x, r), so a profile written in whichever direction
+    reads best still comes out with its normals pointing outward.
+    """
+    a2 = 0.0
+    for i in range(len(profile)):
+        x0, r0 = profile[i]
+        x1, r1 = profile[(i + 1) % len(profile)]
+        a2 += x0 * r1 - x1 * r0
+    return revolve_closed(list(profile) if a2 > 0 else list(reversed(profile)),
+                          segments, phase)
+
+
 # --------------------------------------------------------------------------
 # Convenience solids
 # --------------------------------------------------------------------------

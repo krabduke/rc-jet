@@ -141,10 +141,11 @@ def _fuel_system():
             (x - 30.0, 392.0, 0.0), (x - 8.0, C["nozzle_r"] + 6.0, 0.0),
             (x + 6.0, C["nozzle_r"], 0.0)]
     stem = mesh.pipe(path, 11.0, 14)
-    tip = mesh.revolve_open(
+    # a ring, so the orifice is a hole: capping it fanned a disc to the axis
+    # and every nozzle came out blanked off at the tip
+    tip = mesh.revolve_ring(
         [(x + 4.0, 2.0), (x + 4.0, C["nozzle_tip_r"]),
-         (x + 22.0, C["nozzle_tip_r"] * 0.75), (x + 22.0, 2.0)],
-        18, cap_start=True, cap_end=True)
+         (x + 22.0, C["nozzle_tip_r"] * 0.75), (x + 22.0, 2.0)], 18)
     tip_v = mesh.translate(tip[0], 0.0, C["nozzle_r"], 0.0)
     boss_v, boss_f = mesh.cylinder(-18.0, 18.0, 26.0, 18)
     boss_v = mesh.rot_z(boss_v, math.pi / 2)

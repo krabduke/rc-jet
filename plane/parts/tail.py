@@ -44,15 +44,13 @@ def _pivots_hw():
         parts.append(mesh.pipe(
             [(px, sgn * 6.0, pz), (px, y_root + sgn * 7.0, pz)], 1.5, 16))
         # the bush it turns in, bonded into the side of the fuselage
-        bv, bf = mesh.revolve_open([(0.0, 1.6), (0.0, 2.1), (7.0, 2.1),
-                                    (7.0, 1.6)], 20,
-                                   cap_start=True, cap_end=True)
+        bv, bf = mesh.revolve_ring([(0.0, 1.6), (0.0, 2.1), (7.0, 2.1),
+                                    (7.0, 1.6)], 20)
         parts.append(([(pz_ + px, sgn * px_ + sgn * 6.2, py_ + pz)
                        for (px_, py_, pz_) in bv], bf))
         # the collar that stops the shaft walking out, and its grub screw
-        cv, cf = mesh.revolve_open([(0.0, 1.6), (0.0, 2.2), (2.6, 2.2),
-                                    (2.6, 1.6)], 18,
-                                   cap_start=True, cap_end=True)
+        cv, cf = mesh.revolve_ring([(0.0, 1.6), (0.0, 2.2), (2.6, 2.2),
+                                    (2.6, 1.6)], 18)
         parts.append(([(pz_ + px, sgn * px_ + y_root - sgn * 3.4, py_ + pz)
                        for (px_, py_, pz_) in cv], cf))
         gv, gf = mesh.cylinder(0.0, 2.2, 0.8, 10)
@@ -84,9 +82,8 @@ def _stab_horn(side, sgn, px, pz):
         parts.append(([(pz_ + x, px_ + y, py_ + pz)
                        for (px_, py_, pz_) in hv], hf))
     # the boss where it is clamped to the shaft
-    bv, bf = mesh.revolve_open([(0.0, 1.6), (0.0, 1.9), (2.4, 1.9),
-                                (2.4, 1.6)], 18,
-                               cap_start=True, cap_end=True)
+    bv, bf = mesh.revolve_ring([(0.0, 1.6), (0.0, 1.9), (2.4, 1.9),
+                                (2.4, 1.6)], 18)
     parts.append(([(pz_ + px, sgn * px_ + y - sgn * 1.2, py_ + pz)
                    for (px_, py_, pz_) in bv], bf))
     return {f"horn_s{side}": mesh.join(*parts),

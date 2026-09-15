@@ -255,7 +255,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 60,
-   "faces": 41482,
+   "faces": 41258,
    "x0": 0.0,
    "x1": 440.0
   },
@@ -282,7 +282,7 @@
    "label": "Intake & duct",
    "color": "#5E6B74",
    "parts": 6,
-   "faces": 7890,
+   "faces": 7818,
    "x0": 52.0,
    "x1": 300.0
   },
@@ -309,7 +309,7 @@
    "label": "Engine",
    "color": "#A8763E",
    "parts": 116,
-   "faces": 1182102,
+   "faces": 1181742,
    "x0": 300.0,
    "x1": 440.3
   },
@@ -489,14 +489,14 @@
    "mat": "steel",
    "x0": 397.9,
    "x1": 414.1,
-   "f": 548
+   "f": 512
   },
   "horn_sr": {
    "g": "01 Fuselage",
    "mat": "steel",
    "x0": 397.9,
    "x1": 414.1,
-   "f": 548
+   "f": 512
   },
   "rudder": {
    "g": "03 Tail",
@@ -524,14 +524,14 @@
    "mat": "alu",
    "x0": 407.8,
    "x1": 412.2,
-   "f": 614
+   "f": 538
   },
   "stab_pivot_r": {
    "g": "01 Fuselage",
    "mat": "alu",
    "x0": 407.8,
    "x1": 412.2,
-   "f": 614
+   "f": 538
   },
   "stabilator_l": {
    "g": "03 Tail",
@@ -601,7 +601,7 @@
    "mat": "duct",
    "x0": 286.9,
    "x1": 299.6,
-   "f": 2392
+   "f": 2320
   },
   "duct_frames": {
    "g": "04 Intake and Duct",
@@ -1546,7 +1546,7 @@
    "mat": "engine",
    "x0": 359.7,
    "x1": 362.4,
-   "f": 4760
+   "f": 4400
   },
   "engine_gearbox": {
    "g": "07 Engine",
