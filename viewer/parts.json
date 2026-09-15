@@ -263,8 +263,8 @@
    "key": "02 Wing",
    "label": "Wing",
    "color": "#6E93A8",
-   "parts": 13,
-   "faces": 10592,
+   "parts": 15,
+   "faces": 11648,
    "x0": 104.0,
    "x1": 370.9
   },
@@ -317,8 +317,8 @@
    "key": "08 RC Systems",
    "label": "RC systems",
    "color": "#4F8A5E",
-   "parts": 26,
-   "faces": 12274,
+   "parts": 28,
+   "faces": 13154,
    "x0": 60.0,
    "x1": 316.2
   },
@@ -393,6 +393,20 @@
    "x1": 438.0,
    "f": 11548
   },
+  "flaperon_hinge_l": {
+   "g": "02 Wing",
+   "mat": "steel",
+   "x0": 320.0,
+   "x1": 353.1,
+   "f": 528
+  },
+  "flaperon_hinge_r": {
+   "g": "02 Wing",
+   "mat": "steel",
+   "x0": 320.0,
+   "x1": 353.1,
+   "f": 528
+  },
   "flaperon_l": {
    "g": "02 Wing",
    "mat": "control",
@@ -434,6 +448,20 @@
     "spin": 1.0,
     "role": "hinge"
    }
+  },
+  "servo_hatch_l": {
+   "g": "08 RC Systems",
+   "mat": "airframe",
+   "x0": 243.0,
+   "x1": 279.0,
+   "f": 440
+  },
+  "servo_hatch_r": {
+   "g": "08 RC Systems",
+   "mat": "airframe",
+   "x0": 243.0,
+   "x1": 279.0,
+   "f": 440
   },
   "spar_carbon": {
    "g": "09 Structure",

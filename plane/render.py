@@ -20,7 +20,17 @@ CORNERS = []
 
 
 def meshes():
-    return [o for o in bpy.data.objects if o.type == "MESH"]
+    """Every mesh that is part of the model.
+
+    Not the helpers. The cutaway leaves its one-metre boolean cutter in the
+    scene -- it has to stay, a boolean modifier needs its object -- and the
+    exploded shot that runs after it was framing on that instead of on the
+    aeroplane: camera six metres back for a 490 mm model, which came out a
+    quarter of the width of the frame. Anything named with a leading double
+    underscore is scaffolding.
+    """
+    return [o for o in bpy.data.objects
+            if o.type == "MESH" and not o.name.startswith("__")]
 
 
 def setup_render(samples=128, res=(1920, 1080)):
@@ -140,8 +150,23 @@ def setup_camera(dirv, centre, lens=70.0, ortho=False):
     bpy.context.scene.camera = ob
     dirv = Vector(dirv).normalized()
     if ortho:
-        span = max(max(abs(c.x), abs(c.y), abs(c.z)) for c in CORNERS) * 2.3
-        cd.ortho_scale = span
+        # Fit the orthographic frame to what the camera actually sees, not to
+        # the model's largest dimension times a constant. ortho_scale is the
+        # width, so the height it gives is width/aspect -- and on a 16:9 frame
+        # that is a lot less. The old factor of 2.3 cut the top off the
+        # plenum on the front elevation.
+        # A plan view looks straight down, where world up and the view
+        # direction are the same line and their cross product is zero. Pick
+        # the other reference there, or the frame comes out zero wide and the
+        # render is empty.
+        up = Vector((0, 1, 0)) if abs(dirv.z) > 0.999 else Vector((0, 0, 1))
+        right = dirv.cross(up).normalized()
+        camup = right.cross(dirv).normalized()
+        aspect = (bpy.context.scene.render.resolution_x
+                  / bpy.context.scene.render.resolution_y)
+        half_w = max(abs(c.dot(right)) for c in CORNERS)
+        half_h = max(abs(c.dot(camup)) for c in CORNERS)
+        cd.ortho_scale = max(2 * half_w, 2 * half_h * aspect) * 1.06
         ob.location = centre - dirv * 2.0
     else:
         ob.location = centre - dirv * fit_distance(ob, dirv)
