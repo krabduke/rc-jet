@@ -117,7 +117,15 @@ export class CFDView {
      * the frame was undisturbed sheets. Tighter, and bunched harder towards
      * the centre, so the same budget buys resolution where the flow is
      * actually doing something. */
-    const spanY = diag * 1.25, spanZ = diag * 1.10;
+    /* Sized on the frontal box, not the diagonal.
+     *
+     * On a slender body the diagonal is nearly all length. A 463 mm aeroplane
+     * 300 mm across and 132 mm tall got a rake 312 mm tall -- two and a half
+     * times the model -- so half the lines were released above or below it
+     * and ran dead straight the whole way past. A frontal box with a margin
+     * spends the budget on air that the model is actually in. */
+    const spanY = W * 1.25 + diag * 0.10;
+    const spanZ = Hh * 1.70 + diag * 0.10;
     const xs = x0 - L * 0.55;
 
     // bunch f towards the middle without leaving the edges empty
@@ -142,6 +150,9 @@ export class CFDView {
         seeds.push([xs, (fy - 0.5) * spanY, z]);
       }
     }
+    // the upstream rake is kept on its own: _prepare shears it onto whatever
+    // freestream direction the solve is running at
+    this.rake = seeds.slice();
 
     /* Surface seeding: the lines that hug the body.
      *
@@ -164,11 +175,22 @@ export class CFDView {
       // that got it there
       if(nx >= -0.15 && Math.abs(nz) <= 0.15 && Math.abs(ny) <= 0.15) continue;
       const px = P.c[i*3], py = P.c[i*3+1], pz = P.c[i*3+2];
-      const d = Math.max(0.02, Math.sqrt(P.a[i]) * 1.6);
+      /* Stand off by the panel's own size, floored on the MODEL's size.
+       *
+       * The floor used to be a flat 20 mm, which is a sensible fraction of a
+       * five-metre car and a third of the width of a 440 mm aeroplane: every
+       * surface seed on the jet was launched 20 mm off the skin, which on the
+       * tailcone is outside the far side of it. */
+      const d = Math.max(diag * 0.02, Math.sqrt(P.a[i]) * 1.6);
       let sx = px + nx*d, sy = py + ny*d, sz = pz + nz*d;
       if(this.cfg.ground && sz < 0.006) sz = 0.006;
       seeds.push([sx, sy, sz]);
     }
+    // a streamline may come this close to the skin and no closer: about half
+    // a per cent of the model, which is under an aeroplane's skin thickness
+    // and well inside a car's ride height
+    if(this.body) this.body.nearStop = diag * 0.006;
+    this.surf = seeds.slice(this.rake.length);
     this.seeds = seeds;
     this.domain = {spanY, spanZ, xs, diag, L};
   }
@@ -204,15 +226,50 @@ export class CFDView {
     };
     this.vfs = Math.hypot(vinf[0], vinf[1], vinf[2]) || 1;
 
+    this._shearRake(vinf);
+
     const span = this.ext.x1 - this.ext.x0;
     const zc = 0.5*(this.ext.z0 + this.ext.z1);
+    /* The trace roams further than the rake seeds it.
+     *
+     * The bounds used to be the rake's own extents, so tightening the rake
+     * would have cut every line short the moment it was deflected. A line is
+     * allowed most of a model diagonal either side; what the rake decides is
+     * where lines start, not how far they may go. */
+    const mY = this.domain.diag * 0.95, mZ = this.domain.diag * 0.95;
     this._traceOpts = {
       maxSteps: TRACE_STEPS, ds: span/58, xEnd: this.ext.x1 + span*1.15,
       body: this.body,
-      bounds: [-this.domain.spanY*0.8, this.domain.spanY*0.8,
-               this.cfg.ground ? 0.0 : zc - this.domain.spanZ*0.8,
-               zc + this.domain.spanZ*0.8],
+      bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
     };
+  }
+
+  /* Put the rake where the model is, for the freestream it is being flown at.
+   *
+   * The seeds sit on a plane upstream and the flow is tilted by the angle of
+   * attack, so a line released level with the model has climbed
+   * (x_mid - x_seed) * tan(alpha) by the time it arrives. At eight degrees on
+   * a 463 mm aeroplane that is 67 mm against a 132 mm tall model: the entire
+   * rake sailed over the top, and what the picture showed was undisturbed
+   * air with an aeroplane behind it. Offsetting each seed back along the
+   * freestream puts the rake's image at the model rather than above it.
+   *
+   * Only the upstream rake moves. The surface seeds are already on the skin
+   * and must stay there.
+   */
+  _shearRake(vinf){
+    if(!this.rake) return;
+    const vx = vinf[0] || 1;
+    const drift = 0.5*(this.ext.x0 + this.ext.x1) - this.domain.xs;
+    const dy = -drift * (vinf[1] / vx);
+    const dz = -drift * (vinf[2] / vx);
+    const out = [];
+    for(const s of this.rake){
+      let z = s[2] + dz;
+      if(this.cfg.ground) z = Math.max(0.006, z);
+      out.push([s[0], s[1] + dy, z]);
+    }
+    this.seeds = out.concat(this.surf || []);
   }
 
   /* The colour ranges, from the field rather than from a constant.
@@ -238,8 +295,17 @@ export class CFDView {
       for(const L of traced) for(const m of L.spd) all.push(m);
       all.sort((a, b) => a - b);
       const q = (f) => all.length ? all[Math.floor(f*(all.length - 1))] : this.vfs;
-      this.vmin = Math.min(q(0.02), this.vfs*0.85);
-      this.vmax = Math.max(q(0.98), this.vfs*1.12);
+      /* and clamped to a physical window around freestream.
+       *
+       * A percentile alone is not enough when the tail of the distribution is
+       * singular rather than fast: on the car two per cent of sampled points
+       * sat above five times freestream, so the 98th percentile put the top of
+       * the scale at 1,290 km/h and painted the entire car one colour. Nothing
+       * in a potential-flow solution goes twice freestream except a point
+       * standing on a singularity, so the window stops there. */
+      const lo = this.vfs * 0.35, hi = this.vfs * 2.2;
+      this.vmin = Math.max(lo, Math.min(q(0.02), this.vfs*0.85));
+      this.vmax = Math.min(hi, Math.max(q(0.98), this.vfs*1.12));
     } else {
       this.vmin = this.vfs*this.range.lo;
       this.vmax = this.vfs*this.range.hi;
@@ -967,6 +1033,11 @@ export function drawLegend(canvas, lo, hi, unitLabel, opts){
   g.font = '10px ui-monospace, monospace';
   g.textBaseline = 'top';
   g.fillText(unitLabel, left, 2);
+  // the unit label owns this much of the top row; a mark's label starts after
+  // it, or the two are drawn one on top of the other -- which is how the car's
+  // bar came to read "VelocVity [km/h]" whenever the freestream sat near the
+  // bottom of a clamped range
+  const unitEnd = left + g.measureText(unitLabel).width + 9;
 
   const xOf = (v) => left + (right - left)*(v - lo)/Math.max(hi - lo, 1e-9);
 
@@ -981,7 +1052,8 @@ export function drawLegend(canvas, lo, hi, unitLabel, opts){
     g.textBaseline = 'top';
     const tw = g.measureText(label).width;
     g.fillStyle = '#EAF2F6';
-    g.fillText(label, Math.max(left, Math.min(x - tw/2, right - tw)), 2);
+    g.fillText(label,
+               Math.max(unitEnd, Math.min(x - tw/2, right - tw)), 2);
   }
 
   g.textBaseline = 'alphabetic';

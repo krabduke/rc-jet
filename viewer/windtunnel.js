@@ -35,30 +35,49 @@ function scale(a, k){ return [a[0]*k, a[1]*k, a[2]*k]; }
 function norm(a){ return Math.sqrt(dot(a, a)); }
 function mirrorZ(p){ return [p[0], p[1], -p[2]]; }
 
-/* Velocity at p from a finite vortex segment a->b of unit strength.
+/* Velocity at p from a finite vortex segment a->b of unit strength, with a
+ * Rankine core.
  *
- * The singular-core cutoff is relative to BOTH the segment length and the
- * distance to it -- exactly as in aero/vlm.py. A cutoff relative to the
- * segment alone looks reasonable and is not: on a low aspect ratio wing the
- * tip trailing vortex sits right beside its neighbour's collocation point,
- * the contribution grows without bound as the lattice is refined, and the
- * lift slope walks downwards instead of converging. That is how this was
- * caught -- AR 8 and 12 agreed with the Python solver to four figures while
- * AR 4 was 9 per cent out and drifting.
+ * A filament of zero thickness induces a velocity that grows without bound as
+ * you approach it, and on this aeroplane things do approach it: a delta this
+ * swept staggers its strips far enough in x that one strip's collocation
+ * point sits beside the next strip's trailing leg, and the tailplane flies
+ * through the wing's wake by design. The old cutoff was 1e-10 -- it zeroed
+ * the velocity only for a point lying essentially ON the filament, which
+ * never happens, so in practice there was no core at all.
+ *
+ * What that cost is visible in tools/validate_js.mjs. The lattice did not
+ * converge: refining 152 -> 296 -> 736 -> 1304 panels walked the neutral
+ * point 39.6 -> 33.0 -> 12.9 -> 14.0 % MAC and the lift slope 3.05 -> 2.86
+ * -> 2.77 -> 4.81 per radian. Refinement moves panels closer together, so a
+ * kernel with no core gets worse the finer you make it -- which is the
+ * signature, and the reason the spanwise load plot was a sawtooth.
+ *
+ * Inside the core the filament rotates as a solid body, so the velocity falls
+ * linearly to zero at the centre instead of rising to infinity. The radius is
+ * a fraction of the bound segment's own length, which is the local lattice
+ * scale: a core big enough to cover the gaps refinement creates, and small
+ * compared with the geometry it is modelling.
  */
-const CORE = 1e-10;
+const CORE_FRAC = 0.15;
 
-function segVel(p, a, b, out){
+function segVel(p, a, b, out, rc){
   const r1 = sub(p, a), r2 = sub(p, b);
   const n1 = norm(r1), n2 = norm(r2);
   const c = cross(r1, r2);
   const cc = dot(c, c);
   const r0 = sub(b, a);
-  const sc = dot(r0, r0) * Math.max(n1*n1, n2*n2);
-  if(cc < CORE * Math.max(sc, 1e-30) || n1 < 1e-12 || n2 < 1e-12){
+  const L2 = dot(r0, r0);
+  if(cc < 1e-20 || n1 < 1e-12 || n2 < 1e-12 || L2 < 1e-24){
     out[0]=out[1]=out[2]=0; return out;
   }
-  const k = (dot(r0, r1)/n1 - dot(r0, r2)/n2) / (4 * Math.PI * cc);
+  let k = (dot(r0, r1)/n1 - dot(r0, r2)/n2) / (4 * Math.PI * cc);
+  if(rc > 0){
+    // perpendicular distance from p to the segment's line, squared
+    const d2 = cc / L2;
+    const rc2 = rc * rc;
+    if(d2 < rc2) k *= d2 / rc2;        // solid-body rotation inside the core
+  }
   out[0] = c[0]*k; out[1] = c[1]*k; out[2] = c[2]*k;
   return out;
 }
@@ -66,13 +85,33 @@ function segVel(p, a, b, out){
 const _t1 = [0,0,0], _t2 = [0,0,0], _t3 = [0,0,0];
 
 /* A horseshoe: trailing leg in from far upstream of a, bound a->b, trailing
- * leg out to far downstream of b. Wake runs along `w`. */
+ * leg out to far downstream of b. Wake runs along `w`.
+ *
+ * Only the trailing legs get a core, and that asymmetry is the point.
+ *
+ * A trailing leg runs to infinity and can pass arbitrarily close to another
+ * panel's collocation point -- through the flap behind it, through the wing
+ * above it -- and a 1/r singularity there is a numerical accident, not
+ * physics. Smearing it over a core is the standard remedy.
+ *
+ * The bound vortex is the opposite case. The quarter-chord/three-quarter-chord
+ * arrangement puts every collocation point at a known, deliberate distance
+ * from its own bound vortex; that distance IS the diagonal of the influence
+ * matrix and it is what makes a vortex lattice reproduce thin-aerofoil theory.
+ * Coring it at a fixed fraction of the SPAN of the panel was fatal under
+ * chordwise refinement: at twelve chordwise panels on the front wing's top
+ * flap the collocation point sits 7 mm behind its bound vortex and the core
+ * was 17 mm, so the strongest term in its own row was suppressed to almost
+ * nothing. The matrix went singular and the solve answered with a circulation
+ * of 12.3 and 47,000 kg of induced drag.
+ */
 function horseshoe(p, a, b, w, out){
   const af = [a[0] + w[0]*FAR, a[1] + w[1]*FAR, a[2] + w[2]*FAR];
   const bf = [b[0] + w[0]*FAR, b[1] + w[1]*FAR, b[2] + w[2]*FAR];
-  segVel(p, af, a, _t1);
-  segVel(p, a, b, _t2);
-  segVel(p, b, bf, _t3);
+  const rc = CORE_FRAC * norm(sub(b, a));
+  segVel(p, af, a, _t1, rc);
+  segVel(p, a, b, _t2, 0);
+  segVel(p, b, bf, _t3, rc);
   out[0] = _t1[0] + _t2[0] + _t3[0];
   out[1] = _t1[1] + _t2[1] + _t3[1];
   out[2] = _t1[2] + _t2[2] + _t3[2];
@@ -292,6 +331,53 @@ function luSolve(LU, piv, b, n){
  * Working in y alone is exact for a single planar wing and wrong for anything
  * stacked -- a front wing, rear wing and beam wing shed at the same span
  * stations at different heights. */
+/* Is the spanwise loading smooth, or is the lattice ringing?
+ *
+ * A wing sheds a circulation distribution that varies smoothly across the
+ * span. When neighbouring strips come out alternating in sign instead, the
+ * influence matrix has gone near-singular and the answer is discretisation
+ * noise wearing the shape of a solution -- the forces may still nearly
+ * cancel to something plausible, but anything quadratic in circulation, which
+ * induced drag is, does not cancel at all. This car's rear wing does it: two
+ * elements with a 50 mm slot at 17 and 29 degrees, and the tip strips come
+ * out at +219 and -239 where the neighbours are at -50, which turns 190 kg of
+ * induced drag into 2,247.
+ *
+ * So measure it: total variation of the strip circulation against its own
+ * peak. A smooth loading scores about 2 -- it rises once and falls once. Four
+ * is generous. Past that the drag is not a number worth printing, and saying
+ * so is the only honest thing a solver can do about a case it cannot
+ * resolve.
+ */
+export function loadingRoughness(panels, gamma){
+  const strips = new Map();
+  for(let i = 0; i < panels.length; i++){
+    const p = panels[i];
+    const key = p.surface + '|' + p.a[1].toFixed(7);
+    strips.set(key, (strips.get(key) || 0) + gamma[i]);
+  }
+  const bySurface = new Map();
+  for(const [key, G] of strips){
+    const [surf, y] = key.split('|');
+    if(!bySurface.has(surf)) bySurface.set(surf, []);
+    bySurface.get(surf).push([parseFloat(y), G]);
+  }
+  let worst = 0, where = null;
+  for(const [surf, rows] of bySurface){
+    if(rows.length < 4) continue;
+    rows.sort((a, b) => a[0] - b[0]);
+    let tv = 0, peak = 0;
+    for(let i = 0; i < rows.length; i++){
+      peak = Math.max(peak, Math.abs(rows[i][1]));
+      if(i) tv += Math.abs(rows[i][1] - rows[i-1][1]);
+    }
+    const r = peak > 1e-9 ? tv/peak : 0;
+    if(r > worst){ worst = r; where = surf; }
+  }
+  return {roughness: worst, surface: where, ringing: worst > 4.0};
+}
+
+
 function trefftzDrag(panels, gamma, vInf, sRef, ground){
   const strips = new Map();
   for(let i = 0; i < panels.length; i++){
@@ -461,6 +547,7 @@ export class Tunnel {
     const lift = F[2]*Math.cos(a) - F[0]*Math.sin(a);
     const side = F[1];
     const CDi = trefftzDrag(panels, gamma, v, sRef, ground);
+    const rough = loadingRoughness(panels, gamma);
     const CL = lift/(q*sRef);
 
     this.last = {
@@ -473,6 +560,8 @@ export class Tunnel {
       side_N: (side/(q*sRef))*q*this.cfg.s_ref,
       beta,
       panels: n, gamma, lattice: panels, alpha, v, ground,
+      roughness: rough.roughness, ringing: rough.ringing,
+      ringingSurface: rough.surface,
       bySurface, strips,
       LD: Math.abs(CDi) > 1e-9 ? Math.abs(CL/CDi) : Infinity,
     };

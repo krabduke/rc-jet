@@ -126,10 +126,19 @@
   /* --- wind tunnel ---------------------------------------------------- */
   /* An instrument panel, not a dashboard: the numbers are the content, so
      they get a tabular monospace face and everything else stays quiet. */
+  /* Fixed and bounded, not absolute and unbounded. The panel is a column of
+     readouts that grows with what the solve has to say, and it used to run
+     off the bottom of the window: the how-to-read paragraph and half the
+     spanwise load plot were below the fold with no way to reach them. */
   #tunnel{
-    position:absolute; left:16px; top:96px; width:302px; z-index:6;
-    display:none;
+    position:fixed; left:16px; top:96px; width:302px; z-index:6;
+    bottom:calc(var(--rail-h) + 14px); display:none;
+    overflow-y:auto; overscroll-behavior:contain;
+    scrollbar-width:thin; scrollbar-color:#3C4A52 transparent;
   }
+  #tunnel::-webkit-scrollbar{width:8px}
+  #tunnel::-webkit-scrollbar-thumb{background:#3C4A52; border-radius:4px}
+  #tunnel::-webkit-scrollbar-track{background:transparent}
   #tunnel.on{display:block}
   .twrap{
     background:rgba(16,22,25,.93); border:1px solid #2C383E; border-radius:3px;

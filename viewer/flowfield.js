@@ -86,6 +86,20 @@ export class BodyField {
     this.nrm = Float64Array.from(panels.n_);
     this.area = Float64Array.from(panels.a);
     this.sigma = new Float64Array(this.N);
+    // the body's own bounding box, so the inside test can reject the great
+    // majority of points without summing anything
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity,
+        z0 = Infinity, z1 = -Infinity;
+    for(let i = 0; i < this.N; i++){
+      const X = this.c[i*3], Y = this.c[i*3+1], Z = this.c[i*3+2];
+      if(X < x0) x0 = X; if(X > x1) x1 = X;
+      if(Y < y0) y0 = Y; if(Y > y1) y1 = Y;
+      if(Z < z0) z0 = Z; if(Z > z1) z1 = Z;
+    }
+    this.box = [x0, x1, y0, y1, z0, z1];
+    // how close a streamline may come to the skin before it is stopped. The
+    // field's owner sets this from the model's own size; until then, off.
+    this.nearStop = 0;
     // a length scale per panel, used to keep the point-source approximation
     // away from its own singularity while tracing
     this.rmin = new Float64Array(this.N);
@@ -365,12 +379,54 @@ export class BodyField {
     return {d: Math.sqrt(best), i: bi};
   }
 
+  /* Is p inside the body?
+   *
+   * This used to ask whether p was behind the nearest panel AND within four
+   * of that panel's own lengths of it. That catches a point which has just
+   * slipped under the skin and nothing else: a streamline crossing the middle
+   * of a 40 mm fuselage is 20 mm in, its nearest panel is 20 mm away, and
+   * four panel lengths there is about 8 -- so the line was never stopped and
+   * came out of the far side. Streamlines going straight through the
+   * aeroplane is what that looked like.
+   *
+   * Gauss instead. The solid angle a closed surface subtends at a point is
+   * 4.pi if the point is inside it and zero if it is not, and every panel
+   * already carries the centroid, area and outward normal the sum needs. It
+   * costs one more pass over the panels per step, which is the same order as
+   * the velocity evaluation the step already does.
+   */
   inside(p){
-    const {d, i} = this.nearest(p);
-    if(i < 0) return false;
-    const rx = p[0] - this.c[i*3], ry = p[1] - this.c[i*3+1], rz = p[2] - this.c[i*3+2];
-    const dn = rx*this.nrm[i*3] + ry*this.nrm[i*3+1] + rz*this.nrm[i*3+2];
-    return dn < 0 && d < this.rmin[i]*4;
+    const b = this.box;
+    if(b && (p[0] < b[0] || p[0] > b[1] || p[1] < b[2] || p[1] > b[3]
+             || p[2] < b[4] || p[2] > b[5])) return false;
+    const N = this.N, c = this.c, n = this.nrm, a = this.area;
+    let omega = 0, near = Infinity, ni = -1;
+    for(let j = 0; j < N; j++){
+      const rx = p[0] - c[j*3], ry = p[1] - c[j*3+1], rz = p[2] - c[j*3+2];
+      const r2 = rx*rx + ry*ry + rz*rz;
+      if(r2 < 1e-14) return true;
+      if(r2 < near){ near = r2; ni = j; }
+      const r = Math.sqrt(r2);
+      omega += a[j]*(rx*n[j*3] + ry*n[j*3+1] + rz*n[j*3+2])/(r2*r);
+    }
+    // outward normals, r measured from the surface to p: -4.pi inside, 0 out
+    if(omega < -2*Math.PI) return true;
+    /* And stop short of the skin as well as at it.
+     *
+     * A point source is singular at its own centroid, so the last few steps of
+     * a line that runs right up to a panel are in a region where the velocity
+     * is an artefact of the discretisation rather than the flow: on a 22 m/s
+     * aeroplane those points read 185 m/s, and being the fastest in the field
+     * they set the colour scale for everything else.
+     *
+     * The distance is set from the MODEL, not the panel. A panel-relative
+     * stop is 2 mm on an aeroplane panelised at 3 mm and 80 mm on a car
+     * panelised at 100 -- and 80 mm would delete every streamline under a
+     * floor running 30 mm off the road, which is the one part of that car
+     * worth looking at. `nearStop` is set by whoever built the field.
+     */
+    const st = this.nearStop;
+    return st > 0 && ni >= 0 && near < st * st;
   }
 }
 

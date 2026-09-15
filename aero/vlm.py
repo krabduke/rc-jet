@@ -141,13 +141,24 @@ class Surface:
 # Biot-Savart
 # --------------------------------------------------------------------------
 
-def _seg_velocity(p, a, b, core=1e-10):
+def _seg_velocity(p, a, b, r_core=0.0):
     """Velocity at p induced by a straight vortex segment a->b of unit strength.
 
-    The singular-core cutoff is RELATIVE to the local geometry. An absolute
-    threshold silently zeroes real contributions on any model smaller than a
-    metre or so -- which is how a 0.15 m wing came out with its aerodynamic
-    centre ahead of its own nose while a 4 m wing solved correctly.
+    With a Rankine core: inside r_core the filament rotates as a solid body,
+    so the induced velocity falls linearly to zero at the centre instead of
+    growing without bound. A real vortex has a viscous core; a lattice needs
+    one because refining it moves collocation points ever closer to their
+    neighbours' filaments.
+
+    The cutoff used to be RELATIVE, `cr2 < core * |r0|^2 * max(r1,r2)^2`, which
+    reads as scale-free and is not. A trailing leg is FAR = 1e4 chords long, so
+    for those segments both |r0|^2 and max(r1,r2)^2 are about 1e8 and the
+    effective cutoff radius came out around a tenth of a chord: every trailing
+    vortex passing within 0.1 c of a collocation point was deleted outright.
+    Refining the lattice puts more neighbours inside that radius, so the answer
+    walked instead of converging -- and the span efficiency this file reports
+    for AR 4 and 6, 0.22 and 0.23, is what that looks like when it is written
+    down.
     """
     r1 = p - a
     r2 = p - b
@@ -156,22 +167,43 @@ def _seg_velocity(p, a, b, core=1e-10):
     r1n = float(np.linalg.norm(r1))
     r2n = float(np.linalg.norm(r2))
     r0 = b - a
-    scale = float(np.dot(r0, r0)) * max(r1n * r1n, r2n * r2n)
-    if cr2 < core * max(scale, 1e-30):
-        return np.zeros(3)
-    if r1n < 1e-12 or r2n < 1e-12:
+    L2 = float(np.dot(r0, r0))
+    if cr2 < 1e-20 or r1n < 1e-12 or r2n < 1e-12 or L2 < 1e-24:
         return np.zeros(3)
     k = (float(np.dot(r0, r1)) / r1n - float(np.dot(r0, r2)) / r2n)
-    return cr * (k / (4.0 * math.pi * cr2))
+    k /= 4.0 * math.pi * cr2
+    if r_core > 0.0:
+        d2 = cr2 / L2                      # perpendicular distance, squared
+        rc2 = r_core * r_core
+        if d2 < rc2:
+            k *= d2 / rc2
+    return cr * k
+
+
+# A fraction of the bound segment's own length, which is the local lattice
+# scale. Small enough not to move the aerodynamics, big enough to stop a
+# collocation point that lands on a trailing filament from returning infinity.
+CORE_FRAC = 0.15
 
 
 def _horseshoe_velocity(p, a, b, wake_dir):
-    """Velocity at p from a unit horseshoe: trailing leg in, bound, trailing out."""
+    """Velocity at p from a unit horseshoe: trailing leg in, bound, trailing out.
+
+    The core goes on the trailing legs only. They run to infinity and can pass
+    as close as they like to another panel's collocation point, where a 1/r
+    singularity is a numerical accident. The bound vortex is the opposite: the
+    quarter-chord/three-quarter-chord arrangement puts each collocation point a
+    deliberate distance from its own bound vortex, that distance is the
+    diagonal of the influence matrix, and coring it at a fraction of the
+    panel's SPAN destroys the solve as soon as the chordwise panels are shorter
+    than the core -- which is what refinement does.
+    """
     a_inf = a + wake_dir * FAR
     b_inf = b + wake_dir * FAR
-    return (_seg_velocity(p, a_inf, a)
+    rc = CORE_FRAC * float(np.linalg.norm(b - a))
+    return (_seg_velocity(p, a_inf, a, rc)
             + _seg_velocity(p, a, b)
-            + _seg_velocity(p, b, b_inf))
+            + _seg_velocity(p, b, b_inf, rc))
 
 
 def _mirror(v):

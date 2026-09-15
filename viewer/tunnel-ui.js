@@ -448,31 +448,75 @@ export function drawSpanLoad(cv, strips){
   const W = cv.width, H = cv.height;
   g.clearRect(0, 0, W, H);
   if(!strips || !strips.length) return;
-  const acc = new Map();
+
+  /* Bin by span station, and keep the sign.
+   *
+   * This used to key an accumulator on `y.toFixed(4)` -- four decimal places
+   * of a metre, so a wing strip at y = 0.0731 and a tailplane strip at
+   * 0.0734 were different stations. Every lifting surface interleaved its own
+   * stations with every other one's, and the plot alternated between a wing
+   * strip carrying a newton and a tail strip carrying a tenth of one, all the
+   * way across: a sawtooth that looked like noise because it was one. It also
+   * plotted |dL|, so a tail carrying download appeared to be lifting.
+   *
+   * Bin the span instead and sum what every surface contributes at that
+   * station, which is the load the wing actually sheds there, and draw it
+   * about a zero line so download reads as download.
+   */
+  let y0 = Infinity, y1 = -Infinity;
+  for(const s of strips){ if(s.y < y0) y0 = s.y; if(s.y > y1) y1 = s.y; }
+  const span = (y1 - y0) || 1;
+
+  /* The bin has to be wider than the station spacing of every surface.
+   *
+   * Each surface lays its own strips out across its own span, so the wing's
+   * stations land 9.4 mm apart and the tailplane's 7.7 mm apart, interleaved.
+   * Bin finer than that and consecutive bins alternate between a wing station
+   * carrying 8 N and a tail station carrying -1 N, and the plot draws the
+   * difference between two surfaces as if it were a distribution. Wider bins
+   * put a wing station and the tail station beside it in the same bin, which
+   * is what "the load at this point on the span" means.
+   */
+  const ys = [...new Set(strips.map(s => s.y))].sort((a, b) => a - b);
+  let widest = 0;
+  for(let i = 1; i < ys.length; i++) widest = Math.max(widest, ys[i] - ys[i-1]);
+  const N = Math.max(8, Math.min(40, Math.floor(span / Math.max(widest * 1.4,
+                                                               span / 40))));
+  const raw = new Float64Array(N);
   for(const s of strips){
-    const k = s.y.toFixed(4);
-    acc.set(k, (acc.get(k) || 0) + s.dL);
+    const k = Math.min(N - 1, Math.max(0, Math.floor((s.y - y0)/span * N)));
+    raw[k] += s.dL;
   }
-  const pts = [...acc.entries()].map(([y, d]) => [parseFloat(y), d])
-                                .sort((a, b) => a[0] - b[0]);
-  const ys = pts.map(p => p[0]);
-  const y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const peak = Math.max(...pts.map(p => Math.abs(p[1]))) || 1;
+  // and a three-point mean over the bins, because a lattice this coarse still
+  // rings from panel to panel and the shape is the thing being read
+  const bins = new Float64Array(N);
+  for(let k = 0; k < N; k++){
+    const a = raw[Math.max(0, k-1)], b = raw[k], c = raw[Math.min(N-1, k+1)];
+    bins[k] = (a + 2*b + c) / 4;
+  }
+  let peak = 0;
+  for(const v of bins) peak = Math.max(peak, Math.abs(v));
+  if(!peak) return;
+
+  const pad = 5;
+  const zero = H * 0.62;                 // room for download below the line
+  const scale = (H - pad * 2) * 0.60 / peak;
+  const X = (k) => pad + (k + 0.5)/N * (W - pad * 2);
 
   g.strokeStyle = '#2E3A40';
-  g.beginPath(); g.moveTo(0, H-10); g.lineTo(W, H-10); g.stroke();
+  g.beginPath(); g.moveTo(0, zero); g.lineTo(W, zero); g.stroke();
 
   g.beginPath();
-  pts.forEach(([y, d], i) => {
-    const x = (y - y0)/(y1 - y0 || 1) * (W - 8) + 4;
-    const h = Math.abs(d)/peak * (H - 20);
-    const yy = H - 10 - h;
-    i ? g.lineTo(x, yy) : g.moveTo(x, yy);
-  });
+  for(let k = 0; k < N; k++){
+    const yy = zero - bins[k] * scale;
+    k ? g.lineTo(X(k), yy) : g.moveTo(X(k), yy);
+  }
   g.strokeStyle = '#7FB2C9';
   g.lineWidth = 1.6;
   g.stroke();
-  g.lineTo(W-4, H-10); g.lineTo(4, H-10); g.closePath();
+
+  g.lineTo(X(N - 1), zero); g.lineTo(X(0), zero); g.closePath();
   g.fillStyle = 'rgba(127,178,201,0.16)';
   g.fill();
 }
+
