@@ -32,6 +32,7 @@ def build():
     out.update(_fin_ribs())
     out.update(_hinges())
     out.update(_cockpit_cutouts(out))
+    out.update(_tail_cutouts(out))
     return out
 
 
@@ -57,6 +58,35 @@ def _cockpit_cutouts(built):
                and abs(y) <= K["half_width"]
                and z > spec.CANOPY["z_base"] - 1.0 for (x, y, z) in verts):
             out[f"cut:{name}"] = aperture
+    return out
+
+
+def _tail_cutouts(built):
+    """Open the frame where the stabilator shaft and its arm run.
+
+    The shaft crosses a former and the arm on its inboard end sweeps forward
+    through a stringer. Both have to be cut away for the tail to move at all,
+    and a ply former with a nine-millimetre lever swinging through it is not a
+    detail anyone can leave to the renderer.
+    """
+    px, pz = spec.stab_pivot()
+    tip = spec.stab_horn_tip(1.0)
+    x0, x1 = tip[0] - 9.0, px + 8.0
+    z0, z1 = pz - 4.8, pz + 4.8
+    # One cutter carrying both sides. A dict has one entry per part, so
+    # writing cut:former_14 once per side leaves only the second: the
+    # right-hand frame was opened and the left-hand frame was not.
+    y0, y1 = 4.0, spec.HTAIL["root_y"] + 8.0
+    boxes = [mesh.box(0.5 * (x0 + x1), sgn * 0.5 * (y0 + y1), 0.5 * (z0 + z1),
+                      x1 - x0, y1 - y0, z1 - z0) for sgn in (-1.0, 1.0)]
+    cutter = mesh.join(*boxes)
+    out = {}
+    for name, (verts, _f) in built.items():
+        if not name.startswith(("former_", "longeron", "stringer")):
+            continue
+        if any(x0 <= x <= x1 and y0 <= abs(y) <= y1 and z0 <= z <= z1
+               for (x, y, z) in verts):
+            out[f"cut:{name}"] = cutter
     return out
 
 

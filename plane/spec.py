@@ -121,14 +121,23 @@ FLAPERON = {
 
 HTAIL = {
     "x_root_le":   392.0,   # clear of the wing TE at 360 mm
-    "z_root":      -22.0,   # below the wing wake sheet, not in it
+    # Low, but ON the fuselage.
+    #
+    # At -22 with the root at y = 21 the stabilators were attached to nothing:
+    # the fuselage at that station is 39 mm wide and its bottom is at z = -21.5,
+    # so both surfaces hung in the air below and outboard of the aeroplane,
+    # touching only the ventral fins, by accident. -16 with the root at 12.5
+    # puts the root plane inside the skin at the pivot station -- and outboard of
+    # the thrust tube, which fills the tailcone -- while still keeping the tail
+    # out of the wing wake sheet, which is why it was put low in the first place.
+    "z_root":      -17.0,
     "root_chord":   72.0,
     "tip_chord":    31.0,
     "semi_span":    62.0,
     "sweep_le":     34.0,
     "thickness":     0.072,
     "thickness_tip": 0.045,
-    "root_y":       21.0,   # the fuselage side at this station
+    "root_y":       13.5,   # inside the skin, outboard of the tailpipe
     "anhedral":     -6.0,
     "deflect":      -4.0,       # all-moving stabilator, modelled position
 }
@@ -147,8 +156,41 @@ VTAIL = {
     "deflect":       6.0,
 }
 
+def stab_pivot():
+    """(x, z) of the stabilator pivot axis.
+
+    Everything that carries the all-moving tail has to live in the pocket
+    between the thrust tube and the skin, and at this station that pocket is
+    4.8 mm tall and about 9 mm wide, low on the fuselage side. It is the
+    reason the tail is where it is: higher up the tube is wider and the gap
+    closes to under 4 mm.
+    """
+    x = HTAIL["x_root_le"] + HTAIL["root_chord"] * 0.25
+    z = HTAIL["z_root"] + HTAIL["root_y"] * math.tan(
+        math.radians(HTAIL["anhedral"]))
+    return x, z
+
+
+def stab_horn_tip(sgn):
+    """Where the pushrod picks up on the stabilator shaft's inboard arm.
+
+    The arm points forward along the fuselage rather than up off the surface,
+    because forward is the only direction with room: nine millimetres of lever
+    sweeping two and a bit either side of the shaft axis, which fits the
+    pocket. It used to be a horn standing on the tailplane's upper surface at
+    y 18, driving straight up into the fuselage side.
+    """
+    x, z = stab_pivot()
+    # y 8, where the pocket is tallest: the tailpipe's underside rises going
+    # outboard and the skin falls away going inboard, and this is where the
+    # two leave the most room either side of the shaft
+    return (x - 9.0, sgn * 8.0, z)
+
+
 VENTRAL = {
-    "x_le":        372.0,
+    # Forward of the stabilator root, which begins at x = 400. They used to
+    # run 372 to 428 and the tailplanes were bolted to them.
+    "x_le":        344.0,
     "chord":        56.0,
     "depth":        20.0,
     "sweep":        38.0,
@@ -367,6 +409,7 @@ MATERIAL_MAP = {
     "nose_steering_link":   "steel",
 
     "canopy_latch": "alu",
+    "stab_pivot_": "alu",     # the boss, shaft and collar the tailplane turns on
     "rx_mount": "board",
     "rx_battery": "lipo",
     "access_tray": "ply",

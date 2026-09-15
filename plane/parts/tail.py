@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import common
 
 H, V, VN = spec.HTAIL, spec.VTAIL, spec.VENTRAL
@@ -15,9 +16,81 @@ NC = spec.RES["airfoil_pts"]
 def build():
     out = {}
     out.update(_stabilators())
+    out.update(_pivots_hw())
     out.update(_fin())
     out.update(_ventrals())
     return out
+
+
+def _pivots_hw():
+    """What the stabilators actually turn on.
+
+    An all-moving tail is carried on a shaft, and the shaft runs in a bearing.
+    None of that was here: the two surfaces ended at a root rib and the horn
+    floated inboard of it with nothing between.
+
+    The whole assembly is squeezed into the pocket between the thrust tube and
+    the skin -- 4.8 mm tall, 9 mm wide, low on the fuselage side. That is why
+    the shaft is 3 mm, the bush is 4.2 mm across and the arm lies fore-and-aft
+    instead of standing up off the surface. A turbine's tailpipe leaves a model
+    this size nowhere else to put it.
+    """
+    out = {}
+    px, pz = spec.stab_pivot()
+    for side, sgn in (("l", -1.0), ("r", 1.0)):
+        y_root = sgn * H["root_y"]
+        parts = []
+        # the shaft: 3 mm, from inside the bearing out into the root rib
+        parts.append(mesh.pipe(
+            [(px, sgn * 6.0, pz), (px, y_root + sgn * 7.0, pz)], 1.5, 16))
+        # the bush it turns in, bonded into the side of the fuselage
+        bv, bf = mesh.revolve_open([(0.0, 1.6), (0.0, 2.1), (7.0, 2.1),
+                                    (7.0, 1.6)], 20,
+                                   cap_start=True, cap_end=True)
+        parts.append(([(pz_ + px, sgn * px_ + sgn * 6.2, py_ + pz)
+                       for (px_, py_, pz_) in bv], bf))
+        # the collar that stops the shaft walking out, and its grub screw
+        cv, cf = mesh.revolve_open([(0.0, 1.6), (0.0, 2.2), (2.6, 2.2),
+                                    (2.6, 1.6)], 18,
+                                   cap_start=True, cap_end=True)
+        parts.append(([(pz_ + px, sgn * px_ + y_root - sgn * 3.4, py_ + pz)
+                       for (px_, py_, pz_) in cv], cf))
+        gv, gf = mesh.cylinder(0.0, 2.2, 0.8, 10)
+        parts.append(([(pz_ + px, py_ + y_root - sgn * 2.1, px_ + pz + 1.7)
+                       for (px_, py_, pz_) in gv], gf))
+        out[f"stab_pivot_{side}"] = mesh.join(*parts)
+        out.update(_stab_horn(side, sgn, px, pz))
+    return out
+
+
+def _stab_horn(side, sgn, px, pz):
+    """The arm on the inboard end of the stabilator shaft, and its clevis.
+
+    A lever pointing forward, lying along the pocket: nine millimetres of arm
+    swinging a couple of millimetres either side of the shaft axis, which is
+    all the room there is. Three holes, because which one the rod goes in is
+    how the throw is set.
+    """
+    tip = spec.stab_horn_tip(sgn)
+    y = tip[1]
+    arm = shapes.panel_outline(
+        [(px + 2.6, pz - 1.9), (px + 2.6, pz + 1.9),
+         (tip[0] - 1.6, pz + 1.1), (tip[0] - 1.6, pz - 1.1)], subdiv=4)
+    parts = [shapes.shaped_panel(arm, y, 2.0, rim_seg=3)]
+    for k in (0.55, 0.78, 1.0):
+        x = px + (tip[0] - px) * k
+        hv, hf = mesh.revolve_closed(
+            [(-1.3, 0.42), (1.3, 0.42), (1.3, 0.78), (-1.3, 0.78)], 12)
+        parts.append(([(pz_ + x, px_ + y, py_ + pz)
+                       for (px_, py_, pz_) in hv], hf))
+    # the boss where it is clamped to the shaft
+    bv, bf = mesh.revolve_open([(0.0, 1.6), (0.0, 1.9), (2.4, 1.9),
+                                (2.4, 1.6)], 18,
+                               cap_start=True, cap_end=True)
+    parts.append(([(pz_ + px, sgn * px_ + y - sgn * 1.2, py_ + pz)
+                   for (px_, py_, pz_) in bv], bf))
+    return {f"horn_s{side}": mesh.join(*parts),
+            f"clevis_s{side}": shapes.clevis(tip, (-1.0, 0.0, 0.0), 1.3)}
 
 
 def _stabilators():

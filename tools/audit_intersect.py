@@ -19,6 +19,13 @@ import _intersect
 # Three of these are conventions rather than perfect assemblies, and they are
 # written down as such rather than quietly filtered:
 EXPECTED = [
+    # The all-moving tail's pivot. The shaft runs through the fuselage skin
+    # into the stabilator's root rib, the arm is clamped on its inboard end,
+    # and the pushrod passes through a hole in the doubler on its way forward.
+    ("stab_pivot_", "fuselage_skin"), ("stab_pivot_", "stabilator_"),
+    ("horn_s", "stab_pivot_"), ("horn_s", "fuselage_skin"),
+    ("doublers", "pushrod_linkages"),
+
     # internal structure, inside the skin, which is the point of it
     ("former_", "fuselage_skin"),
     ("bhd_", "fuselage_skin"),

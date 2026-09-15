@@ -76,11 +76,12 @@ def _control_horns():
              common.surface_z(W, f, 1 - FL["chord_frac"], upper=False),
              -spec.WING_DETAIL["horn_h"])
 
-    for sgn in (-1.0, 1.0):
-        horn(H["x_root_le"] + H["root_chord"] * 0.30, sgn * 18.0,
-             H["z_root"] + 2.0)
+    # The stabilators' horns are not here. They are built on the pivot shaft
+    # in parts/tail.py, because an all-moving surface is driven through its
+    # shaft, not off its skin -- these two stood on the tailplane's upper
+    # surface at y 18 and drove straight up into the side of the fuselage.
     horn(V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)
-    tags = ["fl", "fr", "sl", "sr", "rud"]
+    tags = ["fl", "fr", "rud"]
     out2 = {}
     for i, m in enumerate(horns):
         out2[f"horn_{tags[i]}"] = m
@@ -491,9 +492,7 @@ def _linkages():
     rods.append(_rod(arm("servo_rudder"),
                      (V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)))
     for sgn in (-1.0, 1.0):
-        rods.append(_rod(arm("servo_stab"),
-                         (H["x_root_le"] + H["root_chord"] * 0.30,
-                          sgn * 18.0, H["z_root"] + 9.0)))
+        rods.append(_rod(arm("servo_stab"), spec.stab_horn_tip(sgn)))
     out["pushrod_linkages"] = mesh.join(*rods)
 
     horns = []
