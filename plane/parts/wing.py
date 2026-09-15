@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import spec
 import mesh
+import shapes
 from parts import common
 
 W = spec.WING
@@ -20,6 +21,122 @@ def build():
     out.update(_flaperons())
     out.update(_strakes())
     out.update(_spar())
+    out.update(_servo_hatches())
+    out.update(_flaperon_hinges())
+    return out
+
+
+def _lower_z(x, y):
+    """Height of the wing's lower skin under a point in plan."""
+    fr = min(0.999, abs(y) / W["semi_span"])
+    chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
+    x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], fr)
+    u = min(1.0, max(0.0, (x - x_le) / chord))
+    return common.surface_z(W, fr, u, upper=False)
+
+
+def _rounded_rect(cx, cy, sx, sy, r, seg=4):
+    """A rectangle in plan with radiused corners, going round once."""
+    out = []
+    for (ox, oy, a0) in (( 1, 1, 0.0), (-1, 1, math.pi / 2),
+                         (-1, -1, math.pi), ( 1, -1, -math.pi / 2)):
+        px = cx + ox * (sx / 2 - r)
+        py = cy + oy * (sy / 2 - r)
+        for k in range(seg + 1):
+            a = a0 + math.pi / 2 * k / seg
+            out.append((px + r * math.cos(a), py + r * math.sin(a)))
+    return out
+
+
+def _servo_hatches():
+    """The way the aileron servo gets in and out.
+
+    Each one lies flat in eighteen millimetres of wing with three millimetres
+    of skin under it and no way to reach it: to change a servo you would have
+    to cut the wing open. A moulded wing has a hatch there -- a cover screwed
+    down over the bay, a little proud of the skin because it is bonded on top
+    of a doubler rather than let into the surface.
+
+    It follows the skin. A flat card over a section that falls a millimetre
+    and a half across the hatch would stand off it at one corner and sink
+    into it at the other.
+    """
+    out = {}
+    for tag, sgn in (("l", -1.0), ("r", 1.0)):
+        srv = [h for h in spec.HARDWARE if h[0] == f"servo_ail_{tag}"][0]
+        x, y = srv[1], srv[2]
+        sx, sy, t = srv[4] + 13.0, srv[5] + 8.0, 1.2
+        outline = _rounded_rect(x, y, sx, sy, 4.0)
+        z_ref = _lower_z(x, y)
+        parts = [shapes.shaped_panel(
+            outline, z_ref + t / 2 - 0.35, t, axis="z", rim_seg=4, rim=1.1,
+            bow=lambda fx, fy, x0=x - sx / 2, y0=y - sy / 2, sx=sx, sy=sy,
+                       z0=z_ref: _lower_z(x0 + fx * sx, y0 + fy * sy) - z0)]
+        # four screws into the doubler under the skin
+        for ox in (-1, 1):
+            for oy in (-1, 1):
+                hx, hy = x + ox * (sx / 2 - 4.5), y + oy * (sy / 2 - 4.5)
+                hv, hf = mesh.revolve_ring(
+                    [(0.0, 0.5), (0.0, 1.5), (0.7, 1.15), (0.7, 0.5)], 10)
+                parts.append(([(px + hx, py + hy, -pz + _lower_z(hx, hy) - 0.3)
+                               for (px, py, pz) in
+                               [(v[1], v[2], v[0]) for v in hv]], hf))
+        out[f"servo_hatch_{tag}"] = mesh.join(*parts)
+    return out
+
+
+def _rib_stations(*which):
+    """Span fractions of the numbered wing ribs, counting from one.
+
+    Kept in step with structure._wing_ribs by construction rather than by
+    coincidence: anything that has to land on a rib asks for the rib.
+    """
+    n = spec.STRUCTURE["n_wing_ribs"]
+    f0 = _root_span0() + 0.02
+    return [f0 + (0.96 - f0) * (i - 1) / (n - 1) for i in which]
+
+
+def _flaperon_hinges():
+    """Pin hinges on the flaperon, in the gap between it and the wing.
+
+    The flaperon was attached to the aeroplane by nothing at all: a horn
+    underneath it, a pushrod to the horn, and a 1.2 mm slot along its whole
+    leading edge with air in it. A pushrod is not a bearing -- it is the thing
+    that loads one.
+
+    Three per side, each a barrel on the hinge line with a leaf into the wing
+    and a leaf into the flaperon, sized for the section they sit in: the wing
+    is 9.9 mm thick at the inboard end of the flaperon and 4.7 mm at the
+    outboard end, so the barrel is 2 mm and the leaves are 0.8.
+
+    They go on ribs 4, 6 and 8, not at even fractions of the span. A hinge
+    carries the whole air load of the surface into the structure through two
+    leaves and four screws; landing one between ribs puts that into 0.6 mm of
+    skin.
+    """
+    out = {}
+    hu = _hinge_u()
+    for tag, sgn in (("l", -1.0), ("r", 1.0)):
+        parts = []
+        for fr in _rib_stations(4, 6, 8):
+            chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
+            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
+                                  W["sweep_le"], fr)
+            hx = x_le + hu * chord
+            y = sgn * W["semi_span"] * fr
+            z = 0.5 * (common.surface_z(W, fr, hu, upper=False)
+                       + common.surface_z(W, fr, hu, upper=True))
+            # the barrel, lying along the hinge line
+            parts.append(mesh.pipe([(hx, y - 4.0, z), (hx, y + 4.0, z)],
+                                   1.0, 12))
+            # a leaf each way: forward into the wing, aft into the flaperon
+            for d, half in ((-1.0, 3.2), (1.0, 3.2)):
+                parts.append(shapes.rounded_box(
+                    hx + d * 4.0, y, z, 8.0, half * 2, 0.8, r=0.3, seg=3))
+            # the pin, proud at both ends so it reads as a pin
+            parts.append(mesh.pipe([(hx, y - 5.2, z), (hx, y + 5.2, z)],
+                                   0.45, 8))
+        out[f"flaperon_hinge_{tag}"] = mesh.join(*parts)
     return out
 
 

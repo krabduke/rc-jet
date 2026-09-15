@@ -410,6 +410,8 @@ MATERIAL_MAP = {
 
     "canopy_latch": "alu",
     "stab_pivot_": "alu",     # the boss, shaft and collar the tailplane turns on
+    "servo_hatch_": "airframe",
+    "flaperon_hinge_": "steel",
     "rx_mount": "board",
     "rx_battery": "lipo",
     "access_tray": "ply",

@@ -301,10 +301,8 @@ def _wing_ribs():
     # which is inside the fuselage now that the panels begin at its side --
     # the first two hung in the body and the second one was in a fuel tank.
     from parts import wing as _wing
-    f0 = _wing._root_span0() + 0.02
     for side, sgn in (("l", -1.0), ("r", 1.0)):
-        for i in range(n):
-            f = f0 + (0.96 - f0) * i / (n - 1)
+        for i, f in enumerate(_wing._rib_stations(*range(1, n + 1))):
             y = sgn * W["semi_span"] * f
             out[f"rib_{side}_{i + 1:02d}"] = _rib(y, f, t, u1)
     return out

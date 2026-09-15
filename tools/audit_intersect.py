@@ -19,6 +19,11 @@ import _intersect
 # Three of these are conventions rather than perfect assemblies, and they are
 # written down as such rather than quietly filtered:
 EXPECTED = [
+    # A hinge is bolted to a rib at one end and to the surface it carries at
+    # the other; a hatch is screwed down onto the skin it covers.
+    ("flaperon_hinge_", "flaperon_"), ("flaperon_hinge_", "rib_"),
+    ("flaperon_hinge_", "wing_"), ("servo_hatch_", "wing_"),
+
     # The all-moving tail's pivot. The shaft runs through the fuselage skin
     # into the stabilator's root rib, the arm is clamped on its inboard end,
     # and the pushrod passes through a hole in the doubler on its way forward.
