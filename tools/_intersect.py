@@ -40,11 +40,11 @@ def _tris(verts, faces):
             yield verts[f[0]], verts[f[k]], verts[f[k + 1]]
 
 
-def load_parts(root, pkg):
+def load_parts(root, pkg, cuts_out=None):
     """Import every part module under root/pkg and build it. No bpy."""
     sys.path.insert(0, os.path.join(root, os.path.dirname(pkg)))
     sys.path.insert(0, root)
-    out = {}
+    out, cutters = {}, {}
     for f in sorted(glob.glob(os.path.join(root, pkg, "*.py"))):
         name = os.path.basename(f)[:-3]
         if name == "__init__":
@@ -60,9 +60,43 @@ def load_parts(root, pkg):
         except Exception:
             continue
         for k, v in built.items():
-            if not k.startswith("cut:"):
+            if k.startswith("cut:"):
+                cutters.setdefault(k[4:], []).append(v)
+            else:
                 out[k] = v
+    if cuts_out is not None:
+        for name, cuts in cutters.items():
+            if name not in out:
+                continue
+            solids = []
+            for cv, cf in cuts:
+                solids.append((list(_tris(cv, cf)),
+                               [min(p[i] for p in cv) for i in range(3)],
+                               [max(p[i] for p in cv) for i in range(3)]))
+            cuts_out[name] = solids
     return out
+
+
+def machined_away(p, solids):
+    """Is this point in material a cutter took out?
+
+    Modules hand back "cut:<part>" entries and assemble.py turns each into a
+    boolean difference in Blender. This audit used to drop those entries and
+    test the UNCUT part, so a former with a hole cut in it for a control shaft
+    still read as solid and the shaft through the hole read as a part inside
+    another part. Every such joint had to be written into EXPECTED, and
+    declaring it says the overlap is deliberate rather than that the material
+    is not there, which is a different and much weaker claim.
+
+    The part is left whole -- it has to be, because an open mesh cannot be
+    ray-tested and half the model would stop being checkable -- and the cut is
+    applied to the sample points instead: a point inside a cutter is a point
+    in material the build removes.
+    """
+    for tris, lo, hi in solids:
+        if all(lo[i] <= p[i] <= hi[i] for i in range(3)) and _inside(p, tris):
+            return True
+    return False
 
 
 def _voxels(verts, faces, h):
@@ -141,7 +175,8 @@ def closed(verts, faces):
 
 
 def run(root, pkg, expected=(), limit=400, report=90, threshold=0.20):
-    parts = load_parts(root, pkg)
+    cuts = {}
+    parts = load_parts(root, pkg, cuts)
     open_shells = {k for k, (v, f) in parts.items() if not closed(v, f)}
     allv = [p for (v, _f) in parts.values() for p in v]
     lo = [min(p[i] for p in allv) for i in range(3)]
@@ -189,8 +224,10 @@ def run(root, pkg, expected=(), limit=400, report=90, threshold=0.20):
         va, fa = parts[A]
         vb, fb = parts[B]
         keys = {k for k, n in vox.items() if A in n and B in n}
+        cuts_a, cuts_b = cuts.get(A), cuts.get(B)
         cand = [p for p in va
-                if (int(p[0] // h), int(p[1] // h), int(p[2] // h)) in keys]
+                if (int(p[0] // h), int(p[1] // h), int(p[2] // h)) in keys
+                and not (cuts_a and machined_away(p, cuts_a))]
         if not cand:
             continue
         cell = h * 2.0
@@ -224,7 +261,8 @@ def run(root, pkg, expected=(), limit=400, report=90, threshold=0.20):
         for pt in samp:
             q = (pt[0] - jx, pt[1] + jy, pt[2] + jz)
             tb = buckets.get((int(q[1] // cell), int(q[2] // cell)))
-            if tb and _inside(q, tb):
+            if tb and _inside(q, tb) \
+                    and not (cuts_b and machined_away(q, cuts_b)):
                 n_in += 1
         frac = n_in / len(samp)
         if frac >= threshold:
