@@ -768,7 +768,12 @@ function buildTunnel(box){
           + 'laminar separation bubble term (this aeroplane cruises at Re '
           + '262,000, where the bubble is over half the profile drag), base '
           + 'drag, and the leading-edge suction a real boundary layer loses. '
-          + 'No stall, and the wake is straight rather than rolled up.';
+          + 'No stall, and the wake is straight rather than rolled up. The '
+          + 'neutral point is the least certain number here: two independent '
+          + 'vortex lattices put it at 31.3 and 31.4 % of chord where this '
+          + 'panel solve puts it at 35.4, and it is also the output that moved '
+          + 'most under mesh refinement. Believe the lift and the pressures; '
+          + 'treat the static margin as approximate.';
       }
       $('#t-about').textContent = ABOUT;
     },
