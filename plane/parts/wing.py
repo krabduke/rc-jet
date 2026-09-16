@@ -22,7 +22,6 @@ def build():
     out.update(_strakes())
     out.update(_spar())
     out.update(_servo_hatches())
-    out.update(_flaperon_hinges())
     return out
 
 
@@ -94,50 +93,6 @@ def _rib_stations(*which):
     n = spec.STRUCTURE["n_wing_ribs"]
     f0 = _root_span0() + 0.02
     return [f0 + (0.96 - f0) * (i - 1) / (n - 1) for i in which]
-
-
-def _flaperon_hinges():
-    """Pin hinges on the flaperon, in the gap between it and the wing.
-
-    The flaperon was attached to the aeroplane by nothing at all: a horn
-    underneath it, a pushrod to the horn, and a 1.2 mm slot along its whole
-    leading edge with air in it. A pushrod is not a bearing -- it is the thing
-    that loads one.
-
-    Three per side, each a barrel on the hinge line with a leaf into the wing
-    and a leaf into the flaperon, sized for the section they sit in: the wing
-    is 9.9 mm thick at the inboard end of the flaperon and 4.7 mm at the
-    outboard end, so the barrel is 2 mm and the leaves are 0.8.
-
-    They go on ribs 4, 6 and 8, not at even fractions of the span. A hinge
-    carries the whole air load of the surface into the structure through two
-    leaves and four screws; landing one between ribs puts that into 0.6 mm of
-    skin.
-    """
-    out = {}
-    hu = _hinge_u()
-    for tag, sgn in (("l", -1.0), ("r", 1.0)):
-        parts = []
-        for fr in _rib_stations(4, 6, 8):
-            chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
-            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
-                                  W["sweep_le"], fr)
-            hx = x_le + hu * chord
-            y = sgn * W["semi_span"] * fr
-            z = 0.5 * (common.surface_z(W, fr, hu, upper=False)
-                       + common.surface_z(W, fr, hu, upper=True))
-            # the barrel, lying along the hinge line
-            parts.append(mesh.pipe([(hx, y - 4.0, z), (hx, y + 4.0, z)],
-                                   1.0, 12))
-            # a leaf each way: forward into the wing, aft into the flaperon
-            for d, half in ((-1.0, 3.2), (1.0, 3.2)):
-                parts.append(shapes.rounded_box(
-                    hx + d * 4.0, y, z, 8.0, half * 2, 0.8, r=0.3, seg=3))
-            # the pin, proud at both ends so it reads as a pin
-            parts.append(mesh.pipe([(hx, y - 5.2, z), (hx, y + 5.2, z)],
-                                   0.45, 8))
-        out[f"flaperon_hinge_{tag}"] = mesh.join(*parts)
-    return out
 
 
 def _hinge_u():
@@ -275,12 +230,29 @@ def _spar():
     """
     half = spec.SPAR["span"] / 2
     n = 10
+    # Two stub spars, not one tube through the middle.
+    #
+    # The duct is 41 mm across the fuselage at every station the wing attaches
+    # at, and the wing sits at z -6, which is the middle of it. A spanwise tube
+    # at that height ran straight down the intake -- 18 % of the spar was in
+    # the airflow. There is no height it can pass at either: 12 mm over the
+    # duct at x 256 and 6 mm under it, against a wing whose mean line is 22 mm
+    # below the one and 16 above the other.
+    #
+    # So each panel carries its own spar, rooted at the fuselage side where
+    # the wing panels themselves begin, and the two panels are joined through
+    # the fuselage frames rather than through the air the engine breathes.
+    # That is how a nose-intake aeroplane is built -- an F-16 has no wing
+    # carry-through either, for exactly this reason.
+    # where the panels themselves begin -- outboard of the duct AND of the
+    # saddle tanks either side of it
+    y0 = _root_span0() * W["semi_span"] + 1.0
     paths = []
     for sgn in (-1.0, 1.0):
         pts = []
         for i in range(n + 1):
             t = i / n
-            y = half * t
+            y = y0 + (half - y0) * t
             f = y / W["semi_span"]
             chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
             x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)

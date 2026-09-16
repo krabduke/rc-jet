@@ -242,8 +242,26 @@ def _gear_doors():
     """
     out = {}
     w, hh, zc, _ = fus.station_at(G["nose_x"])
-    out["gear_door_n"] = _door(G["nose_x"], 14.0, zc - hh + 8.0,
-                               54.0, 30.0, 1.0)
+    # 40 mm, centred a little aft: the leg is ahead of the intake throat now
+    # and a 54 mm door reached x 53, which is the chin inlet's own lip.
+    lip_x = spec.INTAKE["x_lip"] + 12.0
+    door_l = 40.0
+    door_x = max(G["nose_x"] + 4.0, lip_x + door_l / 2)
+    # hinged at the skin line and hanging DOWN. At zc - hh + 8 the panel's top
+    # edge stood 23 mm up inside the fuselage, through the boundary-layer
+    # diverter that sits under the chin inlet.
+    door_d = 30.0
+    # At the skin line, not at y 14. A gear door is a panel in the side of the
+    # well; at y 14 it was inside the intake, whose outer wall is at y 20.3 at
+    # this station.
+    w_d, hh_d, zc_d, _ = fus.station_at(door_x)
+    # 2.5 mm off the skin, not 4: the hinge knuckles stand 1.5 mm inboard of
+    # the panel and at 4 they were inside the inlet, whose outer wall is at
+    # y 20.1 here. And the link that opens it reaches inboard, so on this door
+    # it is short -- there is nothing but intake to reach towards.
+    out["gear_door_n"] = _door(door_x, w_d - 2.5,
+                               zc_d - hh_d - door_d / 2 + 3.0,
+                               door_l, door_d, 1.0, link=1.5)
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         w, hh, zc, _ = fus.station_at(G["main_x"])
         out[f"gear_door_{side}"] = _door(
@@ -252,7 +270,7 @@ def _gear_doors():
     return out
 
 
-def _door(x, y, z, length, depth, sgn):
+def _door(x, y, z, length, depth, sgn, link=6.0):
     """One door: the panel, a piano hinge down its inboard edge, and the rod
     that holds it open."""
     parts = [shapes.rounded_box(x, y, z, length, 3.0, depth, r=1.2)]
@@ -271,7 +289,7 @@ def _door(x, y, z, length, depth, sgn):
     # is 21 mm wide at that station.
     parts.append(mesh.pipe(
         [(x - length * 0.22, y - sgn * 2.0, z + depth * 0.30),
-         (x - length * 0.30, y - sgn * 6.0, z + depth * 0.46)], 0.8, 10))
+         (x - length * 0.30, y - sgn * link, z + depth * 0.46)], 0.8, 10))
     return mesh.join(*parts)
 
 
@@ -489,10 +507,33 @@ def _linkages():
                 common.surface_z(W, f, 1 - FL["chord_frac"], upper=False)
                 - spec.WING_DETAIL["horn_h"])
         rods.append(_rod(arm(tag), horn))
-    rods.append(_rod(arm("servo_rudder"),
-                     (V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)))
-    for sgn in (-1.0, 1.0):
-        rods.append(_rod(arm("servo_stab"), spec.stab_horn_tip(sgn)))
+    # Up over the duct's shoulder and along the spine to the fin. A rod from
+    # the wing root straight to the rudder horn crosses the intake.
+    rud_horn = (V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)
+    # above the avionics tray, which tops out at z 22, and inboard of the
+    # NACA inlets, which start at y 23
+    # up the LEFT side, where its servo is, and only then across to the fin.
+    # A rod that crosses to the right at the wing root cuts the loom lane.
+    rods.append(_rod(arm("servo_rudder"), (244.0, -20.0, 26.0)))
+    rods.append(_rod((244.0, -20.0, 26.0), (320.0, -6.0, 26.0)))
+    rods.append(_rod((320.0, -6.0, 26.0), rud_horn))
+    # Up the fuselage side, not through the engine bay: the tail servos are in
+    # the wing root now and a straight rod from there to the tail goes through
+    # the thrust tube and the engine mount rails.
+    for sgn, tag in ((-1.0, "servo_stab_l"), (1.0, "servo_stab_r")):
+        a = arm(tag)
+        tip = spec.stab_horn_tip(sgn)
+        # out of the wing root over the retract, then aft outside the
+        # thrust tube's standoff mounts, which stand to y 20.4
+        rods.append(_rod(a, (280.0, sgn * 30.0, 9.0)))
+        rods.append(_rod((280.0, sgn * 30.0, 9.0), (336.0, sgn * 24.5, 4.0)))
+        # then down OUTSIDE the tube and into the pocket the stabilator pivot
+        # lives in. A rod that cuts straight across to the horn at y 8 goes
+        # through the jet pipe.
+        # then down and UNDER the engine mount rails, which run from x 306 to
+        # 420 out to y 20 -- the same low pocket the stabilator pivot is in.
+        rods.append(_rod((336.0, sgn * 24.5, 4.0), (362.0, sgn * 20.0, -21.0)))
+        rods.append(_rod((362.0, sgn * 20.0, -21.0), tip))
     out["pushrod_linkages"] = mesh.join(*rods)
 
     horns = []

@@ -280,7 +280,16 @@ def canopy_profile(t):
 # --------------------------------------------------------------------------
 
 GEAR = {
-    "nose_x":       98.0,
+    # Ahead of the intake throat at x 86, not 12 mm behind it.
+    #
+    # This is a chin intake: the duct's floor at the throat is at z -25 and
+    # the nose leg's trunnion at -19, so a leg at x 98 stood in the airflow
+    # for a third of its length and its steering arm was in there with it.
+    # There is no height for it -- a chin inlet is low by definition -- so it
+    # goes forward of the throat, which is also where its own retract already
+    # was. Nose static load goes from 11.3 % of all-up weight to 10.0, still
+    # well inside the 6-18 % a steerable nosewheel wants.
+    "nose_x":       80.0,
     "nose_leg":     34.0,
     "nose_wheel_r":  9.0,
     "nose_wheel_w":  5.0,
@@ -350,8 +359,13 @@ EQUIPMENT = [
 
 
 def equipment(name):
-    """(x, y, z, length, width, height) for one bay item."""
-    for e in EQUIPMENT:
+    """(x, y, z, length, width, height) for one bay item.
+
+    Looks in HARDWARE as well as EQUIPMENT: they are two lists of the same
+    thing -- a box at a station with a mass -- and a caller asking where the
+    rudder servo is should not have to know which list it was written in.
+    """
+    for e in list(EQUIPMENT) + list(HARDWARE):
         if e[0] == name:
             return e[1:7]
     raise KeyError(name)
@@ -368,8 +382,30 @@ HARDWARE = [
     # station at that width that is not one or the other.
     ("servo_ail_l",   261.0,-55.0,  -6.0, 23.0, 22.0, 12.0,   5.5),
     ("servo_ail_r",   261.0, 55.0,  -6.0, 23.0, 22.0, 12.0,   5.5),
-    ("servo_stab",    288.0, -8.0,   7.0, 23.0, 12.0, 22.0,   5.5),
-    ("servo_rudder",  288.0,  8.0,   7.0, 23.0, 12.0, 22.0,   5.5),
+    # In the wing root, laid flat, not in the fuselage at x 288.
+    #
+    # They were two thirds inside the intake duct. There is nowhere around it
+    # for them: the duct is 41 mm across a 62 mm fuselage, which leaves a
+    # 9 mm pocket down each side, 5 mm under it and -- by the time you are far
+    # enough aft for the tail -- 6 mm over it. Searched the whole fuselage
+    # from x 170 to 300 for a pair of boxes clearing the duct, the skin and
+    # everything already in there, at 9 g, at 5 g and at 3.7 g: there is no
+    # position for any of them. The forward fuselage is full.
+    #
+    # The wing root is 19.7 mm thick at this station and empty, the aileron
+    # servos are already out there at y 55, and a tail driven by a long
+    # pushrod from the wing root is an ordinary arrangement. The rods run aft
+    # along the fuselage side from here.
+    # One servo per stabilator, not one for both.
+    #
+    # The stabilators are separate surfaces on separate shafts with the jet
+    # pipe between them -- there is no torque tube across the tailcone and
+    # nowhere to put one. A single servo driving both meant a pushrod from one
+    # wing root to the other stabilator, straight across the fuselage and
+    # through the intake.
+    ("servo_stab_l",  212.0,-44.0,  -5.0, 23.0, 22.0, 12.0,   5.5),
+    ("servo_stab_r",  212.0, 44.0,  -5.0, 23.0, 22.0, 12.0,   5.5),
+    ("servo_rudder",  186.0,-44.0,  -5.0, 23.0, 22.0, 12.0,   5.5),
 ]
 
 # Distributed masses that are not discrete boxes: (name, x_centre, mass_g)

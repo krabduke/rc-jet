@@ -40,17 +40,59 @@ def inside(x, fy, fz, clear=2.0):
     # square, not just on the axes
     t = (abs(fy) ** n + abs(fz) ** n) ** (1.0 / n)
     k = 1.0 / max(t, 1.0)
-    return (x, w * fy * k, zc + h * fz * k)
+    y = w * fy * k
+    return (x, y, clear_duct(x, y, zc + h * fz * k, 0.0, clear))
+
+
+def duct_roof(x, y):
+    """Top of the intake duct's outer wall at this station and this y.
+
+    Infinity if the duct is not there, and -inf if it reaches no further out
+    than |y| -- in which case nothing has to move for it.
+    """
+    I = spec.INTAKE
+    if not (I["x_throat"] - 2.0 <= x <= I["x_duct_end"] + 2.0):
+        return float("-inf")
+    w, h, zc = intake.duct_section(x)
+    _, _, _, n = intake.duct_bore(x)
+    t = abs(y) / w
+    if t >= 1.0:
+        return float("-inf")
+    return zc + h * (1.0 - t ** n) ** (1.0 / n)
+
+
+def clear_duct(x, y, z, half_y, half_z, gap=2.0):
+    """Lift a box until it is out of the air the engine breathes.
+
+    inside() and fits() have always known where the skin is and never where
+    the duct is -- and on a nose-intake model the duct is what decides where
+    there is room: 39 mm across a 62 mm fuselage. So everything placed through
+    them that happened to land low ended up in the airflow. The avionics tray
+    was 87 % inside it, both tail servos two thirds, all three gear door
+    actuators, the flight pack's strap, the nose steering link along nearly
+    its whole length.
+
+    A box is checked at the y where the duct is tallest under it, which is the
+    edge of the box nearest the centreline, because the duct's section is
+    widest on its own axis.
+    """
+    y_near = 0.0 if abs(y) <= half_y else (abs(y) - half_y)
+    roof = duct_roof(x, y_near)
+    if roof == float("-inf"):
+        return z
+    need = roof + gap + half_z
+    return max(z, need)
 
 
 def fits(x, fy, fz, half_y, half_z, clear=2.0):
-    """The centre for a box of the given half-extents, pulled in so its
-    corners clear the skin too."""
+    """The centre for a box of the given half-extents, clear of the skin and
+    clear of the intake duct."""
     w, h, zc, n = fus.station_at(x)
     w = max(w - spec.FUSELAGE_SKIN - clear, 0.5)
     h = max(h - spec.FUSELAGE_SKIN - clear, 0.5)
     y = max(-(w - half_y), min(w - half_y, w * fy))
     z = zc + max(-(h - half_z), min(h - half_z, h * fz))
+    z = clear_duct(x, y, z, half_y, half_z)
     return (x, y, z)
 
 
@@ -217,13 +259,35 @@ def _retracts():
     out = {}
     rx_, ry_, rz_, rl, rw, rh = spec.equipment("retract_nose")
     out["retract_nose"] = shapes.rounded_box(rx_, ry_, rz_, rl, rw, rh, 3.0)
+    # In the wing, where the leg is.
+    #
+    # `fits` places a box as a fraction of the FUSELAGE section, and at 40 %
+    # of half width that is y 1 to 21 -- inside the intake duct, whose outer
+    # wall at this station is at y 20.6. A retract is a mechanism with a motor
+    # and a gearbox in it and it was sitting in the air path, driving a leg
+    # whose trunnion is at y 44, twenty-three millimetres outboard of it.
+    #
+    # The wing is 18.5 mm thick at the gear station and the leg is already
+    # there. The unit goes on the wing's own mean line, just inboard of the
+    # trunnion, which is what the docstring above has always said it does.
+    W = spec.WING
+    y_r = G["main_y"] - 2.0
+    fr = y_r / W["semi_span"]
+    chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
+    x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], fr)
+    x_r = G["main_x"] + 10.0
+    u = (x_r - x_le) / chord
+    z_r = 0.5 * (common.surface_z(W, fr, u, upper=True)
+                 + common.surface_z(W, fr, u, upper=False))
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         out[f"retract_main_{side}"] = shapes.rounded_box(
-            *fits(G["main_x"] + 10.0, sgn * 0.40, -0.40, 10.0, 8.0),
-            36.0, 20.0, 16.0, 3.0)
+            x_r, sgn * y_r, z_r, 36.0, 20.0, 14.0, 3.0)
+        # with the retract, in the wing root. clear_duct lifted these into the
+        # upper fuselage, which is the one place a gear door actuator cannot
+        # be -- it has to reach the door, and the door is under the wing.
         out[f"gear_door_actuator_{side}"] = shapes.linear_actuator(
-            inside(G["main_x"] - 16.0, sgn * 0.45, -0.35, 4.0),
-            inside(G["main_x"] + 6.0, sgn * 0.62, -0.55, 4.0), 2.0)
+            (G["main_x"] - 14.0, sgn * (y_r + 4.0), z_r - 3.0),
+            (G["main_x"] + 6.0, sgn * (y_r - 9.0), z_r - 7.0), 2.0)
     out["gear_door_actuator_n"] = shapes.linear_actuator(
         inside(G["nose_x"] - 14.0, 0.40, -0.40, 4.0),
         inside(G["nose_x"] + 4.0, 0.52, -0.58, 4.0), 2.0)

@@ -15,7 +15,8 @@ def build():
     out = {}
     out.update(_skin())
     out.update(_bulkheads())
-    out["cut:fuselage_skin"] = canopy_aperture()
+    from parts import common as pc
+    pc.add_cut(out, "fuselage_skin", canopy_aperture())
     return out
 
 
@@ -180,8 +181,13 @@ def _bulkheads():
     from parts import common as pc
     for (name, x, t) in spec.BULKHEADS:
         w, h, zc, n = station_at(x)
-        ring_f = section_ring(x - t / 2, inset=spec.FUSELAGE_SKIN)
-        ring_a = section_ring(x + t / 2, inset=spec.FUSELAGE_SKIN)
+        # Finer than the formers. The duct cuts the cockpit bulkhead down to
+        # an arch over the intake -- which is what it has to be, the duct owns
+        # the whole lower section there -- and at the formers' resolution the
+        # arch that survived was 140 vertices.
+        seg = SEG * 2
+        ring_f = section_ring(x - t / 2, inset=spec.FUSELAGE_SKIN, segments=seg)
+        ring_a = section_ring(x + t / 2, inset=spec.FUSELAGE_SKIN, segments=seg)
         # the firewall keeps more material: it takes the engine's thrust
         bore = 0.30 if "firewall" in name else 0.40
         hub = bore + (0.24 if "firewall" in name else 0.20)
@@ -209,6 +215,14 @@ def _bulkheads():
                 faces.append((r0 + j, r0 + j2, r1 + j2, r1 + j))
         parts.append((verts, faces))
         out[name] = mesh.join(*parts)
+    # the duct runs through the frames it passes; see intake.duct_solid
+    from parts import intake as _intake
+    cutter = None
+    for (name, x, t) in spec.BULKHEADS:
+        if spec.INTAKE["x_throat"] - 4 <= x <= spec.INTAKE["x_duct_end"] + 4:
+            if cutter is None:
+                cutter = _intake.duct_solid()
+            pc.add_cut(out, name, cutter)
     return out
 
 

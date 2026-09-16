@@ -30,6 +30,13 @@ from parts import (fuselage as fus, internals, structure, systems, detail,
 OUTSIDE = {
     "wiring": "runs out into the wing to the aileron servos",
     "servo_ail_": "in the wing, not the fuselage",
+    # The intake duct is 41 mm across a 62 mm fuselage and there is no pocket
+    # round it for any of these. They are in the wing root, which is 19.7 mm
+    # thick and empty, and audit_intersect checks them against the wing.
+    "retract_main_": "in the wing root, over the leg it drives",
+    "servo_stab": "in the wing root, on a long pushrod to the tail",
+    "servo_rudder": "in the wing root, on a long pushrod to the tail",
+    "servo_arm_": "on its servo",
     # lifting surfaces and their hardware, checked against their own sections
     "wing": "a wing is outside the fuselage by definition",
     "flaperon": "on the wing",

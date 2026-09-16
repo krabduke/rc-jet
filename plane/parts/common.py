@@ -53,6 +53,20 @@ def planform_at(table, f):
     return table[-1][1], table[-1][2]
 
 
+
+def add_cut(out, name, solid):
+    """Record a cutter for `name`, joining it to any already recorded.
+
+    A dict has one entry per part, so two modules that both cut the same
+    former leave only the second. The canopy aperture and the intake duct both
+    cross former 4, and whichever ran last was the only one that happened --
+    the duct kept a ply web across it and the aeroplane could not breathe past
+    that station.
+    """
+    key = f"cut:{name}"
+    out[key] = mesh.join(out[key], solid) if key in out else solid
+
+
 def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
           dihedral=0.0, thickness=0.06, camber=0.0,
           twist_root=0.0, twist_tip=0.0, u0=0.0, u1=1.0,

@@ -6,20 +6,20 @@
   500.0,
   300.0
  ],
- "mass_g": 558.0,
- "wing_loading": 112.48807113372393,
+ "mass_g": 563.5,
+ "wing_loading": 113.59682452303483,
  "wing_area_cm2": 496.05259862324334,
  "mac": 178.9076797101669,
  "mac_le": 189.59445979949209,
- "cg_x": 234.6415770609319,
- "cg_frac": 0.2517897349874349,
+ "cg_x": 232.6832298136646,
+ "cg_frac": 0.24084360204087926,
  "cg_target": 0.25,
  "cg_tol": 0.03,
  "engine_scale": 0.030303030303030304,
  "engine_len": 140.3030303030303,
  "engine_fan": 35.75757575757576,
  "gear": {
-  "nose_x": 98.0,
+  "nose_x": 80.0,
   "main_x": 252.0
  },
  "palette": {
@@ -255,7 +255,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 60,
-   "faces": 41258,
+   "faces": 39436,
    "x0": 0.0,
    "x1": 440.0
   },
@@ -263,8 +263,8 @@
    "key": "02 Wing",
    "label": "Wing",
    "color": "#6E93A8",
-   "parts": 15,
-   "faces": 11648,
+   "parts": 13,
+   "faces": 10768,
    "x0": 104.0,
    "x1": 370.9
   },
@@ -301,7 +301,7 @@
    "color": "#6F6F72",
    "parts": 17,
    "faces": 20194,
-   "x0": 71.0,
+   "x0": 64.0,
    "x1": 284.1
   },
   {
@@ -317,8 +317,8 @@
    "key": "08 RC Systems",
    "label": "RC systems",
    "color": "#4F8A5E",
-   "parts": 28,
-   "faces": 13154,
+   "parts": 30,
+   "faces": 15104,
    "x0": 60.0,
    "x1": 316.2
   },
@@ -327,16 +327,16 @@
    "label": "Structure",
    "color": "#9A7B4A",
    "parts": 50,
-   "faces": 36786,
+   "faces": 38544,
    "x0": 26.7,
-   "x1": 434.6
+   "x1": 434.4
   },
   {
    "key": "10 Detail",
    "label": "Detail",
    "color": "#A1A8AF",
    "parts": 15,
-   "faces": 10745,
+   "faces": 17193,
    "x0": -28.0,
    "x1": 433.0
   },
@@ -355,36 +355,36 @@
    "g": "09 Structure",
    "mat": "ply",
    "x0": 149.0,
-   "x1": 154.4,
-   "f": 770
+   "x1": 151.0,
+   "f": 250
   },
   "bhd_firewall": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 296.5,
    "x1": 302.9,
-   "f": 776
+   "f": 1192
   },
   "bhd_nose": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 65.0,
    "x1": 70.4,
-   "f": 770
+   "f": 1530
   },
   "bhd_spar": {
    "g": "09 Structure",
    "mat": "carbon",
    "x0": 228.8,
    "x1": 234.7,
-   "f": 770
+   "f": 1311
   },
   "bhd_tail": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 429.0,
    "x1": 434.4,
-   "f": 770
+   "f": 1530
   },
   "fuselage_skin": {
    "g": "01 Fuselage",
@@ -392,20 +392,6 @@
    "x0": 0.0,
    "x1": 438.0,
    "f": 11548
-  },
-  "flaperon_hinge_l": {
-   "g": "02 Wing",
-   "mat": "steel",
-   "x0": 320.0,
-   "x1": 353.1,
-   "f": 528
-  },
-  "flaperon_hinge_r": {
-   "g": "02 Wing",
-   "mat": "steel",
-   "x0": 320.0,
-   "x1": 353.1,
-   "f": 528
   },
   "flaperon_l": {
    "g": "02 Wing",
@@ -466,7 +452,7 @@
   "spar_carbon": {
    "g": "09 Structure",
    "mat": "carbon",
-   "x0": 201.0,
+   "x0": 218.4,
    "x1": 311.7,
    "f": 1124
   },
@@ -865,8 +851,8 @@
   "gear_nose_strut": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 89.4,
-   "x1": 101.6,
+   "x0": 71.4,
+   "x1": 83.6,
    "f": 1420
   },
   "wheel_main_l": {
@@ -886,8 +872,8 @@
   "wheel_nose": {
    "g": "06 Landing Gear",
    "mat": "rubber",
-   "x0": 85.5,
-   "x1": 103.4,
+   "x0": 67.5,
+   "x1": 85.4,
    "f": 308
   },
   "servo_ail_l": {
@@ -907,23 +893,30 @@
   "servo_rudder": {
    "g": "08 RC Systems",
    "mat": "control",
-   "x0": 276.5,
-   "x1": 299.5,
+   "x0": 174.5,
+   "x1": 197.5,
    "f": 170
   },
-  "servo_stab": {
+  "servo_stab_l": {
    "g": "08 RC Systems",
    "mat": "servo",
-   "x0": 276.5,
-   "x1": 299.5,
+   "x0": 200.5,
+   "x1": 223.5,
+   "f": 170
+  },
+  "servo_stab_r": {
+   "g": "08 RC Systems",
+   "mat": "servo",
+   "x0": 200.5,
+   "x1": 223.5,
    "f": 170
   },
   "wiring": {
    "g": "08 RC Systems",
    "mat": "airframe",
    "x0": 140.4,
-   "x1": 306.4,
-   "f": 1358
+   "x1": 312.7,
+   "f": 2608
   },
   "engine_access_panels": {
    "g": "07 Engine",
@@ -2104,8 +2097,8 @@
   "gear_door_n": {
    "g": "06 Landing Gear",
    "mat": "airframe",
-   "x0": 71.0,
-   "x1": 125.9,
+   "x0": 64.0,
+   "x1": 104.7,
    "f": 864
   },
   "gear_door_r": {
@@ -2216,9 +2209,9 @@
   "pushrod_linkages": {
    "g": "10 Detail",
    "mat": "carbon",
-   "x0": 270.4,
+   "x0": 195.4,
    "x1": 415.0,
-   "f": 4030
+   "f": 10478
   },
   "static_dischargers": {
    "g": "10 Detail",
@@ -2419,8 +2412,8 @@
   "wheel_hub_n": {
    "g": "06 Landing Gear",
    "mat": "alu",
-   "x0": 90.1,
-   "x1": 99.5,
+   "x0": 72.1,
+   "x1": 81.5,
    "f": 1130
   },
   "wing_fence_l1": {
@@ -2498,56 +2491,56 @@
    "mat": "ply",
    "x0": 87.3,
    "x1": 88.7,
-   "f": 428
+   "f": 310
   },
   "former_04": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 109.3,
    "x1": 110.7,
-   "f": 386
+   "f": 298
   },
   "former_05": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 129.3,
    "x1": 130.8,
-   "f": 402
+   "f": 332
   },
   "former_06": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 169.2,
    "x1": 170.8,
-   "f": 428
+   "f": 418
   },
   "former_07": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 189.3,
    "x1": 190.8,
-   "f": 428
+   "f": 414
   },
   "former_08": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 209.3,
    "x1": 210.7,
-   "f": 428
+   "f": 415
   },
   "former_09": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 249.2,
    "x1": 250.8,
-   "f": 428
+   "f": 398
   },
   "former_10": {
    "g": "09 Structure",
    "mat": "ply",
    "x0": 267.3,
    "x1": 268.8,
-   "f": 428
+   "f": 402
   },
   "former_11": {
    "g": "09 Structure",
@@ -2602,28 +2595,28 @@
    "g": "09 Structure",
    "mat": "spruce",
    "x0": 26.7,
-   "x1": 434.6,
+   "x1": 304.3,
    "f": 1250
   },
   "longeron_2": {
    "g": "09 Structure",
    "mat": "spruce",
    "x0": 26.7,
-   "x1": 434.6,
+   "x1": 304.3,
    "f": 1250
   },
   "longeron_3": {
    "g": "09 Structure",
    "mat": "spruce",
    "x0": 26.7,
-   "x1": 434.6,
+   "x1": 304.3,
    "f": 1250
   },
   "longeron_4": {
    "g": "09 Structure",
    "mat": "spruce",
    "x0": 26.7,
-   "x1": 434.6,
+   "x1": 304.3,
    "f": 1250
   },
   "rib_l_01": {
@@ -2755,92 +2748,92 @@
   "spar_rear": {
    "g": "09 Structure",
    "mat": "carbon",
-   "x0": 295.9,
+   "x0": 305.0,
    "x1": 346.9,
-   "f": 674
+   "f": 844
   },
   "stringer_01": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.5,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "stringer_02": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.6,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "stringer_03": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.7,
-   "x1": 434.2,
-   "f": 874
+   "x1": 304.1,
+   "f": 857
   },
   "stringer_04": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.7,
-   "x1": 434.2,
-   "f": 874
+   "x1": 304.1,
+   "f": 857
   },
   "stringer_05": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.6,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "stringer_06": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.5,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "stringer_07": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.6,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "stringer_08": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 27.6,
-   "x1": 434.2,
-   "f": 845
+   "x0": 119.9,
+   "x1": 304.1,
+   "f": 578
   },
   "stringer_09": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 27.7,
-   "x1": 434.2,
-   "f": 853
+   "x0": 171.1,
+   "x1": 304.1,
+   "f": 418
   },
   "stringer_10": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 27.7,
-   "x1": 434.2,
-   "f": 853
+   "x0": 171.1,
+   "x1": 304.1,
+   "f": 418
   },
   "stringer_11": {
    "g": "01 Fuselage",
    "mat": "spruce",
-   "x0": 27.6,
-   "x1": 434.2,
-   "f": 845
+   "x0": 119.9,
+   "x1": 304.1,
+   "f": 578
   },
   "stringer_12": {
    "g": "01 Fuselage",
    "mat": "spruce",
    "x0": 27.6,
-   "x1": 434.2,
+   "x1": 304.1,
    "f": 866
   },
   "doublers": {
@@ -3049,22 +3042,22 @@
   "gear_door_actuator_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 233.9,
-   "x1": 266.1,
+   "x0": 236.0,
+   "x1": 265.6,
    "f": 1396
   },
   "gear_door_actuator_n": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 81.9,
-   "x1": 110.1,
+   "x0": 64.0,
+   "x1": 92.0,
    "f": 1396
   },
   "gear_door_actuator_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 233.9,
-   "x1": 266.1,
+   "x0": 236.0,
+   "x1": 265.6,
    "f": 1396
   },
   "kill_switch": {
@@ -3161,50 +3154,57 @@
   "battery_strap_lipo": {
    "g": "01 Fuselage",
    "mat": "fabric",
-   "x0": 226.1,
-   "x1": 253.9,
-   "f": 1400
+   "x0": 98.9,
+   "x1": 135.1,
+   "f": 1144
   },
   "battery_strap_rx": {
    "g": "01 Fuselage",
    "mat": "fabric",
-   "x0": 91.2,
-   "x1": 112.8,
-   "f": 1400
+   "x0": 195.6,
+   "x1": 220.4,
+   "f": 1144
   },
   "nose_steering_link": {
    "g": "01 Fuselage",
    "mat": "steel",
-   "x0": 97.5,
-   "x1": 292.2,
-   "f": 364
+   "x0": 75.5,
+   "x1": 210.9,
+   "f": 492
   },
   "servo_arm_ail_l": {
    "g": "08 RC Systems",
    "mat": "plastic",
-   "x0": 281.6,
-   "x1": 300.9,
+   "x0": 264.5,
+   "x1": 283.8,
    "f": 530
   },
   "servo_arm_ail_r": {
    "g": "08 RC Systems",
    "mat": "plastic",
-   "x0": 281.6,
-   "x1": 300.9,
+   "x0": 264.5,
+   "x1": 283.8,
    "f": 530
   },
   "servo_arm_rudder": {
    "g": "08 RC Systems",
    "mat": "plastic",
-   "x0": 284.6,
-   "x1": 303.9,
+   "x0": 189.5,
+   "x1": 208.8,
    "f": 530
   },
-  "servo_arm_stab": {
+  "servo_arm_stab_l": {
    "g": "08 RC Systems",
    "mat": "plastic",
-   "x0": 284.6,
-   "x1": 303.9,
+   "x0": 215.5,
+   "x1": 234.8,
+   "f": 530
+  },
+  "servo_arm_stab_r": {
+   "g": "08 RC Systems",
+   "mat": "plastic",
+   "x0": 215.5,
+   "x1": 234.8,
    "f": 530
   },
   "tailpipe_cone": {
@@ -3240,7 +3240,7 @@
    "mat": "carbon",
    "x0": 247.8,
    "x1": 264.2,
-   "f": 496
+   "f": 672
   }
  },
  "masses": [
@@ -3330,13 +3330,18 @@
    "m": 5.5
   },
   {
-   "name": "servo_stab",
-   "x": 288.0,
+   "name": "servo_stab_l",
+   "x": 212.0,
+   "m": 5.5
+  },
+  {
+   "name": "servo_stab_r",
+   "x": 212.0,
    "m": 5.5
   },
   {
    "name": "servo_rudder",
-   "x": 288.0,
+   "x": 186.0,
    "m": 5.5
   }
  ],
@@ -3346,7 +3351,7 @@
   "c_ref": 0.17890767971016688,
   "b_ref": 0.3,
   "x_le_mac": 0.18959445979949208,
-  "mass_kg": 0.558,
+  "mass_kg": 0.5635,
   "v_default": 22.0,
   "v_min": 8.0,
   "v_max": 45.0,
@@ -3358,8 +3363,8 @@
   "beta_max": 15.0,
   "stall_alpha": 12.0,
   "ground": false,
-  "cg_frac": 0.2517897349874349,
-  "cg_x": 0.2346415770609319,
+  "cg_frac": 0.24084360204087926,
+  "cg_x": 0.23268322981366463,
   "controls": [
    {
     "id": "flaperon",

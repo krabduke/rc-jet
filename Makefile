@@ -15,6 +15,7 @@ verify:
 	python3 tools/audit_structure.py
 	python3 tools/audit_geometry.py
 	python3 tools/audit_intersect.py
+	python3 tools/audit_duct.py
 	python3 tools/audit_fit.py
 	python3 tools/audit_manifest.py
 	python3 tools/check_vendor.py

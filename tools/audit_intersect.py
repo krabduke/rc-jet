@@ -19,6 +19,80 @@ import _intersect
 # Three of these are conventions rather than perfect assemblies, and they are
 # written down as such rather than quietly filtered:
 EXPECTED = [
+    # ----------------------------------------------------------------
+    # A feature let into the skin lands on the frame member behind it. On a
+    # built-up airframe the member is cut there and a doubler goes in, which
+    # is the same statement as ("panel_", "doublers") above.
+    # ----------------------------------------------------------------
+    ("naca_inlet_", "stringer"), ("naca_inlet_", "longeron"),
+    ("cooling_exit", "longeron"), ("cooling_exit", "stringer"),
+    ("gear_door_", "longeron"), ("gear_door_", "stringer"),
+    ("stringer", "canopy_frame"), ("longeron", "canopy_frame"),
+
+    # A seam is a line ON a surface, so it meets whatever crosses that
+    # surface -- vents, hatches, the fin root, the wing skin.
+    ("seam_", "bypass_slots"), ("seam_", "vtail_fin"),
+    ("wing_seams", "engine_antiice_duct"), ("seam_", "pushrod_linkages"),
+    ("seam_", "retract_main_"), ("seam_", "nose_steering_link"),
+    ("seam_", "battery_strap_"), ("seam_", "gear_door_"),
+    ("duct_seam", "gear_door_"),
+
+    # A strap is anchored to its tray and to the frame the tray is bonded to,
+    # and shares the bay with whatever else is in it.
+    ("battery_strap_", "fuselage_skin"), ("battery_strap_", "longeron"),
+    ("battery_strap_", "former_"), ("battery_strap_", "stringer"),
+    ("battery_strap_", "telemetry_gps"), ("battery_strap_", "seat_"),
+    ("battery_strap_", "gear_door_"),
+
+    # A piano hinge pin runs the whole span of the surface it carries, so
+    # every rib it passes is notched for it.
+    ("rib_", "hinge_flaperon_"), ("fin_rib", "hinge_rudder"),
+
+    # The thrust tube is held off the frame on standoff mounts, and the
+    # nozzle passes through the tail bulkhead.
+    ("former_", "thrust_tube"), ("longeron", "thrust_tube"),
+    ("engine_nozzle_", "bhd_tail"),
+
+    # The wing root is where the wing passes through the fuselage side, so
+    # everything mounted in it meets the skin and the frame there.
+    ("retract_main_", "fuselage_skin"), ("retract_main_", "stringer"),
+    ("retract_main_", "longeron"), ("servo_stab", "fuselage_skin"),
+    ("servo_rudder", "fuselage_skin"), ("servo_stab", "stringer"),
+    ("servo_rudder", "stringer"),
+
+    # The intake duct owns the middle of the fuselage, so the tail servos,
+    # their arms and the main gear retracts live in the wing root -- which is
+    # 19.7 mm thick, empty, and where the leg they drive already is.
+    ("servo_stab", "wing_"), ("servo_rudder", "wing_"),
+    ("servo_arm_stab", "wing_"), ("servo_arm_rudder", "wing_"),
+    ("retract_main_", "wing_"), ("wiring", "wing_"),
+    ("servo_ail_", "wing_"), ("servo_arm_ail_", "wing_"),
+    ("retract_main_", "rib_"), ("servo_stab", "rib_"), ("servo_rudder", "rib_"),
+    ("servo_arm_", "rib_"), ("gear_door_actuator_", "wing_"),
+    ("gear_door_actuator_", "rib_"), ("gear_door_actuator_", "retract_main_"),
+    # an actuator is pinned to the door it opens, and a steering link runs
+    # down into the well past the door hinged beside it
+    ("gear_door_actuator_", "gear_door_"),
+    ("nose_steering_link", "gear_door_"),
+    # A control run goes fore and aft through the frame, which is what the
+    # lightening holes in a bulkhead are partly for -- see fuselage._bulkheads.
+    ("nose_steering_link", "former_"), ("nose_steering_link", "longeron"),
+    ("nose_steering_link", "bhd_"), ("pushrod_linkages", "bhd_"),
+    ("pushrod_linkages", "former_"),
+    # the loom lands on the engine's connector block and runs beside its case
+    ("wiring", "engine_"), ("wiring", "mount_ring"), ("wiring", "mount_rails"),
+    ("wiring", "fuel_lines"), ("fuel_lines", "avionics_tray"),
+    # the loom runs along the inside of the skin, past the vents cut in it
+    ("wiring", "cooling_exit"), ("wiring", "naca_inlet_"),
+    # a control run goes through a hole in the rib it passes, and under the
+    # access panel over it
+    ("pushrod_linkages", "fin_rib"), ("pushrod_linkages", "panel_"),
+    # the leads leave the fuselage through a grommet at the wing root, which
+    # is the only way to reach servos that are in the wing
+    ("wiring", "fuselage_skin"),
+    ("retract_main_", "spar_"), ("servo_stab", "spar_"),
+    ("servo_rudder", "spar_"),
+
     # A hinge is bolted to a rib at one end and to the surface it carries at
     # the other; a hatch is screwed down onto the skin it covers.
     ("flaperon_hinge_", "flaperon_"), ("flaperon_hinge_", "rib_"),

@@ -31,8 +31,12 @@ def build():
     out.update(_rear_spar())
     out.update(_fin_ribs())
     out.update(_hinges())
-    out.update(_cockpit_cutouts(out))
-    out.update(_tail_cutouts(out))
+    # These write INTO out rather than returning a dict to update it with:
+    # a former can be cut by more than one thing -- the canopy aperture and
+    # the intake duct both cross former 4 -- and update() would keep only the
+    # last one. common.add_cut joins them.
+    _cockpit_cutouts(out)
+    _tail_cutouts(out)
     return out
 
 
@@ -48,8 +52,7 @@ def _cockpit_cutouts(built):
     """
     aperture = fus.canopy_aperture()
     K = spec.COCKPIT
-    out = {}
-    for name, (verts, _f) in built.items():
+    for name, (verts, _f) in list(built.items()):
         if not name.startswith(("former_", "longeron", "stringer")):
             continue
         # only the ones that actually reach into the hole; the boolean is
@@ -57,8 +60,8 @@ def _cockpit_cutouts(built):
         if any(K["x_front"] <= x <= K["x_rear"]
                and abs(y) <= K["half_width"]
                and z > spec.CANOPY["z_base"] - 1.0 for (x, y, z) in verts):
-            out[f"cut:{name}"] = aperture
-    return out
+            common.add_cut(built, name, aperture)
+    return built
 
 
 def _tail_cutouts(built):
@@ -80,14 +83,13 @@ def _tail_cutouts(built):
     boxes = [mesh.box(0.5 * (x0 + x1), sgn * 0.5 * (y0 + y1), 0.5 * (z0 + z1),
                       x1 - x0, y1 - y0, z1 - z0) for sgn in (-1.0, 1.0)]
     cutter = mesh.join(*boxes)
-    out = {}
-    for name, (verts, _f) in built.items():
+    for name, (verts, _f) in list(built.items()):
         if not name.startswith(("former_", "longeron", "stringer")):
             continue
         if any(x0 <= x <= x1 and y0 <= abs(y) <= y1 and z0 <= z <= z1
                for (x, y, z) in verts):
-            out[f"cut:{name}"] = cutter
-    return out
+            common.add_cut(built, name, cutter)
+    return built
 
 
 # --------------------------------------------------------------------------
@@ -130,10 +132,19 @@ def _formers():
         # between them -- the web was solid before, which is the one thing a
         # former never is
         out[f"former_{i:02d}"] = common.lightened_ring(f, b, zc, k, k + 0.16, 6)
+    # the duct runs through the formers it passes; see intake.duct_solid
+    from parts import intake as _intake
+    cutter = None
+    for i, x in enumerate(ST["former_x"], start=1):
+        if spec.INTAKE["x_throat"] - 4 <= x <= spec.INTAKE["x_duct_end"] + 4:
+            if cutter is None:
+                cutter = _intake.duct_solid()
+            common.add_cut(out, f"former_{i:02d}", cutter)
     return out
 
 
-def _skin_path(angle_deg, standoff, x0=None, x1=None, n=40):
+def _skin_path(angle_deg, standoff, x0=None, x1=None, n=40,
+               half_depth=0.0):
     """Follow the inside of the skin at a fixed clock angle."""
     # Start aft of the point where the section is smaller than the stringer.
     # At x = 6 the fuselage is 3 mm across and a 2.6 mm longeron cannot be
@@ -147,17 +158,126 @@ def _skin_path(angle_deg, standoff, x0=None, x1=None, n=40):
         x = xa + (xb - xa) * i / (n - 1)
         w, h, zc, expn = fus.station_at(x)
         p = 2.0 / expn
-        w = max(w - spec.FUSELAGE_SKIN - standoff, 0.6)
-        h = max(h - spec.FUSELAGE_SKIN - standoff, 0.6)
-        y = w * math.copysign(abs(ca) ** p, ca)
-        z = h * math.copysign(abs(sa) ** p, sa)
+        w_in = max(w - spec.FUSELAGE_SKIN - standoff, 0.6)
+        h_in = max(h - spec.FUSELAGE_SKIN - standoff, 0.6)
+        y = w_in * math.copysign(abs(ca) ** p, ca)
+        z = h_in * math.copysign(abs(sa) ** p, sa)
+        # Then take up the slack towards the skin if the duct is under it.
+        #
+        # A stringer stands off the skin by its own depth, and along the
+        # bottom of the fuselage the duct's outer wall is within a few
+        # millimetres of the skin -- so the four lower stringers ran inside the
+        # intake for most of their length. There is room for them between the
+        # two; there was never room for them at their nominal standoff. Pull
+        # them out towards the skin until they are clear, and no further than
+        # the skin itself.
+        # The room the member has: the skin's inner face, less its own half
+        # depth. Tested BEFORE each step, not after -- checking afterwards
+        # lets it overshoot by a whole step and the stringers came out a
+        # millimetre through the skin.
+        # The room the member has. Two things the obvious version gets wrong:
+        #
+        #  - the limit is the section's own superellipse, not a box round it.
+        #    A member at 225 degrees is at the corner, where |y| and |z| are
+        #    both well inside their axis limits and the point is outside the
+        #    skin anyway. Both stringers that broke through were at a corner.
+        #  - the swept profile is carried along the path tangent, so a member
+        #    whose path point is at x 91 has vertices at x 89, where the nose
+        #    is already narrower. Measure at the narrowest station it reaches.
+        w_n, h_n, n_n = w, h, expn
+        for dx in (-half_depth * 3.0, 0.0, half_depth * 3.0):
+            w2, h2, _zc2, n2 = fus.station_at(x + dx)
+            if w2 < w_n:
+                w_n, h_n, n_n = w2, h2, n2
+        w_lim = max(w_n - spec.FUSELAGE_SKIN - half_depth * 1.6, 0.4)
+        h_lim = max(h_n - spec.FUSELAGE_SKIN - half_depth * 1.6, 0.4)
+
+        def fits_skin(yy, zz):
+            return (abs(yy / w_lim) ** n_n
+                    + abs(zz / h_lim) ** n_n) <= 1.0
+        for _ in range(14):
+            if not _in_duct_wall((x, y, zc + z)):
+                break
+            # away from the DUCT's axis, not the fuselage's. The duct sits low
+            # in the forward fuselage, so pushing radially outward from the
+            # body's own centre drives a lower stringer along the duct rather
+            # than off it.
+            dy, dz = _duct_out((x, y, zc + z))
+            if not fits_skin(y + dy, z + dz):
+                break
+            y += dy
+            z += dz
         path.append((x, y, zc + z))
-    return path
+    # Where there is still no room, the member stops.
+    #
+    # Along the bottom of the forward fuselage the duct's outer wall is
+    # against the inside of the skin and a stringer cannot be between them at
+    # any standoff. A builder does not force one through the intake; the lower
+    # stringers are interrupted by the duct and pick up again behind it. Keep
+    # the longest run that is clear.
+    clear = [not _in_duct_wall(q) for q in path]
+    best, run, start = (0, 0), 0, 0
+    for i, ok in enumerate(clear + [False]):
+        if ok:
+            if run == 0:
+                start = i
+            run += 1
+        else:
+            if run > best[1] - best[0]:
+                best = (start, i)
+            run = 0
+    return path[best[0]:best[1]] if best[1] - best[0] >= 2 else path
+
+
+def _duct_out(p, step=1.2):
+    """A step away from the duct's axis, in the plane of its section."""
+    from parts import intake as _intake
+    _w, _h, zc = _intake.duct_section(p[0])
+    dy, dz = p[1], p[2] - zc
+    m = math.hypot(dy, dz)
+    if m < 1e-6:
+        return 0.0, step
+    return dy / m * step, dz / m * step
+
+
+def _in_duct_wall(p, margin=1.0):
+    """Is this point in the intake duct or its wall?"""
+    from parts import intake as _intake
+    x, y, z = p
+    I = spec.INTAKE
+    if not (I["x_throat"] - 2.0 <= x <= I["x_duct_end"] + 2.0):
+        return False
+    w, h, zc = _intake.duct_section(x)
+    _, _, _, n = _intake.duct_bore(x)
+    w += margin
+    h += margin
+    return (abs(y / w) ** n + abs((z - zc) / h) ** n) <= 1.0
+
+
+def _bay_start():
+    """Where the engine bay begins, which is as far aft as the frame can go.
+
+    The tailcone is full of engine. At x = 410 the thrust tube's outer wall is
+    at radius 14.1 and the inside of the skin at 19.2, so the annulus left for
+    structure is five millimetres -- and a longeron is a strip laid on EDGE
+    against the skin, 8.3 mm deep, because that is what makes it stiff in
+    bending. It does not fit, and it was not made to: the longerons and
+    stringers ran the full 434 mm of the aeroplane, four millimetres inside
+    the jet pipe and out through the nozzle's external flaps.
+
+    They stop at the firewall now. Aft of it the tailcone is a moulded shell
+    on its formers and the tail bulkhead, which is how a turbine model is
+    actually built -- there is nowhere else for the structure to be.
+    """
+    for name, x, _t in spec.BULKHEADS:
+        if name == "bhd_firewall":
+            return x + 6.0
+    return spec.ENGINE_X
 
 
 def _longerons():
     """Four main longerons at the section corners, where a slab-sided body is
-    stiffest, running nose to tail."""
+    stiffest, running from the nose back to the engine firewall."""
     out = {}
     r = ST["longeron_r"]
     # The lower pair used to sit at 222 and 318 -- the bottom corners, which
@@ -171,7 +291,9 @@ def _longerons():
         # stood off by the section's half-diagonal, not its old radius: a
         # rectangle 3.2r across corners will not fit in a 1r gap
         out[f"longeron_{i}"] = shapes.swept_profile(
-            _skin_path(ang, r * 1.80), shapes.rounded_polygon(
+            _skin_path(ang, r * 1.80, x1=_bay_start(),
+                       half_depth=r * 0.62),
+            shapes.rounded_polygon(
                 [(-r * 1.6, -r * 0.62), (r * 1.6, -r * 0.62),
                  (r * 1.6, r * 0.62), (-r * 1.6, r * 0.62)],
                 r * 0.30, seg=3), subdiv=2)
@@ -180,14 +302,20 @@ def _longerons():
 
 def _stringers():
     """A dozen thin stringers between the longerons, so the skin has something
-    to sit on between frames. One object -- they are never handled singly."""
+    to sit on between frames.
+
+    They stop at the firewall with the longerons, and for the same reason: the
+    tailcone is full of engine. See _bay_start.
+    """
     r = ST["stringer_r"]
     parts = []
     n = ST["n_stringers"]
     for i in range(n):
         ang = 360.0 * i / n + 15.0
         parts.append(shapes.swept_profile(
-            _skin_path(ang, r * 1.50, n=28), shapes.rounded_polygon(
+            _skin_path(ang, r * 1.50, x1=_bay_start(), n=28,
+                       half_depth=r * 0.55),
+            shapes.rounded_polygon(
                 [(-r * 1.3, -r * 0.55), (r * 1.3, -r * 0.55),
                  (r * 1.3, r * 0.55), (-r * 1.3, r * 0.55)],
                 r * 0.28, seg=3), subdiv=2))
@@ -313,20 +441,32 @@ def _rear_spar():
     backing, which the front spar is too far forward to provide."""
     frac = ST["rear_spar_frac"]
     tip = ST["rear_spar_span"]
-    pts = []
-    for i in range(9):
-        f = tip * (-1.0 + 2.0 * i / 8)
-        af = abs(f)
-        chord = common.local_chord(W["root_chord"], W["tip_chord"], af)
-        x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], af)
-        pts.append((x_le + chord * frac, W["semi_span"] * f, W["z_root"]))
+    # rooted where the wing panels are, outboard of the intake duct -- see
+    # wing._spar for why nothing crosses the fuselage at z -6
+    from parts import wing as _wing
+    f0 = _wing._root_span0() + 1.0 / W["semi_span"]
+    # Two paths, one per panel. A single path from -tip to +tip would step
+    # straight across the fuselage from y -23 to +23 at its middle point --
+    # through the engine's spinner, which is exactly where it went.
+    paths = []
+    for sgn in (-1.0, 1.0):
+        pts = []
+        for i in range(6):
+            af = f0 + (tip - f0) * i / 5
+            chord = common.local_chord(W["root_chord"], W["tip_chord"], af)
+            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
+                                  W["sweep_le"], af)
+            pts.append((x_le + chord * frac, sgn * W["semi_span"] * af,
+                        W["z_root"]))
+        paths.append(pts)
     # the hinge backing is a D-section: flat aft where the hinges screw into
     # it, round forward where it takes the bending
     r = ST["rear_spar_r"]
     sect = shapes.rounded_polygon(
         [(-r * 0.9, -r), (r * 1.5, -r), (r * 1.5, r), (-r * 0.9, r)],
         [r * 0.85, r * 0.22, r * 0.22, r * 0.85], seg=6)
-    return {"spar_rear": shapes.swept_profile(pts, sect, subdiv=3)}
+    return {"spar_rear": mesh.join(
+        *[shapes.swept_profile(p, sect, subdiv=3) for p in paths])}
 
 
 def _fin_ribs():

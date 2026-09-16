@@ -88,19 +88,30 @@ def _wing_joint():
     """
     out = {}
     parts = []
-    # the joiner: a sleeve round the carbon spar, bonded into the bulkheads
-    parts.append(_lathe(
-        [(-46.0, 2.4), (46.0, 2.4), (46.0, 4.6), (-46.0, 4.6)],
-        256.0, 0.0, -6.0, axis="y", seg=22))
+    # A socket each side, not a sleeve through the middle.
+    #
+    # The sleeve ran from y -46 to +46 at z -6, which is the middle of the
+    # intake duct: the duct is 41 mm across at this station and the wing sits
+    # in it. Each panel's stub spar plugs into its own socket on the fuselage
+    # side frame, outboard of the duct, and the load crosses the fuselage
+    # through the frames.
+    y0 = spec.INTAKE["duct_r_end"] + 3.5
     for sy in (-1.0, 1.0):
+        # the socket the stub spar plugs into
+        parts.append(_lathe(
+            [(sy * (y0 - 2.0), 2.4), (sy * (y0 + 22.0), 2.4),
+             (sy * (y0 + 22.0), 4.6), (sy * (y0 - 2.0), 4.6)],
+            256.0, 0.0, -6.0, axis="y", seg=22))
+        # the collar that lands it on the frame
         parts.append(_lathe(
             [(-3.0, 4.6), (3.0, 4.6), (3.0, 8.2), (-3.0, 8.2)],
-            256.0, sy * 30.0, -6.0, axis="y", seg=20))
+            256.0, sy * (y0 + 1.5), -6.0, axis="y", seg=20))
     out["wing_joiner"] = mesh.join(*parts)
 
     for tag, sy in (("l", -1.0), ("r", 1.0)):
         parts = []
-        x, y, z = 292.0, sy * 22.0, -6.0
+        # outboard of the duct, like everything else that picks the wing up
+        x, y, z = 292.0, sy * (spec.INTAKE["duct_r_end"] + 7.0), -6.0
         # the bolt itself, head proud under the wing
         parts.append(_lathe(
             [(0.0, 0.0), (0.0, 4.6), (2.6, 5.4), (3.4, 5.4), (3.4, 2.1),
@@ -118,9 +129,16 @@ def _wing_joint():
 def _servo_arms():
     """Output arms, between each servo and the pushrod it already drove."""
     out = {}
-    servos = (("ail_l", 285.0, -19.0, 8.0), ("ail_r", 285.0, 19.0, 8.0),
-              ("rudder", 288.0, 8.0, 23.0), ("stab", 288.0, -8.0, 23.0))
-    for tag, x, y, z in servos:
+    # On the servos, from the same table the servos are placed from.
+    #
+    # This was a third set of hard-coded positions and not one of them was on
+    # a servo: the aileron arms at y +/-19 for servos at +/-55, the tail arms
+    # at x 288 z 23 for servos that are not there either. Four output arms
+    # turning in mid air, two of them inside the intake duct.
+    for tag in ("ail_l", "ail_r", "rudder", "stab_l", "stab_r"):
+        sx, sy, sz, sl, _sw, sh = spec.equipment(f"servo_{tag}")
+        # the output shaft stands on the top face, towards one end
+        x, y, z = sx + sl * 0.30, sy, sz + sh / 2
         parts = []
         # the spline boss the arm clamps onto
         parts.append(_lathe(
@@ -143,43 +161,67 @@ def _battery_straps():
     Two lithium packs were sitting on their trays held down by nothing.
     """
     out = {}
-    packs = (("lipo", 240.0, 0.0, 2.0, 42.0, 26.0), ("rx", 102.0, 0.0, 4.0, 30.0, 18.0))
-    for tag, x, y, z, ln, wd in packs:
+    # From the equipment table, not from a second set of numbers.
+    #
+    # The lipo strap was at x 240 and the pack it straps at x 117; the rx
+    # strap at x 102 and its pack at 208. Both were tightened round nothing,
+    # and the lipo one was inside the intake duct.
+    packs = []
+    for tag, key in (("lipo", "lipo_3s_900"), ("rx", "rx_battery")):
+        px, py, pz, pl, pw, ph = spec.equipment(key)[:6]
+        packs.append((tag, px, py, pz, pl, pw, ph))
+    for tag, x, y, z, ln, wd, ht in packs:
         parts = []
         for dx in (-ln * 0.26, ln * 0.26):
             # round the pack in a rounded rectangle rather than four straight
             # runs, so it reads as webbing pulled tight rather than a wire
+            # Over the top and down to the tray, not all the way round.
+            #
+            # A closed loop passes UNDER the pack, which is through whatever
+            # the pack is sitting on -- the former, the seat pan, the nose
+            # gear door. A strap is anchored to the tray at each side.
             path = []
-            for k in range(29):
-                a = 2 * math.pi * k / 28
+            for k in range(21):
+                a = math.pi * (-0.06 + 1.12 * k / 20)
                 path.append((x + dx,
-                             (wd / 2 + 1.6) * math.sin(a),
-                             z + (8.6) * math.cos(a)))
+                             y - (wd / 2 + 1.6) * math.cos(a),
+                             z + (ht / 2 + 0.9) * math.sin(a)))
             parts.append(mesh.pipe(path, 1.5, segments=8))
             # the buckle on top
-            parts.append(shapes.rounded_box(x + dx, 0.0, z + 10.6,
+            parts.append(shapes.rounded_box(x + dx, y, z + ht / 2 + 2.0,
                                             4.2, 7.0, 1.8, r=0.5))
             parts.append(_lathe(
                 [(0.0, 2.0), (1.2, 2.0), (1.2, 3.0), (0.0, 3.0)],
-                x + dx, 0.0, z + 11.6, axis="z", seg=10))
+                x + dx, y, z + ht / 2 + 2.9, axis="z", seg=10))
         out[f"battery_strap_{tag}"] = mesh.join(*parts)
     return out
 
 
 def _nose_steering():
     """The link from the rudder servo down to the nose leg."""
+    # Over the duct, to a leg that is now ahead of it.
+    #
+    # The run used to go from the rudder servo straight down the middle of the
+    # fuselage at z -6, which for 95 % of its length was inside the intake.
+    sx, sy, sz = spec.equipment("servo_rudder")[:3]
+    gx = spec.GEAR["nose_x"]
     parts = []
-    p0 = (292.0, 8.0, 23.0)
-    p1 = (150.0, 4.0, -6.0)
-    p2 = (104.0, 2.0, -20.0)
-    parts.append(mesh.pipe([p0, p1, p2], 1.1, segments=8))
-    # the bellcrank partway along, on its post
+    # Outboard of the duct the whole way, over its shoulder, then in and down
+    # to the leg ahead of the throat.
+    p0 = (sx - 8.0, sy * 0.62, sz + 10.0)
+    p1 = (210.0, 25.0, 18.0)
+    p2 = (140.0, 24.0, 12.0)
+    p3 = (100.0, 19.0, 8.0)
+    p4 = (spec.INTAKE["x_throat"] - 6.0, 6.0, 2.0)
+    p5 = (gx, 2.0, -18.0)
+    parts.append(mesh.pipe([p0, p1, p2, p3, p4, p5], 1.1, segments=8, subdiv=2))
+    # the bellcrank partway along, on its post, beside the duct
     parts.append(_lathe(
         [(0.0, 0.0), (0.0, 4.2), (2.0, 4.2), (2.0, 0.0)],
-        150.0, 4.0, -6.0, axis="z", seg=12))
+        140.0, 24.0, 12.0, axis="z", seg=12))
     parts.append(_lathe(
         [(0.0, 0.0), (7.0, 0.0), (7.0, 1.2), (0.0, 1.2)],
-        150.0, 4.0, -12.0, axis="z", seg=8))
+        140.0, 24.0, 6.0, axis="z", seg=8))
     # the steering arm on the leg itself
-    parts.append(shapes.rounded_box(102.0, 2.0, -20.0, 9.0, 2.2, 4.0, r=0.6))
+    parts.append(shapes.rounded_box(gx, 2.0, -18.0, 9.0, 2.2, 4.0, r=0.6))
     return {"nose_steering_link": mesh.join(*parts)}

@@ -181,6 +181,73 @@ def duct_section(x):
             I["z_lip"] + (spec.ENGINE_Z - I["z_lip"]) * s)
 
 
+def duct_bore(x):
+    """(half width, half height, z centre, exponent) of the duct's AIR PATH.
+
+    The inner wall, and the superellipse exponent the section is drawn with,
+    so anything can ask exactly whether a point is in the airflow. The outer
+    wall is duct_section(); the difference between them is the duct's own
+    material.
+    """
+    x0, x1 = I["x_throat"], I["x_duct_end"]
+    t = min(max((x - x0) / (x1 - x0), 0.0), 1.0)
+    s = t * t * (3 - 2 * t)
+    w0 = I["lip_width"] / 2 - 1.0
+    h0 = I["lip_height"] / 2 - 1.0
+    r1 = I["duct_r_end"]
+    return (w0 + (r1 - w0) * s, h0 + (r1 - h0) * s,
+            I["z_lip"] + (spec.ENGINE_Z - I["z_lip"]) * s,
+            2.4 + (2.0 - 2.4) * s)
+
+
+def in_duct(p, margin=0.0):
+    """Is this point in the air the engine breathes?"""
+    x, y, z = p
+    if not (I["x_throat"] <= x <= I["x_duct_end"]):
+        return False
+    w, h, zc, n = duct_bore(x)
+    w -= margin
+    h -= margin
+    if w <= 0 or h <= 0:
+        return False
+    return (abs(y / w) ** n + abs((z - zc) / h) ** n) <= 1.0
+
+
+def duct_solid(pad=1.2, n_st=24):
+    """The duct's outer wall as a closed solid, for cutting frames with.
+
+    Every ply bulkhead and every former is a web filling the fuselage section,
+    and the duct runs through five of them. A central lightening bore does not
+    clear it: at the cockpit bulkhead the duct is down at z -13.6 and half the
+    section tall, so the bore that would clear it is bigger than the frame.
+    The frame has to be cut to the duct's shape, which is what a builder does
+    -- forward of the S-duct's climb the frames are horseshoes open at the
+    bottom, not rings.
+
+    So the duct hands out its own shape and the frames subtract it. Before
+    this the firewall closed 70 % of the intake and the aeroplane could not
+    breathe.
+    """
+    x0, x1 = I["x_throat"] - 4.0, I["x_duct_end"] + 4.0
+    rings = []
+    for i in range(n_st):
+        x = x0 + (x1 - x0) * i / (n_st - 1)
+        w, h, zc = duct_section(x)
+        _, _, _, sq = duct_bore(x)
+        rings.append(_oval(x, w + pad, h + pad, zc, SEG, sq))
+    verts = [v for r in rings for v in r]
+    faces = []
+    for i in range(n_st - 1):
+        a, b = i * SEG, (i + 1) * SEG
+        for s_ in range(SEG):
+            s2 = (s_ + 1) % SEG
+            faces.append((a + s_, a + s2, b + s2, b + s_))
+    faces.append(tuple(range(SEG - 1, -1, -1)))
+    base = (n_st - 1) * SEG
+    faces.append(tuple(range(base, base + SEG)))
+    return verts, faces
+
+
 def duct_top(x, gap=3.2):
     """The lowest z a box at station x can sit at and stay out of the duct.
 
