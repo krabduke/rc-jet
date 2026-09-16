@@ -140,6 +140,31 @@ def fit_distance(cam, dirv, margin=1.06):
     return d * margin
 
 
+
+def fit_resolution(dirv, budget=1_920_000, lo=0.75, hi=2.6):
+    """Choose a frame shape that suits what the shot is of.
+
+    An elevation is fitted to the subject, so a fixed 4:3 frame decides how
+    much of it is empty: the car is 4.93 m long and 2.0 m wide, and in plan on
+    a 4:3 frame it filled half the height whatever the camera did. The frame
+    follows the subject's own proportions instead, at a constant pixel count,
+    clamped so nothing comes out a letterbox.
+
+    Call after collect_corners() and before setup_camera().
+    """
+    dirv = Vector(dirv).normalized()
+    up = Vector((0, 1, 0)) if abs(dirv.z) > 0.999 else Vector((0, 0, 1))
+    right = dirv.cross(up).normalized()
+    camup = right.cross(dirv).normalized()
+    w = max(abs(c.dot(right)) for c in CORNERS) or 1.0
+    h = max(abs(c.dot(camup)) for c in CORNERS) or 1.0
+    a = min(hi, max(lo, w / h))
+    rx = int(round(math.sqrt(budget * a) / 2) * 2)
+    ry = int(round(math.sqrt(budget / a) / 2) * 2)
+    sc = bpy.context.scene
+    sc.render.resolution_x, sc.render.resolution_y = rx, ry
+    return rx, ry
+
 def setup_camera(dirv, centre, lens=70.0, ortho=False):
     cd = bpy.data.cameras.new("cam")
     cd.lens = lens
@@ -214,10 +239,14 @@ def mode_hero(s):
     shoot("01_hero")
 
 
+DIRV_TOP = (0.0, 0.0, -1.0)
+
+
 def mode_top(s):
     setup_render(s, res=(1600, 1200)); setup_world(0.75); setup_lights()
     c = collect_corners()
-    setup_camera((0.0, 0.0, -1.0), c, ortho=True)
+    fit_resolution(DIRV_TOP)
+    setup_camera(DIRV_TOP, c, ortho=True)
     shoot("02_plan")
 
 
