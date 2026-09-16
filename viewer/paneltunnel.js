@@ -68,9 +68,21 @@ export class PanelTunnel {
   spanLoad(v){
     const pf = this.pf, out = [];
     for(const w of pf.wake){
-      const G = pf.mu[w.up] - pf.mu[w.lo];
+      /* Minus. The doublet jump and the circulation in Kutta-Joukowski are
+       * signed opposite ways here, and the plot came out with every station
+       * of the wing pulling DOWN on an aeroplane whose pressure integral said
+       * it was holding itself up. Checked rather than argued: the strips now
+       * sum to 4.9 N of the 5.5 N the pressures give, the rest being the
+       * fuselage, which sheds no wake and so appears in neither. */
+      const G = -(pf.mu[w.up] - pf.mu[w.lo]);
       const s = w.strip[0];
-      const dy = Math.hypot(s[1][1] - s[0][1], s[1][2] - s[0][2]);
+      /* Across the flow, not along the shed edge.
+       *
+       * A fin's trailing edge runs vertically: its circulation makes SIDE
+       * force, and taking the edge's length rather than its spanwise part put
+       * the whole of it into the lift plot at y = 0, as a spike in the middle
+       * of the wing. */
+      const dy = Math.abs(s[1][1] - s[0][1]);
       out.push({y: 0.5*(s[0][1] + s[1][1]), dL: RHO*v*G*dy});
     }
     return out;

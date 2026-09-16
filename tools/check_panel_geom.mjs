@@ -165,6 +165,27 @@ console.log(`   surface below Cp -8   ${(100*bad/wet).toFixed(3)} % of the wette
 if(bad/wet > 0.004)
   fail(`${(100*bad/wet).toFixed(2)} % of the surface is below Cp -8 -- that is panelling, not a suction peak`);
 
+/* The two ways of getting the lift have to agree.
+ *
+ * One integrates the pressure over the skin; the other is Kutta-Joukowski on
+ * the circulation the wake carries. They are different readings of the same
+ * solution and they must land in the same place -- the wake's is a little
+ * lower because the fuselage sheds none and so appears only in the pressures.
+ * They came out with OPPOSITE SIGNS once: the doublet jump and the
+ * circulation are signed the other way round from each other, and the span
+ * load plot had every station of the wing pulling the aeroplane down while
+ * the readout beside it said it was flying.
+ */
+{
+  const r = T.solve({...base, alpha: 8});
+  const sum = r.strips.reduce((a, st) => a + st.dL, 0);
+  console.log(`\n   lift from the pressures      ${r.lift_N.toFixed(3)} N`);
+  console.log(`   lift from the wake           ${sum.toFixed(3)} N`
+            + `   (${(100*sum/r.lift_N).toFixed(0)} % -- the fuselage sheds no wake)`);
+  if(!(sum/r.lift_N > 0.55 && sum/r.lift_N < 1.05))
+    fail(`the wake says ${sum.toFixed(2)} N and the pressures say ${r.lift_N.toFixed(2)} N`);
+}
+
 console.log('\n   control      -max        0        +max');
 for(const c of cfg.controls){
   /* A rudder moves the aeroplane sideways, so asking whether it changed the
