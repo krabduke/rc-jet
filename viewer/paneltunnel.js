@@ -61,6 +61,8 @@ export class PanelTunnel {
       cpPeak: this.liftingPeakCp(),
       jetFill: this.jetFill(),
       extra: cfg.extra_wetted || [],
+      sections: cfg.section_drag || null,
+      tc: cfg.section_tc || {},
     });
 
     return {

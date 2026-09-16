@@ -4,11 +4,11 @@
   "flowfield.js": "f3956284e94b",
   "panelkernel.js": "00819cda8740",
   "panelflow.js": "6c22ac3606e3",
-  "paneltunnel.js": "2c43aa3cf5ec",
+  "paneltunnel.js": "178631829ed2",
   "cfd-view.js": "e1d9b82f1585",
   "tunnel-ui.js": "e072c76b0392",
   "anim.js": "31e2189e4fac",
-  "viscous.js": "334ba679bfa4",
+  "viscous.js": "2dbffa00cb42",
   "../tools/check_panelkernel.mjs": "26700d36adeb",
   "../tools/check_panelflow.mjs": "288ce7de01b6",
   "../tools/panelgeom.py": "2853dea9db82"

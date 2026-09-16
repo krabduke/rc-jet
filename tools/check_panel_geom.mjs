@@ -228,7 +228,15 @@ for(const c of cfg.controls){
             + `   (${(r.suctionKept*100).toFixed(0)} % of the leading-edge suction survives)`);
   console.log(`   total                    ${r.CD.toFixed(4)}      L/D ${r.LD.toFixed(1)}`);
   console.log(`   thrust to cruise         ${(r.drag_N*1000/g9).toFixed(0)} g`);
-  if(!(r.CD0 > 0.010 && r.CD0 < 0.045))
+  const tab = cfg.section_drag;
+  console.log(`   section drag from   ${tab ? tab.source : 'NOTHING -- correlation only'}`);
+  if(!tab || !tab.cd || !tab.cd.length)
+    fail('no section-drag table: run `make sections`');
+  const usedTable = r.comps.filter(c => c.from === 'section table').map(c => c.name);
+  console.log(`   lifting surfaces on the table   ${usedTable.join(', ') || 'none'}`);
+  if(usedTable.length < 3)
+    fail('lifting surfaces are not using the section table -- check section_tc');
+  if(!(r.CD0 > 0.008 && r.CD0 < 0.045))
     fail(`profile drag ${r.CD0.toFixed(4)} -- not a model aeroplane's`);
   if(!(r.LD > 2 && r.LD < 9))
     fail(`L/D ${r.LD.toFixed(1)} -- a 440 mm delta at Re 262,000 does not do that`);

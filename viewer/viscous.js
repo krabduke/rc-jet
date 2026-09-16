@@ -79,6 +79,35 @@ function bubbleDrag(re){
 const ffBody    = (ld) => 1 + 60 / Math.pow(Math.max(ld, 2), 3) + 0.0025 * ld;
 const ffSurface = (tc) => 1 + 2.7 * tc + 100 * Math.pow(tc, 4);
 
+/* Section drag off the table, by thickness, Reynolds number and loading.
+ *
+ * Trilinear in (t/c, log Re, CL). Log in Reynolds because that is how drag
+ * varies with it and how the table is spaced; linear in the other two. Held
+ * at the ends rather than extrapolated -- past the table's Reynolds range the
+ * answer stops changing much, and past its CL range it would be extrapolating
+ * a stall, which is not a thing to guess at. */
+function sectionCd(tab, tc, re, cl){
+  if(!tab) return null;
+  const at = (arr, v) => {
+    if(v <= arr[0]) return [0, 0];
+    if(v >= arr[arr.length-1]) return [arr.length-2, 1];
+    let i = 0;
+    while(i < arr.length-2 && arr[i+1] < v) i++;
+    return [i, (v - arr[i])/(arr[i+1] - arr[i])];
+  };
+  const lre = tab.re.map(Math.log);
+  const [i, fi] = at(tab.tc, tc);
+  const [j, fj] = at(lre, Math.log(Math.max(re, 1)));
+  const [k, fk] = at(tab.cl, Math.abs(cl));
+  const g = (a, b, c) => tab.cd[a][b][c];
+  const lerp = (p, q, t) => p + (q - p)*t;
+  const c00 = lerp(g(i,j,k),     g(i,j,k+1),     fk);
+  const c01 = lerp(g(i,j+1,k),   g(i,j+1,k+1),   fk);
+  const c10 = lerp(g(i+1,j,k),   g(i+1,j,k+1),   fk);
+  const c11 = lerp(g(i+1,j+1,k), g(i+1,j+1,k+1), fk);
+  return lerp(lerp(c00, c01, fj), lerp(c10, c11, fj), fi);
+}
+
 /* Per-component geometry: wetted area, streamwise length, and how thick it is.
  *
  * Caps are folded into the thing they cap. On their own they have no
@@ -110,12 +139,16 @@ function parts(pf, geom){
     if(!(c.area > 0)) continue;
     const ext = [c.hi[0]-c.lo[0], c.hi[1]-c.lo[1], c.hi[2]-c.lo[2]]
       .map(v => Math.max(v, 1e-6));
+    // span is the wider of the two transverse extents: a wing spans in y, a
+    // fin in z, and the mean chord is planform over span
+    c.span = Math.max(ext[1], ext[2]);
     /* Thin in its OWN thin direction. A fin is thin in y and a wing is thin
      * in z; measuring "thin" as height over length made the fin, which is
      * tall and short, look like a very stubby body and gave it a form factor
      * of 8.5. */
     const thin = Math.min(...ext) / Math.max(...ext);
-    out.push({name: c.name, area: c.area, len: ext[0], thin});
+    out.push({name: c.name, area: c.area, len: ext[0], thin,
+              span: c.span, planform: c.area/2});
   }
   return out;
 }
@@ -161,21 +194,45 @@ export function suctionKept(cpPeak){
  */
 export function buildUp(pf, geom, o){
   const {rho = 1.225, nu = 1.5e-5, v, sRef, alpha, cpPeak = 0,
-         CL: CLpot, CDi, jetFill = 0, extra = []} = o;
+         CL: CLpot, CDi, jetFill = 0, extra = [], sections = null,
+         tc = {}} = o;
   const u = [Math.cos(alpha), 0, Math.sin(alpha)];
   const comps = [];
   let cd0 = 0;
   for(const c of parts(pf, geom)){
-    const re = v * c.len / nu;
-    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfMixed(re);
     /* A part is a body or a surface by its shape, not by its name: a fin and
      * a fuselage are told apart by how thick they are for their length. */
     const thin = c.thin;
-    const ff = thin < 0.35 ? ffSurface(Math.min(thin, 0.3))
-                           : ffBody(c.len / Math.max(Math.sqrt(c.area/Math.PI), 1e-6));
-    const bub = thin < 0.35 ? bubbleDrag(re) * 0.5 : 0;   // per wetted side
+    const surface = thin < 0.35;
+    const thick = tc[c.name];
+    if(surface && sections && thick){
+      /* A LIFTING SURFACE gets its drag from the table.
+       *
+       * Reynolds on its own mean chord, which is planform over span, not on
+       * the bounding box -- a swept wing's box is longer than its chord and
+       * a wing is not a plate the length of its own footprint. The table is
+       * NeuralFoil, which is XFOIL with a real boundary layer, so the
+       * laminar bubble is computed rather than correlated. That matters: the
+       * correlation it replaces was a factor of two high at this aeroplane's
+       * Reynolds number, on the largest single piece of its drag.
+       */
+      const chord = c.planform / Math.max(c.span, 1e-6);
+      const re = v * chord / nu;
+      const cd = sectionCd(sections, thick, re, CLpot);
+      const d = cd * c.planform / sRef;
+      comps.push({name: c.name, re, cf: cd, ff: 1, bubble: 0,
+                  area: c.planform, cd: d, from: 'section table'});
+      cd0 += d;
+      continue;
+    }
+    const re = v * c.len / nu;
+    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfMixed(re);
+    const ff = surface ? ffSurface(Math.min(thin, 0.3))
+                       : ffBody(c.len / Math.max(Math.sqrt(c.area/Math.PI), 1e-6));
+    const bub = surface ? bubbleDrag(re) * 0.5 : 0;   // per wetted side
     const d = (cf * ff + bub) * c.area / sRef;
-    comps.push({name: c.name, re, cf, ff, bubble: bub, area: c.area, cd: d});
+    comps.push({name: c.name, re, cf, ff, bubble: bub, area: c.area, cd: d,
+                from: 'flat plate and form'});
     cd0 += d;
   }
   /* Surfaces the aeroplane has and the panel model does not.

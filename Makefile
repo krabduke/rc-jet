@@ -2,7 +2,7 @@ BLENDER := /Applications/Blender.app/Contents/MacOS/Blender
 BLEND   := build/rcjet.blend
 SAMPLES ?= 128
 
-.PHONY: all build verify render export stl manifest viewer validate aero clean
+.PHONY: all build verify render export stl manifest sections viewer validate aero clean
 
 all: build verify render export
 
@@ -36,6 +36,17 @@ export:
 
 stl:
 	$(BLENDER) -b $(BLEND) -P plane/export.py -- stl
+
+# Section drag, from NeuralFoil -- a neural network trained on XFOIL, so it
+# carries a real integral boundary layer and finds the laminar separation
+# bubble rather than correlating it. Generated offline and COMMITTED: the
+# viewer needs no solver of its own and `make verify` needs no venv.
+#
+#     python3 -m venv .venv && .venv/bin/pip install aerosandbox
+#
+sections:
+	.venv/bin/python aero/section_drag.py
+	python3 tools/make_manifest.py
 
 manifest:
 	python3 tools/make_manifest.py

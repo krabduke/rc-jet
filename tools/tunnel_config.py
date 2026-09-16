@@ -128,11 +128,16 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         # trimmed at every speed:
         #
         #     V     alpha    CD      L/D    V/D
-        #     22     9.6   0.0699   5.4   21.4
-        #     28     6.4   0.0314   7.4   37.5   <- minimum drag
-        #     36     4.0   0.0208   6.7   43.9
-        #     38     3.6   0.0196   6.4   44.2   <- maximum range
-        #     46     2.6   0.0181   4.7   39.4
+        #     22     9.6   0.0648   5.8   23.1
+        #     30     5.6   0.0243   8.3   45.1   <- minimum drag
+        #     34     4.5   0.0209   7.5   46.3   <- maximum range
+        #     38     3.6   0.0189   6.7   45.8
+        #     46     2.6   0.0167   5.1   42.8
+        #
+        # (this polar is with section drag from NeuralFoil rather than the
+        # hand correlation it replaced -- see aero/section_drag.py. The
+        # correlation was a factor of two high at this aeroplane's Reynolds
+        # number, so best L/D was 7.4 and is really 8.3.)
         #
         # A jet's best range is at maximum V/D, not maximum L/D -- about 1.3
         # times the minimum-drag speed -- which lands at 38. 36 is taken
@@ -171,6 +176,15 @@ def config(n_span=WING_NS, n_chord=WING_NC):
             {"name": "strakes", "area": 2 * 2 * 74.0 * 13.0 * MM * MM,
              "len": 74.0 * MM, "thin": 0.06},
         ],
+        # Mean thickness ratio of each lifting surface's section, which is
+        # what picks its row out of the section-drag table. Named rather than
+        # measured off the panels: a swept wing's bounding box is longer than
+        # its chord, so thickness over box length is not t/c.
+        "section_tc": {
+            "wing": round((W["thickness"] + W["thickness_tip"]) / 2, 4),
+            "stab": round((H["thickness"] + H["thickness_tip"]) / 2, 4),
+            "fin":  round((V["thickness"] + V["thickness_tip"]) / 2, 4),
+        },
         "ground": False,
         "cg_frac": spec.cg_frac_mac(),
         "cg_x": spec.cg_x() * MM,

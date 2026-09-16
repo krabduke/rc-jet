@@ -11,6 +11,15 @@ import spec
 import tunnel_config  # noqa: E402
 import panel_geom  # noqa: E402
 
+
+def _section_drag():
+    p = os.path.join(ROOT, "viewer", "section_drag.json")
+    if not os.path.exists(p):
+        raise SystemExit("viewer/section_drag.json missing -- run "
+                         "`.venv/bin/python aero/section_drag.py`")
+    with open(p) as fh:
+        return json.load(fh)
+
 GROUPS = [
     ("01 Fuselage",        "Fuselage",      "#8A9299"),
     ("02 Wing",            "Wing",          "#6E93A8"),
@@ -87,7 +96,10 @@ def main():
         "palette": {k: {"rgb": list(v[0]), "metal": v[1], "rough": v[2]}
                     for k, v in spec.PALETTE.items()},
         "groups": groups, "parts": parts, "masses": masses,
-        "tunnel": tunnel_config.config(),
+        "tunnel": dict(tunnel_config.config(),
+                       # generated offline by aero/section_drag.py and
+                       # committed, so the viewer needs no solver of its own
+                       section_drag=_section_drag()),
         "panel_body": panel_geom.emit(),
     }
     # argv[1] lets the drift check regenerate to a scratch file and

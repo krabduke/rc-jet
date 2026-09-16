@@ -7,3 +7,6 @@ __pycache__/
 build/*
 !build/rcjet.glb
 !build/parts.csv
+
+# the offline design venv: aerosandbox and friends, not shipped
+.venv/
