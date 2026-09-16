@@ -343,6 +343,174 @@ CASINGS = [
     ("casing_augmentor", 2520.0, 3640.0, 470.0, 434.0, 11.0),
 ]
 
+# Running clearance from a rotor blade tip to the casing it turns inside.
+#
+# 4 mm on a fan of 590 mm tip radius is 0.7 %, which is about what a real
+# engine holds cold. The point is that it is the same everywhere: a casing
+# follows the blade tips it encloses.
+TIP_CLEARANCE = 4.0
+
+# How much existing tip-through-casing to still recognise as "this row runs
+# inside this casing" rather than "this row is somewhere else entirely".
+_OVERRUN_TOL = 25.0
+
+# Interlocking tip shroud on a shrouded turbine rotor: it stands this far
+# proud of the blade tip, so it -- not the tip -- is what the casing has to
+# clear. Reading the clearance off r_tip alone drove all three shrouded rows
+# 10 to 16 mm through the turbine case.
+SHROUD_STANDOFF = 4.0
+SHROUD_THICKNESS = 6.0
+
+# In the hot section the tip does not run against the casing, it runs against
+# a blade outer air seal segment the casing carries. So the bore has to stand
+# off far enough for the seal to be a real part and not a film.
+TIP_RUB = 1.2
+SEAL_THICKNESS = 9.0
+
+
+def row_outer_r(row, x):
+    """The outermost radius the row's geometry actually reaches at station x.
+
+    For a shrouded row that is the top of the tip shroud, which is constant
+    along the row and well above the tip line.
+    """
+    if row.shrouded:
+        return (max(row.r_tip_le, row.r_tip_te)
+                + SHROUD_STANDOFF + SHROUD_THICKNESS)
+    f = min(1.0, max(0.0, (x - row.x) / row.chord))
+    return row.r_tip_le + (row.r_tip_te - row.r_tip_le) * f
+
+
+def row_outer_span(row):
+    """Axial extent over which the row's outermost radius is present."""
+    if row.shrouded:
+        return (row.x - row.chord * 0.06, row.x + row.chord * 1.06)
+    return (row.x, row.x + row.chord)
+
+
+# A stator vane does not run against the casing, it hangs from it: its outer
+# platform is a segment of the bore line, machined into the case. The bore has
+# to stand off far enough for that platform to be a part. Because a stator
+# tip sits about a millimetre under the rotor tip line either side of it, 5 mm
+# here and 4 mm on the rotors give very nearly the same bore -- the flowpath
+# stays smooth and the platform stops being a 1.3 mm film.
+VANE_PLATFORM = 5.0
+
+
+def row_standoff(row):
+    """Radial gap the casing bore keeps from the row's outermost geometry."""
+    if row in HPT_ROWS or row in LPT_ROWS:
+        return TIP_RUB + SEAL_THICKNESS if row.rotor else VANE_PLATFORM
+    return TIP_CLEARANCE if row.rotor else VANE_PLATFORM
+
+
+def _taper(x0, x1, r0, r1, x):
+    return r0 + (r1 - r0) * (x - x0) / (x1 - x0)
+
+
+def enclosing_casing(x, r_tip):
+    """Which casing a blade tip at (x, r_tip) turns inside.
+
+    Several casings span the same station -- at the compressor the bypass
+    duct wall is directly over the HP compressor case -- so the enclosing
+    one is the tightest that still has the tip inside it.
+    """
+    best = None
+    for (name, x0, x1, r0, r1, wall) in CASINGS:
+        if not (x0 <= x <= x1):
+            continue
+        rt = _taper(x0, x1, r0, r1, x)
+        if rt < r_tip - _OVERRUN_TOL:
+            continue        # the tip is far outside this one: a different case
+        if best is None or rt < best[1]:
+            best = (name, rt)
+    return best[0] if best else None
+
+
+def casing_bore(name, x0, x1, r0, r1):
+    """(x, r) stations for a casing's inner surface.
+
+    Built as a straight cone between its two end radii, a casing does not
+    follow the flowpath inside it. Across the HP compressor the tip clearance
+    ran from 3.4 mm at the front to 19.5 mm at the back -- a compressor with
+    two centimetres of tip clearance does not compress anything -- and the
+    last LP turbine rotor's tip finished 0.1 mm OUTSIDE its casing bore,
+    which is a blade through the case. Worse, the three shrouded turbine rows
+    carry a tip shroud 10 mm above the tip line, so they were 10 to 16.5 mm
+    through it.
+
+    So the bore is pinned to every rotor tip that turns inside this casing,
+    with the running clearance added, and interpolated between them.
+    """
+    def interp(table, x):
+        if x <= table[0][0]:
+            return table[0][1]
+        for i in range(len(table) - 1):
+            (xa, ra), (xb, rb) = table[i], table[i + 1]
+            if xa <= x <= xb:
+                t = (x - xa) / (xb - xa) if xb > xa else 0.0
+                return ra + (rb - ra) * t
+        return table[-1][1]
+
+    def pins(rows, raise_only_over=None):
+        got = []
+        for row in rows:
+            for x in row_outer_span(row):
+                if not (x0 < x < x1):
+                    continue
+                r = row_outer_r(row, x)
+                if enclosing_casing(x, r) != name:
+                    continue
+                need = r + row_standoff(row)
+                if raise_only_over is not None:
+                    if need <= interp(raise_only_over, x):
+                        continue
+                got.append((x, need))
+        return got
+
+    # The rotors set the bore: it is their running clearance, and interpolating
+    # between their stations is what makes the casing follow the flowpath.
+    rotors = pins([r for r in all_blade_rows() if r.rotor])
+    stations = {x0: r0, x1: r1}
+    for x, r in rotors:
+        stations[x] = max(stations.get(x, 0.0), r)
+    table = sorted(stations.items())
+
+    # A stator may only push the bore out, never pull it in. Pinning one at
+    # its own platform height cut a notch in the turbine bore between two
+    # shrouded rotors, because the vane sits far below the line they set.
+    for x, r in pins([r for r in all_blade_rows() if not r.rotor], table):
+        stations[x] = max(stations.get(x, 0.0), r)
+    return sorted(stations.items())
+
+
+_BORE_CACHE = {}
+
+
+def casing_inner(name, x):
+    """Flowpath radius of a named casing at station x, off its bore table.
+
+    Anything mounted on a casing -- an access panel, an external line -- has
+    to sit on the skin the casing actually has, not on the straight taper its
+    two end radii describe. Those parted company the moment the bore started
+    following the blade tips.
+    """
+    if name not in _BORE_CACHE:
+        for (n, x0, x1, r0, r1, wall) in CASINGS:
+            if n == name:
+                _BORE_CACHE[n] = casing_bore(n, x0, x1, r0, r1)
+                break
+    st = _BORE_CACHE[name]
+    if x <= st[0][0]:
+        return st[0][1]
+    for i in range(len(st) - 1):
+        (xa, ra), (xb, rb) = st[i], st[i + 1]
+        if xa <= x <= xb:
+            t = (x - xa) / (xb - xa) if xb > xa else 0.0
+            return ra + (rb - ra) * t
+    return st[-1][1]
+
+
 # Bolted flange rings: (name, x, radius, outer radius, thickness, bolt count)
 FLANGES = [
     ("flange_inlet",       0.0, 596.0, 626.0, 20.0, 36),

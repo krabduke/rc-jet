@@ -25,10 +25,9 @@ def build():
 def _casing_outer(x):
     """Outer radius of the casing that owns station x (its own wall, not the
     global max) so an access panel sits on the skin it belongs to."""
-    for (_, x0, x1, r0, r1, wall) in spec.CASINGS:
+    for (name, x0, x1, r0, r1, wall) in spec.CASINGS:
         if x0 <= x <= x1:
-            f = (x - x0) / max(x1 - x0, 1e-6)
-            return r0 + (r1 - r0) * f + wall
+            return spec.casing_inner(name, x) + wall
     return 300.0
 
 
@@ -61,7 +60,9 @@ def _case_detail():
         r = _casing_outer(xc)
         x0, x1 = xc - dx / 2.0, xc + dx / 2.0
         a0 = clock - da / 2.0
-        lip = 5.0
+        # The panel stands clear of the casing's hoop stiffeners, which are up
+        # to 4 mm proud of the nominal outer radius and run underneath it.
+        lip = 7.0
         pv, pf = mesh.revolve_closed(
             [(x0, r - 1.0), (x1, r - 1.0), (x1, r + lip), (x0, r + lip)],
             segments=10, phase=math.radians(a0), sweep=math.radians(da))
@@ -70,7 +71,10 @@ def _case_detail():
         for bx in (x0 + dx * 0.12, xc, x1 - dx * 0.12):
             for bt in (a0 + 2.0, clock, a0 + da - 2.0):
                 p = _at(r + lip, bt, bx)
-                bv, bf = mesh.cylinder(-3.0, 6.0, 6.0, 6)
+                # The head sits on the panel, not sunk through it into the
+                # casing wall: starting 3 mm in put 22 % of the bolt geometry
+                # inside casing_fan.
+                bv, bf = mesh.cylinder(-1.5, 6.0, 6.0, 6)
                 bv = mesh.rot_z(bv, math.pi / 2)        # axis now +Y
                 bv = mesh.rot_x(bv, math.radians(bt))   # swing to clock angle
                 bv = mesh.translate(bv, p[0], p[1], p[2])
@@ -305,10 +309,9 @@ def _casing_radius(x):
     """Outer radius of whatever casing is at station x -- so external lines can
     be routed to lie on the engine instead of floating beside it."""
     best = 300.0
-    for (_, x0, x1, r0, r1, wall) in spec.CASINGS:
+    for (name, x0, x1, r0, r1, wall) in spec.CASINGS:
         if x0 <= x <= x1:
-            f = (x - x0) / max(x1 - x0, 1e-6)
-            best = max(best, r0 + (r1 - r0) * f + wall)
+            best = max(best, spec.casing_inner(name, x) + wall)
     return best
 
 

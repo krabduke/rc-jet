@@ -706,8 +706,8 @@ function buildTunnel(box){
   tunnel = new WindTunnel({
     cfg: data.tunnel, scene, root, parts: byName, manifest: data.parts,
     bounds: box.clone().translate(root.position),
-    bodyPanels: data.body_panels,
-    nLines: 560,
+    panelBody: data.panel_body,
+    nLines: 300,
     ports: (state) => flowPorts(state),
     onSolve: r => {
       renderReadout($('#t-readout'), r, data.tunnel, 'plane');
@@ -830,7 +830,7 @@ function retrace(){
         .map(k => `${k} ${T[k].toFixed(0)}`).join(' · ');
       st.title = ph;
       st.textContent = `${r.lines} streamlines · ${r.ms.toFixed(0)} ms · `
-                     + `${data.body_panels.n} body panels`;
+                     + `${data.panel_body.n} surface panels`;
     }
   });
 }

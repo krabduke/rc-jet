@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import { Tunnel } from './windtunnel.js';
+import { PanelTunnel } from './paneltunnel.js';
 import { CFDView, drawLegend } from './cfd-view.js';
 import { tweenNumber, revealRows } from './anim.js';
 
@@ -35,7 +36,7 @@ export class WindTunnel {
     // fan sources) in solver frame, metres. The viewer's throttle and fan
     // state feed it; the tunnel re-solves through them.
     this.portsFn = opts.ports || null;
-    this.solver = new Tunnel(this.cfg);
+    this.panelBody = opts.panelBody || null;
     this.slowmo = opts.slowmo || 0.02;
 
     this.state = {
@@ -49,12 +50,25 @@ export class WindTunnel {
     for(const c of this.cfg.controls) this.state.controls[c.id] = c.value;
 
     this._buildTunnelBox();
-    if(opts.bodyPanels){
+    if(this.panelBody || opts.bodyPanels){
       this.cfd = new CFDView({
         cfg: this.cfg, root: this.root, bounds: this.bounds,
-        bodyPanels: opts.bodyPanels, nLines: opts.nLines || 560,
+        bodyPanels: opts.bodyPanels, panelBody: this.panelBody,
+        nLines: opts.nLines || 560,
       });
     }
+    /* One solver, shared with the flow picture.
+     *
+     * The panel method's influence matrix takes about a second to build and
+     * factor, and both the numbers and the streamlines want the same one, so
+     * the tunnel borrows the view's rather than building a second. It is also
+     * the point: the lift on the readout and the line on the screen are the
+     * same solution, which is exactly what a vortex lattice beside a source
+     * body could not promise. */
+    this.solver = (this.cfd && this.cfd.pf)
+      ? new PanelTunnel(Object.assign({}, this.cfg,
+                                      {_parts: this.panelBody.parts}), this.cfd.pf)
+      : new Tunnel(this.cfg);
     this.group.visible = false;
     // Open at the incidence that actually flies, so the first thing on screen
     // is the aircraft in trim. A car has no such condition -- it is pressed
@@ -210,7 +224,7 @@ export class WindTunnel {
     const v = this.state.v;
     const b = this.state.beta * Math.PI/180;
     const vinf = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
-    const lat = this.solver.inducedVelocity();
+    const lat = this.solver.inducedVelocity ? this.solver.inducedVelocity() : null;
     const ports = this.portsFn ? this.portsFn(this.state) : null;
     const t0 = performance.now();
     const r = this.cfd.run(vinf, lat, ports);
@@ -231,7 +245,7 @@ export class WindTunnel {
     const v = this.state.v;
     const b = this.state.beta * Math.PI/180;
     const vinf = [Math.cos(a)*Math.cos(b)*v, Math.sin(b)*v, Math.sin(a)*Math.cos(b)*v];
-    const lat = this.solver.inducedVelocity();
+    const lat = this.solver.inducedVelocity ? this.solver.inducedVelocity() : null;
     const ports = this.portsFn ? this.portsFn(this.state) : null;
     const t0 = performance.now();
     const r = await this.cfd.runProgressive(vinf, lat, onProgress, {ports});

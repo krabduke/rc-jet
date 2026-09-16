@@ -15,7 +15,13 @@ import os
 import shutil
 import sys
 
-FILES = ["flowfield.js", "cfd-view.js", "tunnel-ui.js", "anim.js"]
+FILES = ["flowfield.js", "panelkernel.js", "panelflow.js", "paneltunnel.js",
+         "cfd-view.js", "tunnel-ui.js", "anim.js"]
+
+# The solver's own validation travels with the solver. A check that lives
+# only in _shared is a check this project's `make verify` does not run, and
+# the point of vendoring is that what ships is what was tested.
+TOOLS = ["check_panelkernel.mjs", "check_panelflow.mjs"]
 
 
 def digest(path):
@@ -39,6 +45,13 @@ def vendor(root):
         s = os.path.join(src, f)
         shutil.copy2(s, os.path.join(dst, f))
         man["files"][f] = digest(s)
+    tsrc = os.path.join(os.path.dirname(src), "tools")
+    for f in TOOLS:
+        s = os.path.join(tsrc, f)
+        # the shared tools import '../viewer/x.js', which resolves the same
+        # way from this project's tools/ as it does from _shared/tools/
+        shutil.copy2(s, os.path.join(root, "tools", f))
+        man["files"]["../tools/" + f] = digest(s)
     with open(os.path.join(dst, "VIEWER_VENDOR.json"), "w") as fh:
         json.dump(man, fh, indent=1)
     return man
@@ -53,13 +66,13 @@ def check(root):
     reachable = os.path.isdir(src)
     bad = []
     for rel, want in man["files"].items():
-        here = os.path.join(root, "viewer", rel)
+        here = os.path.normpath(os.path.join(root, "viewer", rel))
         if not os.path.exists(here):
             bad.append(rel + " (missing)")
         elif digest(here) != want:
             bad.append(rel + " (edited in place)")
         if reachable:
-            up = os.path.join(src, rel)
+            up = os.path.normpath(os.path.join(src, rel))
             if os.path.exists(up) and digest(up) != want:
                 bad.append(rel + " (shared copy moved on)")
     if bad:

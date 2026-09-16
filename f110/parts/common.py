@@ -30,16 +30,40 @@ def build_row(row, platform=True):
             parts.append(_inner_shroud(row))
 
     if row.shrouded:
-        parts.append(airfoil.tip_shroud(row))
+        parts.append(airfoil.tip_shroud(
+            row, thickness=spec.SHROUD_THICKNESS,
+            standoff=spec.SHROUD_STANDOFF))
 
     one_v, one_f = mesh.join(*parts)
     return mesh.replicate(one_v, one_f, row.count)
 
 
-def _outer_band(row, height=10.0, n_seg=6):
-    """Stator outer band -- the sector of casing ring this vane hangs from."""
+def _outer_band(row, height=None, n_seg=6):
+    """Stator outer band -- the sector of casing ring this vane hangs from.
+
+    It fills the annulus between the vane tip and the casing bore, because
+    that is what it is: the vane platform is flush with the flowpath line the
+    casing carries. Built to a fixed 10 mm height it stood several millimetres
+    inside the case wall, in among the access panels and cowl doors bolted to
+    the outside of it.
+
+    Both faces follow their line along the row rather than being cylinders.
+    Taking the bore at midspan and holding it flat put the back of every HP
+    compressor band up to 3.7 mm outside the bore, because the bore is falling
+    the whole way through the compressor and the band was not.
+    """
     r0 = max(row.r_tip_le, row.r_tip_te)
-    return _sector_band(row, r0, r0 + height, n_seg)
+    if height is not None:
+        return _sector_band(row, r0, r0 + height, n_seg)
+    x0 = row.x - row.chord * 0.12
+    x1 = row.x + row.chord * 1.12
+    cas = spec.enclosing_casing(row.x + row.chord * 0.5, r0)
+    xs = [x0 + (x1 - x0) * i / 5.0 for i in range(6)]
+    low = [(x, spec.row_outer_r(row, x)) for x in xs]
+    top = [(x, max((spec.casing_inner(cas, x) - 0.3) if cas else r + 10.0,
+                   r + 0.5))
+           for (x, r) in low]
+    return _sector_band(row, None, None, n_seg, prof=low + top[::-1])
 
 
 def _inner_shroud(row, height=8.0, n_seg=6, clearance=3.0):
@@ -61,11 +85,12 @@ def _inner_shroud(row, height=8.0, n_seg=6, clearance=3.0):
     return _sector_band(row, lo, r1, n_seg)
 
 
-def _sector_band(row, r_lo, r_hi, n_seg=6):
+def _sector_band(row, r_lo, r_hi, n_seg=6, prof=None):
     dphi = 2.0 * math.pi / row.count * 0.98
     x0 = row.x - row.chord * 0.12
     x1 = row.x + row.chord * 1.12
-    prof = [(x0, r_lo), (x1, r_lo), (x1, r_hi), (x0, r_hi)]
+    if prof is None:
+        prof = [(x0, r_lo), (x1, r_lo), (x1, r_hi), (x0, r_hi)]
     verts, faces = [], []
     n = len(prof)
     for k in range(n_seg + 1):
@@ -118,7 +143,8 @@ def labyrinth_seal(x0, x1, r, n_fins=4, fin_h=5.0, fin_w=2.5, segments=64):
     return mesh.join(*parts)
 
 
-def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None):
+def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None,
+                  bore=None):
     """Meridional loop for a casing can or a flowpath shell.
 
     A casing is not a tube. It is a rolled and machined can with a thick
@@ -127,8 +153,12 @@ def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None):
     straight taper it reads as turned bar stock -- which is exactly what every
     shell in this engine was: two x-stations each, no feature anywhere along.
 
-    The inner surface stays exactly on the taper, because it is the flowpath
-    and the blade tip clearances are set from it. Everything added is outside.
+    The inner surface is the flowpath and the blade tip clearances are set
+    from it, so it is exactly what `bore` says -- a station table, from
+    spec.casing_bore, pinned to every rotor tip the casing passes. Everything
+    added is outside it. Without a table it is a straight taper between the
+    two end radii, which is what every casing here used to be and why the
+    clearance across the HP compressor ran from 3.4 mm to 19.5.
 
     `ribs=False` for a shell whose outer surface is itself an aerodynamic
     surface -- the bypass duct inner wall, the inlet case -- where hoop
@@ -139,7 +169,16 @@ def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None):
     rib taller than that lip would stand through them.
     """
     L = x1 - x0
-    r_in = lambda x: r0 + (r1 - r0) * (x - x0) / L
+    if bore:
+        def r_in(x):
+            for i in range(len(bore) - 1):
+                (xa, ra), (xb, rb) = bore[i], bore[i + 1]
+                if xa <= x <= xb:
+                    t = (x - xa) / (xb - xa) if xb > xa else 0.0
+                    return ra + (rb - ra) * t
+            return bore[0][1] if x < bore[0][0] else bore[-1][1]
+    else:
+        r_in = lambda x: r0 + (r1 - r0) * (x - x0) / L
     land = wall * 0.85
     rib = min(4.0, wall * 0.30)
     step = wall * 0.12
@@ -157,7 +196,8 @@ def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None):
     outer += [(0.945, 0.0), (0.970, land), (1.000, land)]
     outer.sort()
 
-    prof = [(x0, r_in(x0)), (x1, r_in(x1))]
+    inner_x = [x0] + [x for (x, _r) in (bore or []) if x0 < x < x1] + [x1]
+    prof = [(x, r_in(x)) for x in inner_x]
     for (f, extra) in reversed(outer):
         x = x0 + L * f
         prof.append((x, r_in(x) + wall + extra))

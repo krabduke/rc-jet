@@ -51,7 +51,9 @@ def _cooled_row(row):
         parts.append(common._outer_band(row))
         parts.append(common._inner_shroud(row))
     if row.shrouded:
-        parts.append(airfoil.tip_shroud(row))
+        parts.append(airfoil.tip_shroud(
+            row, thickness=spec.SHROUD_THICKNESS,
+            standoff=spec.SHROUD_STANDOFF))
 
     cutters = []
     for (p, d) in airfoil.cooling_hole_positions(row, n_rows=3, n_per_row=9):
@@ -124,10 +126,17 @@ def _seals_and_shrouds():
     for row in spec.HPT_ROWS + spec.LPT_ROWS:
         if not row.rotor:
             continue
-        r_tip = max(row.r_tip_le, row.r_tip_te)
-        gap = 13.0 if row.shrouded else 3.0
-        boas.append(mesh.tube(row.x - row.chord * 0.2, row.x + row.chord * 1.2,
-                              r_tip + gap, r_tip + gap + 16.0, SEG))
+        # The seal fills the space between the running tip and the casing
+        # bore, so it has to follow the bore rather than be a straight tube:
+        # as a tube of fixed radius it stood 16 mm into the turbine case.
+        xa, xb = spec.row_outer_span(row)
+        x0, x1 = xa - row.chord * 0.14, xb + row.chord * 0.14
+        cas = spec.enclosing_casing(row.x + row.chord * 0.5,
+                                    spec.row_outer_r(row, row.x))
+        xs = [x0 + (x1 - x0) * i / 6.0 for i in range(7)]
+        prof = [(x, spec.row_outer_r(row, x) + spec.TIP_RUB) for x in xs]
+        prof += [(x, spec.casing_inner(cas, x) - 0.3) for x in reversed(xs)]
+        boas.append(mesh.revolve_ring(prof, SEG))
     out["turbine_blade_outer_air_seals"] = mesh.join(*boas)
 
     seals = []

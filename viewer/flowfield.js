@@ -100,11 +100,18 @@ export class BodyField {
     // how close a streamline may come to the skin before it is stopped. The
     // field's owner sets this from the model's own size; until then, off.
     this.nearStop = 0;
-    // a length scale per panel, used to keep the point-source approximation
-    // away from its own singularity while tracing
+    /* A length scale per panel, for field evaluation only.
+     *
+     * One point source per panel is a SAMPLING of a source sheet. Read from
+     * further away than the sample spacing it is the sheet; read from closer
+     * it is the samples, and what you see is 1,046 individual sources with
+     * strengths that differ panel to panel. Drawn, that is not flow -- it is
+     * scribble, and it was 34 % of the points on a traced streamline turning
+     * more than 25 degrees from the step before.
+     *
+     * So the kernel is smoothed over a panel width, which reconstructs the
+     * sheet from its samples. `rmin` is that width. */
     this.rmin = new Float64Array(this.N);
-    // a standoff for field evaluation only: a point source is singular at
-    // its own centroid, and streamlines do come close to the skin
     for(let i = 0; i < this.N; i++) this.rmin[i] = Math.sqrt(this.area[i]) * 1.15;
     // far-field lumping: cell size from the model, and how many cells count
     // as "near" and are summed panel by panel
@@ -321,14 +328,18 @@ export class BodyField {
         const w = s[j]*area[j]*inv4pi;
         const rm2 = rmin[j]*rmin[j];
         let rx = px - c[j*3], ry = py - c[j*3+1], rz = pz - c[j*3+2];
-        let r2 = rx*rx + ry*ry + rz*rz;
-        if(r2 < rm2) r2 = rm2;
+        // Softened, not clamped. See `rmin` above: clamping the radius leaves
+        // every source at full strength right up to its own core and only
+        // stops it going infinite, so the samples stay visible. Adding the
+        // core to r-squared is the standard regularisation and it is what
+        // turns the samples back into a sheet -- 34 % of traced points
+        // kinking became 0.4 %.
+        let r2 = rx*rx + ry*ry + rz*rz + rm2;
         let k = w/(r2*Math.sqrt(r2));
         ax += k*rx; ay += k*ry; az += k*rz;
         if(ground){
           rz = pz + c[j*3+2];
-          r2 = rx*rx + ry*ry + rz*rz;
-          if(r2 < rm2) r2 = rm2;
+          r2 = rx*rx + ry*ry + rz*rz + rm2;
           k = w/(r2*Math.sqrt(r2));
           ax += k*rx; ay += k*ry; az += k*rz;
         }
@@ -347,16 +358,14 @@ export class BodyField {
     let ax = 0, ay = 0, az = 0;
     for(let j = 0; j < N; j++){
       const rx = p[0] - c[j*3], ry = p[1] - c[j*3+1], rz = p[2] - c[j*3+2];
-      let r2 = rx*rx + ry*ry + rz*rz;
       const rm = this.rmin[j];
-      if(r2 < rm*rm) r2 = rm*rm;
+      const r2 = rx*rx + ry*ry + rz*rz + rm*rm;
       const r = Math.sqrt(r2);
       const k = s[j]*area[j]*inv4pi/(r2*r);
       ax += k*rx; ay += k*ry; az += k*rz;
       if(this.ground){
         const ix = rx, iy = ry, iz = p[2] + c[j*3+2];
-        let i2 = ix*ix + iy*iy + iz*iz;
-        if(i2 < rm*rm) i2 = rm*rm;
+        const i2 = ix*ix + iy*iy + iz*iz + rm*rm;
         const ir = Math.sqrt(i2);
         const ik = s[j]*area[j]*inv4pi/(i2*ir);
         ax += ik*ix; ay += ik*iy; az += ik*iz;
@@ -619,12 +628,16 @@ export function traceLine(vel, seed, opts){
   const {maxSteps = 260, ds = 0.05, xEnd = 1e9, bounds = null,
          body = null, dsMin = ds*0.12, skin = 0} = opts || {};
   const pts = [], spd = [];
+  // how close this line ever came to the skin, for free: the inside test is
+  // run every step anyway and already knows
+  let near = Infinity;
   const p = [seed[0], seed[1], seed[2]];
   const v = [0,0,0], k1 = [0,0,0], mid = [0,0,0];
   const probe = body ? {near: Infinity} : null;
   const ports = body && body.ports && body.ports.length ? body.ports : null;
   for(let s = 0; s < maxSteps; s++){
     if(body && body.inside(p, probe)) break;
+    if(probe && probe.near < near) near = probe.near;
     vel(p, v);
     const m = Math.hypot(v[0], v[1], v[2]);
     if(!isFinite(m) || m < 1e-6) break;
@@ -653,12 +666,12 @@ export function traceLine(vel, seed, opts){
         const dx = p[0] - q.p[0], dy = p[1] - q.p[1], dz = p[2] - q.p[2];
         if(dx*dx + dy*dy + dz*dz < q.r*q.r*4){
           pts.push(p[0], p[1], p[2]); spd.push(m2);
-          return {pts, spd, captured: true};
+          return {pts, spd, near, captured: true};
         }
       }
     }
   }
-  return {pts, spd};
+  return {pts, spd, near};
 }
 
 /* Colour maps.

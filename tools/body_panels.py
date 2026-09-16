@@ -229,10 +229,22 @@ def _no_slivers(panels, frac=0.30):
     A fifth of a millimetre of a 440 mm aeroplane is not a shape the air can
     tell is there. Dropping it changes the obstacle by nothing and changes the
     field beside it completely.
+
+    The floor is a fraction of the median panel, and it is applied until it
+    stops changing anything. One pass is not enough: the slivers are numerous
+    enough to drag the median down themselves -- 1,450 panels had a median
+    side of 8.0 mm and a floor of 2.4, and the 1,046 that survived it had a
+    median of 11.2. So the 2.5 mm wingtip panels that carry sigma = 340
+    against a 22 m/s freestream were measured against a median they had
+    helped create, and passed.
     """
-    sides = sorted(math.sqrt(a) for (_c, _n, a) in panels)
-    floor = sides[len(sides) // 2] * frac
-    return [p for p in panels if math.sqrt(p[2]) >= floor]
+    while True:
+        sides = sorted(math.sqrt(a) for (_c, _n, a) in panels)
+        floor = sides[len(sides) // 2] * frac
+        kept = [p for p in panels if math.sqrt(p[2]) >= floor]
+        if len(kept) == len(panels):
+            return kept
+        panels = kept
 
 
 def build():

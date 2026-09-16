@@ -38,7 +38,9 @@ def _casings():
     out = {}
     for (name, x0, x1, r0, r1, wall) in spec.CASINGS:
         out[name] = mesh.revolve_closed(
-            common.shell_profile(x0, x1, r0, r1, wall), segments=SEG)
+            common.shell_profile(x0, x1, r0, r1, wall,
+                                 bore=spec.casing_bore(name, x0, x1, r0, r1)),
+            segments=SEG)
     return out
 
 

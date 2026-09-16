@@ -20,7 +20,9 @@ verify:
 	python3 tools/audit_fit.py
 	python3 tools/audit_manifest.py
 	python3 tools/check_vendor.py
-	node tools/check_panels.mjs
+	node tools/check_panelkernel.mjs
+	node tools/check_panelflow.mjs
+	node tools/check_panel_geom.mjs
 	node tools/validate_viewer.mjs .
 
 render:

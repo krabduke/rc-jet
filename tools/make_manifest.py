@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "plane"))
 import spec
 import tunnel_config  # noqa: E402
-import body_panels  # noqa: E402
+import panel_geom  # noqa: E402
 
 GROUPS = [
     ("01 Fuselage",        "Fuselage",      "#8A9299"),
@@ -88,7 +88,7 @@ def main():
                     for k, v in spec.PALETTE.items()},
         "groups": groups, "parts": parts, "masses": masses,
         "tunnel": tunnel_config.config(),
-        "body_panels": body_panels.build(),
+        "panel_body": panel_geom.emit(),
     }
     # argv[1] lets the drift check regenerate to a scratch file and
     # compare, without touching the copy the viewer loads.

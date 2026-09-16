@@ -30,6 +30,7 @@ import {
   BodyField, traceLine, speedColour, pressureColour, cpNorm, surfaceCp,
   panelIndex,
 } from './flowfield.js';
+import { PanelFlow } from './panelflow.js';
 import { fadeObject } from './anim.js';
 
 const TRACE_STEPS = 240;
@@ -44,12 +45,40 @@ export class CFDView {
     this.root = opts.root;
     this.bounds = opts.bounds;
     this.bodyPanels = opts.bodyPanels;
+    this.panelBody = opts.panelBody || null;
     this.nLines = opts.nLines || 560;
     this.group = new THREE.Group();
     this.group.name = 'cfd';
     this.root.add(this.group);
-    this.body = this.bodyPanels
-      ? new BodyField(this.bodyPanels, !!this.cfg.ground) : null;
+    /* One solver or the other.
+     *
+     * `panelBody` is the aeroplane as a closed quadrilateral surface and gets
+     * the real thing: source and doublet panels, a wake and a Kutta
+     * condition, solved once at build and back-substituted for each new
+     * incidence. `bodyPanels` is the older centroid-normal-area form, which
+     * can only carry sources -- no circulation, so no lift of its own, and it
+     * needs a vortex lattice beside it to make any. Both are here while the
+     * models are converted one at a time; they are not combined.
+     */
+    if(this.panelBody){
+      const g = Object.assign({}, this.panelBody,
+                              {quads: Float64Array.from(this.panelBody.quads),
+                               ground: !!this.cfg.ground});
+      this.pf = new PanelFlow(g);
+      this.body = this.pf;
+      // the seeding wants centroids, normals and areas, which the solved
+      // surface has anyway
+      const N = this.pf.N;
+      const c = new Float64Array(N*3), nn = new Float64Array(N*3),
+            a = new Float64Array(N);
+      for(let i = 0; i < N*3; i++){ c[i] = this.pf.c[i]; nn[i] = this.pf.nrm[i]; }
+      for(let i = 0; i < N; i++) a[i] = this.pf.area[i];
+      this.bodyPanels = {n: N, c, n_: nn, a};
+    } else {
+      this.pf = null;
+      this.body = this.bodyPanels
+        ? new BodyField(this.bodyPanels, !!this.cfg.ground) : null;
+    }
 
     this.lines = null;
     this.arrows = null;       // built now, rather than declared and forgotten
@@ -77,7 +106,7 @@ export class CFDView {
      * deflection alone would throw away. What comes out are the lines that
      * pass wide: at this cut the discarded seeds sit 3.1 m off the centreline
      * on average against 0.9 m for the ones kept, on a car 4.6 m long. */
-    this.disturb = {speed: 0.09, deflect: 0.085};
+    this.disturb = {speed: 0.35, deflect: 0.55, near: 0.20};
     this.anim = {on: true, rate: 0.55, dash: 0.9, pulse: 1.0};
     this.range = {auto: true, lo: 0.35, hi: 1.45};   // x freestream
     this.cpRange = {lo: -3.0, hi: 1.0};
@@ -132,7 +161,15 @@ export class CFDView {
     const bunch = (f) => 0.5 + (f - 0.5) * (0.42 + 0.58*Math.abs(2*f - 1));
 
     const seeds = [];
-    const nRake = Math.round(this.nLines * 0.55);
+    /* More of the budget upstream than on the skin.
+     *
+     * It used to be 55 / 45. Surface seeds start a panel width off the body
+     * and hug it, so at 45 % of the lines they cover the aeroplane in ribbons
+     * -- which is the one thing the picture must not do, because the reason
+     * to draw the flow at all is to see it against the shape making it. They
+     * are still worth having: they are the only lines that show where the
+     * flow attaches and where it leaves. There are just fewer of them. */
+    const nRake = Math.round(this.nLines * 0.72);
     const rows = Math.max(8, Math.round(Math.sqrt(nRake * 0.62)));
     const cols = Math.max(8, Math.round(nRake / rows));
     for(let i = 0; i < rows; i++){
@@ -181,7 +218,12 @@ export class CFDView {
        * five-metre car and a third of the width of a 440 mm aeroplane: every
        * surface seed on the jet was launched 20 mm off the skin, which on the
        * tailcone is outside the far side of it. */
-      const d = Math.max(diag * 0.02, Math.sqrt(P.a[i]) * 1.6);
+      /* Far enough off the skin to read as flow rather than as paint.
+       *
+       * A panel width and a half put the line inside the model's own
+       * silhouette from most angles, so it drew over the aeroplane instead of
+       * round it. */
+      const d = Math.max(diag * 0.035, Math.sqrt(P.a[i]) * 2.2);
       let sx = px + nx*d, sy = py + ny*d, sz = pz + nz*d;
       if(this.cfg.ground && sz < 0.006) sz = 0.006;
       seeds.push([sx, sy, sz]);
@@ -203,6 +245,7 @@ export class CFDView {
    * That leaves the validated lattice solve untouched and settles the coupling.
    */
   _prepare(vinf, latticeVel, ports){
+    if(this.pf) return this._preparePanel(vinf);
     const N = this.body.N;
     this.vinf = vinf;
     this.body.setPorts(ports || null);
@@ -247,6 +290,43 @@ export class CFDView {
       skin: this.domain.diag * 0.045,
       bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
     };
+  }
+
+  /* The panel-method path: one solve, and the field is its gradient.
+   *
+   * No second pass and no coupling. There is one set of singularities and one
+   * boundary condition, so the velocity a streamline is traced through is the
+   * gradient of the same potential the pressures came off -- which is the
+   * whole reason for the method and the thing the two-solver arrangement
+   * could not say.
+   */
+  _preparePanel(vinf){
+    this.vinf = vinf;
+    this.pf.solve(vinf);
+    this.vel = (p, out) => this.pf.velocity(p, out);
+    this.vfs = Math.hypot(vinf[0], vinf[1], vinf[2]) || 1;
+    this._shearRake(vinf);
+    const span = this.ext.x1 - this.ext.x0;
+    const zc = 0.5*(this.ext.z0 + this.ext.z1);
+    const mY = this.domain.diag * 0.95, mZ = this.domain.diag * 0.95;
+    this._traceOpts = {
+      maxSteps: TRACE_STEPS, ds: span/58, xEnd: this.ext.x1 + span*1.15,
+      body: this.body,
+      /* A narrow skin band, kept because it measurably helps and not
+       * because the argument for it survived.
+       *
+       * The argument was that a solved panel body has no normal velocity on
+       * its own skin by construction, so a line arriving at it turns and goes
+       * round without being made to. That is true of the exact field and not
+       * quite true of the one being traced, which is integrated in finite
+       * steps through a lumped far field. Measured over 352 lines: without
+       * the band 24 of them end on the skin, with it 6, and the kink rate is
+       * zero either way. So: 6.
+       */
+      skin: this.domain.diag * 0.03,
+      bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
+    };
+    return this;
   }
 
   /* Put the rake where the model is, for the freestream it is being flown at.
@@ -315,7 +395,7 @@ export class CFDView {
       this.vmin = this.vfs*this.range.lo;
       this.vmax = this.vfs*this.range.hi;
     }
-    this.cp = surfaceCp(this.body, vinf, latticeVel);
+    this.cp = this.pf ? this.pf.cp : surfaceCp(this.body, vinf, latticeVel);
     let lo = 1e9, hi = -1e9;
     for(const v of this.cp){ if(v < lo) lo = v; if(v > hi) hi = v; }
     const sorted = Array.from(this.cp).sort((a, b) => a - b);
@@ -486,7 +566,24 @@ export class CFDView {
     }
     L.dv = dv/vfs;
     L.dn = dn/Math.max(this.domain.L, 1e-6);
+    /* What makes a line worth drawing: it came near the aeroplane.
+     *
+     * The speed and deflection thresholds were set against a field that
+     * spiked to three times freestream near the skin, where "this line was
+     * changed" was a thing you could measure a long way off. A solved panel
+     * body has no such spikes -- nothing in it exceeds 1.17 times freestream
+     * -- so a threshold on the change keeps a wall of lines that pass a
+     * diagonal away and were bent by half a per cent. A rake wide enough to
+     * cover the model at any attitude fires most of its lines into clear
+     * air, and clear air drawn in the same ink as the answer is the grid.
+     *
+     * Proximity says it directly, and the tracer already knows it: the inside
+     * test runs every step and reports the distance to the nearest panel, so
+     * the closest approach costs nothing to keep.
+     */
+    const near = isFinite(L.near) ? L.near : Infinity;
     L.disturbed = !!L.captured
+      || near < this.disturb.near * this.domain.diag
       || L.dv >= this.disturb.speed || L.dn >= this.disturb.deflect;
     return L;
   }
@@ -577,7 +674,14 @@ export class CFDView {
      * sqrt(170/n) -- and a floor, because a ribbon thinner than a pixel
      * stops reading as a ribbon and starts flickering.
      */
-    const ink = Math.sqrt(170 / Math.max(this.nLines, 1));
+    /* Scaled by the lines actually DRAWN, not the lines seeded.
+     *
+     * Those parted company when the filter became a proximity test: the rake
+     * fires 560 and anywhere between 90 and 430 survive depending on the
+     * attitude, so keying the ink to 560 made the picture thin when it kept
+     * few and solid when it kept many -- the opposite of what the scaling is
+     * for. */
+    const ink = Math.sqrt(170 / Math.max(traced.length, 1));
     /* The floor is a fraction of the model, not a number of metres.
      *
      * It used to be 0.0013 m, chosen on a car 4.98 m long. On a 0.44 m model
