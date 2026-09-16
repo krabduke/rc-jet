@@ -146,35 +146,57 @@ SPINNER = {
 # Annulus contracts from (340, 460) to (330, 355); drum-type rotor.
 # --------------------------------------------------------------------------
 
+# Nine stages between station 760 and station 1540, which is what the table
+# above says the compressor is.
+#
+# They used to run to 1602 -- 62 mm past their own declared exit -- and
+# everything downstream is placed from that exit. The diffuser began upstream
+# of the two blade rows feeding it and enclosed the ninth-stage rotor; the
+# combustor dome's head, which bulges 64 mm forward of the combustor front,
+# reached back over the ninth stator and into the rotating drum; the fuel
+# nozzles' stems reached forward into the compressor's aft flange. Scaled
+# about the inlet to fit, which leaves 4.3 to 7.5 mm between one row's
+# trailing edge and the next row's leading edge -- 20 to 25 % of chord, which
+# is what an axial gap in a compressor this tight actually is.
 HPC_ROWS = [
-    BladeRow("hpc_r1",  790.0, 38, 340.0, 458.0, 344.0, 452.0, 66.0, 40.0, 58.0),
-    BladeRow("hpc_s1",  868.0, 52, 345.0, 451.0, 348.0, 446.0, 46.0, 26.0, 16.0,
+    BladeRow("hpc_r1",  787.6, 38, 340.0, 458.0, 344.0, 452.0, 66.0, 40.0, 58.0),
+    BladeRow("hpc_s1",  859.5, 52, 345.0, 451.0, 348.0, 446.0, 46.0, 26.0, 16.0,
              rotor=False, variable=True),
-    BladeRow("hpc_r2",  926.0, 44, 349.0, 445.0, 352.0, 439.0, 58.0, 40.0, 56.0),
-    BladeRow("hpc_s2",  996.0, 58, 353.0, 438.0, 355.0, 433.0, 41.0, 26.0, 16.0,
+    BladeRow("hpc_r2",  913.0, 44, 349.0, 445.0, 352.0, 439.0, 58.0, 40.0, 56.0),
+    BladeRow("hpc_s2",  977.5, 58, 353.0, 438.0, 355.0, 433.0, 41.0, 26.0, 16.0,
              rotor=False, variable=True),
-    BladeRow("hpc_r3", 1048.0, 50, 356.0, 432.0, 358.0, 427.0, 51.0, 39.0, 55.0),
-    BladeRow("hpc_s3", 1110.0, 64, 359.0, 426.0, 360.0, 421.0, 37.0, 25.0, 15.0,
+    BladeRow("hpc_r3", 1025.4, 50, 356.0, 432.0, 358.0, 427.0, 51.0, 39.0, 55.0),
+    BladeRow("hpc_s3", 1082.6, 64, 359.0, 426.0, 360.0, 421.0, 37.0, 25.0, 15.0,
              rotor=False, variable=True),
-    BladeRow("hpc_r4", 1158.0, 56, 361.0, 420.0, 362.0, 415.0, 45.0, 38.0, 54.0),
-    BladeRow("hpc_s4", 1213.0, 70, 362.0, 414.0, 363.0, 410.0, 33.0, 25.0, 15.0,
+    BladeRow("hpc_r4", 1126.8, 56, 361.0, 420.0, 362.0, 415.0, 45.0, 38.0, 54.0),
+    BladeRow("hpc_s4", 1177.5, 70, 362.0, 414.0, 363.0, 410.0, 33.0, 25.0, 15.0,
              rotor=False),
-    BladeRow("hpc_r5", 1256.0, 62, 363.0, 409.0, 364.0, 404.0, 40.0, 38.0, 53.0),
-    BladeRow("hpc_s5", 1306.0, 76, 364.0, 403.0, 364.0, 399.0, 29.0, 24.0, 14.0,
+    BladeRow("hpc_r5", 1217.1, 62, 363.0, 409.0, 364.0, 404.0, 40.0, 38.0, 53.0),
+    BladeRow("hpc_s5", 1263.2, 76, 364.0, 403.0, 364.0, 399.0, 29.0, 24.0, 14.0,
              rotor=False),
-    BladeRow("hpc_r6", 1344.0, 68, 364.0, 398.0, 364.0, 393.0, 35.0, 37.0, 52.0),
-    BladeRow("hpc_s6", 1388.0, 82, 364.0, 392.0, 364.0, 388.0, 26.0, 24.0, 14.0,
+    BladeRow("hpc_r6", 1298.2, 68, 364.0, 398.0, 364.0, 393.0, 35.0, 37.0, 52.0),
+    BladeRow("hpc_s6", 1338.8, 82, 364.0, 392.0, 364.0, 388.0, 26.0, 24.0, 14.0,
              rotor=False),
-    BladeRow("hpc_r7", 1422.0, 74, 364.0, 387.0, 363.0, 382.0, 31.0, 37.0, 51.0),
-    BladeRow("hpc_s7", 1461.0, 88, 363.0, 381.0, 362.0, 377.0, 23.0, 23.0, 13.0,
+    BladeRow("hpc_r7", 1370.1, 74, 364.0, 387.0, 363.0, 382.0, 31.0, 37.0, 51.0),
+    BladeRow("hpc_s7", 1406.1, 88, 363.0, 381.0, 362.0, 377.0, 23.0, 23.0, 13.0,
              rotor=False),
-    BladeRow("hpc_r8", 1492.0, 80, 362.0, 376.0, 361.0, 371.0, 27.0, 36.0, 50.0),
-    BladeRow("hpc_s8", 1526.0, 94, 361.0, 370.0, 360.0, 367.0, 20.0, 23.0, 13.0,
+    BladeRow("hpc_r8", 1434.6, 80, 362.0, 376.0, 361.0, 371.0, 27.0, 36.0, 50.0),
+    BladeRow("hpc_s8", 1466.0, 94, 361.0, 370.0, 360.0, 367.0, 20.0, 23.0, 13.0,
              rotor=False),
-    BladeRow("hpc_r9", 1553.0, 86, 360.0, 366.0, 359.0, 362.0, 24.0, 36.0, 49.0),
-    BladeRow("hpc_s9", 1584.0, 100, 359.0, 361.0, 358.0, 358.0, 18.0, 23.0, 13.0,
+    BladeRow("hpc_r9", 1490.8, 86, 360.0, 366.0, 359.0, 362.0, 24.0, 36.0, 49.0),
+    BladeRow("hpc_s9", 1519.4, 100, 359.0, 361.0, 358.0, 358.0, 18.0, 23.0, 13.0,
              rotor=False),
 ]
+
+# The compressor exits where its last blade row ends.
+#
+# STATION["hpc_exit"] was typed as 1540 and the last two rows of the HPC sit
+# at 1553 and 1584: the diffuser began 62 mm upstream of the blades feeding
+# it, so it enclosed the ninth-stage rotor, and the fuel nozzles' stems
+# reached forward into the compressor's aft flange. Derived from the rows
+# there is nothing to keep in step.
+STATION["hpc_exit"] = HPC_ROWS[-1].x + HPC_ROWS[-1].chord + 4.0
+
 
 # --------------------------------------------------------------------------
 # COMBUSTOR -- annular (DERIVED)
@@ -326,7 +348,11 @@ FLANGES = [
     ("flange_inlet",       0.0, 596.0, 626.0, 20.0, 36),
     ("flange_fan_rear",  580.0, 580.0, 612.0, 22.0, 36),
     ("flange_hpc_fwd",   760.0, 466.0, 498.0, 20.0, 30),
-    ("flange_hpc_aft",  1600.0, 470.0, 504.0, 24.0, 30),
+    # At the compressor exit, where the compressor casing bolts to the
+    # combustor casing. It was at 1600, which is 60 mm downstream of the
+    # exit -- out in the combustor, where the fuel nozzles come in through
+    # the casing, and two of them ran through it.
+    ("flange_hpc_aft",  1534.0, 470.0, 504.0, 24.0, 30),
     ("flange_comb_aft", 1990.0, 476.0, 510.0, 26.0, 32),
     ("flange_turb_aft", 2520.0, 462.0, 496.0, 24.0, 32),
     ("flange_aug_aft",  3640.0, 434.0, 466.0, 20.0, 28),

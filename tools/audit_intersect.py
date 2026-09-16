@@ -114,7 +114,7 @@ EXPECTED = [
     ("seam_lengthwise", "fuselage_skin"),
     ("doublers", "fuselage_skin"),
     ("panel_", "doublers"),
-    ("panel_screws", "fuselage_skin"),
+    ("panel_screws", "fuselage_skin"), ("panel_screws", "panel_"),
     ("rib_", "wing_"),
     ("spar_", "wing_"),
     ("spar_", "fuselage_skin"),

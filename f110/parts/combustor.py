@@ -29,8 +29,10 @@ def build():
 def _diffuser():
     """Dump diffuser: the compressor exit guide vanes discharge into a
     sudden-expansion cavity that feeds the liner and the cooling annuli."""
+    # from the compressor's real exit to where the dump has always ended;
+    # diffuser_len was measured from a station 62 mm too far forward
     x0 = spec.STATION["hpc_exit"]
-    x1 = x0 + C["diffuser_len"]
+    x1 = spec.STATION["diffuser_exit"]
     inner = mesh.cone_tube(x0, x1, 352.0, 358.0, 300.0, 308.0, SEG)
     outer = mesh.cone_tube(x0, x1, 364.0, 372.0, 420.0, 430.0, SEG)
     struts = []
@@ -157,10 +159,14 @@ def _fuel_system():
         nozzles.append((mesh.rot_x(one_v, a), one_f))
     out["fuel_nozzles"] = mesh.join(*nozzles)
 
-    # r_out + 6 put the ring at 513-539, and the bypass casing wall is at
-    # 528-537 at this station -- the manifold was embedded in the duct wall.
-    # Brought inboard into the gap between the compressor casing and the duct.
-    out["fuel_manifold"] = mesh.ring_torus(x - 62.0, r_out - 22.0, 13.0, SEG, 14)
+    # On the plane the stems enter at, which is what a manifold is for: the
+    # twenty stems tee off it. At x - 62 it sat 22 mm upstream of them, on
+    # top of the compressor's aft flange, feeding nothing.
+    #
+    # (r_out + 6 put the ring at 513-539 and the bypass casing wall is at
+    # 528-537 here, so it is inboard of that, in the gap between the
+    # compressor casing and the duct.)
+    out["fuel_manifold"] = mesh.ring_torus(x - 40.0, r_out - 22.0, 13.0, SEG, 14)
     return out
 
 

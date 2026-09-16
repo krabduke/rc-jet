@@ -118,6 +118,19 @@ def _voxels(verts, faces, h):
 
 
 def _inside(p, tri_list, eps=1e-9):
+    """Is p inside the solid this triangle list bounds?
+
+    Signed crossings, not parity. Almost every part here is a union of
+    overlapping closed pieces -- a bladed wheel is a hub with its blades
+    driven into it, a housing is a volute with a snout and a backplate -- and
+    where two of those pieces overlap there are faces INSIDE the solid. A ray
+    that happens to pass through such a region crosses an even number of extra
+    faces on one side and an odd number on the other, and parity reports a
+    point outside the wheel as inside it. Counting each crossing by whether
+    the face turns towards the ray or away from it gives the winding number,
+    which is zero outside and non-zero inside whatever the pieces do to each
+    other in between.
+    """
     px, py, pz = p
     hits = 0
     for (a, b, c) in tri_list:
@@ -143,8 +156,8 @@ def _inside(p, tri_list, eps=1e-9):
         if v < 0.0 or u + v > 1.0:
             continue
         if (e2[0] * qx + e2[1] * qy + e2[2] * qz) * inv > eps:
-            hits += 1
-    return hits % 2 == 1
+            hits += 1 if det > 0 else -1
+    return hits != 0
 
 
 def _expected(a, b, rules):
