@@ -395,7 +395,20 @@ export class BodyField {
    * costs one more pass over the panels per step, which is the same order as
    * the velocity evaluation the step already does.
    */
-  inside(p){
+  /* Is p inside the body, or close enough to it to stop?
+   *
+   * `probe`, if given, comes back carrying `near` -- the distance from p to
+   * the nearest panel centroid -- and that panel's outward normal in `nx/ny/
+   * nz`. The walk over the panels has to find both anyway, and a streamline
+   * needs them to size its next step and to keep from being drawn into the
+   * skin, so handing them back costs nothing and saves a second pass over
+   * 1,450 panels for every step of every line.
+   */
+  inside(p, probe){
+    if(probe){
+      probe.near = Infinity; probe.size = 0;
+      probe.nx = probe.ny = probe.nz = 0;
+    }
     const b = this.box;
     if(b && (p[0] < b[0] || p[0] > b[1] || p[1] < b[2] || p[1] > b[3]
              || p[2] < b[4] || p[2] > b[5])) return false;
@@ -425,6 +438,11 @@ export class BodyField {
      * floor running 30 mm off the road, which is the one part of that car
      * worth looking at. `nearStop` is set by whoever built the field.
      */
+    if(probe && ni >= 0){
+      probe.near = Math.sqrt(near);
+      probe.size = Math.sqrt(a[ni]);
+      probe.nx = n[ni*3]; probe.ny = n[ni*3+1]; probe.nz = n[ni*3+2];
+    }
     const st = this.nearStop;
     return st > 0 && ni >= 0 && near < st * st;
   }
@@ -552,14 +570,61 @@ export function panelIndex(body, cell){
   };
 }
 
+/* Trace one streamline through the field.
+ *
+ * The step shrinks as the line approaches the body. It used to be a constant
+ * fraction of the model -- 8.4 mm on a 440 mm aeroplane -- while the lines
+ * released from the skin start a panel width off it, about 11 mm. One step of
+ * the wrong direction put them through the surface, so every surface line was
+ * a two-point stub or a curl, and the model came out with a mat of dark
+ * scribble lying on it instead of flow following its shape. Near the skin the
+ * field varies over the standoff distance, so that is what sets the step.
+ */
+/* Take the normal component out of a velocity that is close to the skin.
+ *
+ * Solid surfaces do not let air through, and a source-panel body enforces that
+ * exactly where its collocation points are and NOWHERE ELSE. Between them the
+ * normal velocity is whatever the discretisation left over, and it is enough
+ * to drive a line into the surface: a streamline released over the canopy came
+ * out as a dark curl lying on the model rather than as flow following it.
+ *
+ * So the boundary condition is applied to the line as well as to the panels.
+ * Inside half a band the normal component is removed in full, and it fades to
+ * nothing by the band's edge, so a line leaves tangentially, follows the shape
+ * while it is close, and is free as soon as it is clear. Nothing is invented:
+ * this is the condition the body is already meant to satisfy, applied where
+ * the body does not satisfy it.
+ *
+ * The band comes from the PANEL, not the model. How far out a panel's field
+ * can be trusted is set by how big the panel is -- the aeroplane's median
+ * panel is 8 mm, so its field is unreliable within a few millimetres of the
+ * skin, and a band derived from the model's 284 mm diagonal was 1.7 mm: five
+ * times smaller than the panel it was protecting. `cap` keeps a coarsely
+ * panelled body from claiming a band wider than the gaps it has to leave open,
+ * like the air under a car's floor.
+ */
+function slide(v, probe, cap){
+  const band = Math.min(cap, probe.size * 1.25);
+  const d = probe.near;
+  if(!(d < band)) return;
+  const w = Math.min(1, 2 * (1 - d / band));
+  const vn = v[0]*probe.nx + v[1]*probe.ny + v[2]*probe.nz;
+  v[0] -= w * vn * probe.nx;
+  v[1] -= w * vn * probe.ny;
+  v[2] -= w * vn * probe.nz;
+}
+
+
 export function traceLine(vel, seed, opts){
   const {maxSteps = 260, ds = 0.05, xEnd = 1e9, bounds = null,
-         body = null} = opts || {};
+         body = null, dsMin = ds*0.12, skin = 0} = opts || {};
   const pts = [], spd = [];
   const p = [seed[0], seed[1], seed[2]];
   const v = [0,0,0], k1 = [0,0,0], mid = [0,0,0];
+  const probe = body ? {near: Infinity} : null;
   const ports = body && body.ports && body.ports.length ? body.ports : null;
   for(let s = 0; s < maxSteps; s++){
+    if(body && body.inside(p, probe)) break;
     vel(p, v);
     const m = Math.hypot(v[0], v[1], v[2]);
     if(!isFinite(m) || m < 1e-6) break;
@@ -568,14 +633,18 @@ export function traceLine(vel, seed, opts){
     if(p[0] > xEnd) break;
     if(bounds && (p[1] < bounds[0] || p[1] > bounds[1]
                || p[2] < bounds[2] || p[2] > bounds[3])) break;
-    k1[0] = v[0]/m; k1[1] = v[1]/m; k1[2] = v[2]/m;
-    mid[0] = p[0] + k1[0]*ds*0.5;
-    mid[1] = p[1] + k1[1]*ds*0.5;
-    mid[2] = p[2] + k1[2]*ds*0.5;
+    const h = probe && isFinite(probe.near)
+      ? Math.min(ds, Math.max(dsMin, probe.near * 0.55)) : ds;
+    if(skin > 0 && probe) slide(v, probe, skin);
+    const mt = Math.hypot(v[0], v[1], v[2]) || m;
+    k1[0] = v[0]/mt; k1[1] = v[1]/mt; k1[2] = v[2]/mt;
+    mid[0] = p[0] + k1[0]*h*0.5;
+    mid[1] = p[1] + k1[1]*h*0.5;
+    mid[2] = p[2] + k1[2]*h*0.5;
     vel(mid, v);
+    if(skin > 0 && probe) slide(v, probe, skin);
     const m2 = Math.hypot(v[0], v[1], v[2]) || 1;
-    p[0] += v[0]/m2*ds; p[1] += v[1]/m2*ds; p[2] += v[2]/m2*ds;
-    if(body && body.inside(p)) break;
+    p[0] += v[0]/m2*h; p[1] += v[1]/m2*h; p[2] += v[2]/m2*h;
     if(ports){
       // a sink mouth swallows the line: this is air entering an engine or a
       // fan, and the right thing to draw is a line that ends at the lip

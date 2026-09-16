@@ -105,12 +105,12 @@ const _t1 = [0,0,0], _t2 = [0,0,0], _t3 = [0,0,0];
  * nothing. The matrix went singular and the solve answered with a circulation
  * of 12.3 and 47,000 kg of induced drag.
  */
-function horseshoe(p, a, b, w, out){
+function horseshoe(p, a, b, w, out, boundCore){
   const af = [a[0] + w[0]*FAR, a[1] + w[1]*FAR, a[2] + w[2]*FAR];
   const bf = [b[0] + w[0]*FAR, b[1] + w[1]*FAR, b[2] + w[2]*FAR];
   const rc = CORE_FRAC * norm(sub(b, a));
   segVel(p, af, a, _t1, rc);
-  segVel(p, a, b, _t2, 0);
+  segVel(p, a, b, _t2, boundCore ? rc : 0);
   segVel(p, b, bf, _t3, rc);
   out[0] = _t1[0] + _t2[0] + _t3[0];
   out[1] = _t1[1] + _t2[1] + _t3[1];
@@ -586,7 +586,17 @@ export class Tunnel {
       q[0] = p[0]/L; q[1] = p[1]/L; q[2] = p[2]/L;
       for(let i = 0; i < fils.length; i++){
         const f = fils[i];
-        horseshoe(q, f.a, f.b, wake, t);
+        // cored on the bound vortex too, which the SOLVE must not do.
+        //
+        // The solve puts its collocation points at a known distance from
+        // their own bound vortices and that distance is the diagonal of the
+        // influence matrix; coring it makes the matrix singular under
+        // refinement. Sampling the field for a picture is the opposite case:
+        // a streamline goes where the flow takes it, and sooner or later
+        // that is straight through a filament, where an uncored line reads
+        // 288 m/s on a 22 m/s aeroplane and sets the colour scale for
+        // everything else.
+        horseshoe(q, f.a, f.b, wake, t, true);
         out[0] += f.G*t[0]; out[1] += f.G*t[1]; out[2] += f.G*t[2];
       }
       return out;

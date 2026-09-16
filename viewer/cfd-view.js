@@ -240,6 +240,11 @@ export class CFDView {
     this._traceOpts = {
       maxSteps: TRACE_STEPS, ds: span/58, xEnd: this.ext.x1 + span*1.15,
       body: this.body,
+      // the widest a line may be held tangential to the skin. The band
+      // itself is the local panel's own size; this only stops a coarsely
+      // panelled body -- a car's floor at 100 mm a panel -- from claiming a
+      // band wider than the gap it has to leave open underneath it.
+      skin: this.domain.diag * 0.045,
       bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
     };
   }

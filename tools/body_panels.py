@@ -140,6 +140,34 @@ def from_mesh(verts, faces):
     return out
 
 
+# How far along the chord the obstacle stops.
+#
+# Every aerofoil section closes to a point at its trailing edge, so the last
+# chordwise panel is a fraction of a millimetre tall with its opposite number
+# the same distance away, facing the other way. That pair is near-singular in
+# a source solve whatever size it is, and the strengths run away: the wingtip
+# carried 1,628 against a 22 m/s freestream and the streamline that passed
+# 2 mm from it read 295 m/s -- the fastest thing in the picture, so it set the
+# colour scale for all of it.
+#
+# The obstacle stops before the section closes. What is left out is the last
+# few per cent of the chord, which is a millimetre of trailing edge the air
+# cannot tell is missing, and what is gained is a field near the surface that
+# means something.
+TE_TRIM = 0.97
+
+# How finely each surface is panelised as an obstacle.
+#
+# Coarse, and refining it is wrong. A source panel models thickness, and a
+# lifting surface is thin: halving the panels puts the upper and lower
+# surfaces' panels closer together relative to their own size, the influence
+# matrix gets worse rather than better, and the strongest source went from
+# 8.5 x freestream to 632. tools/check_panels.mjs is the measurement.
+NS_W, NC_W = 9, 12
+NS_V, NC_V = 7, 10
+NS_T, NC_T = 6, 9
+
+
 def lifting_surfaces():
     """Wings, flaperons, stabilators, fin and ventrals as flow obstacles.
 
@@ -165,7 +193,7 @@ def lifting_surfaces():
             planform=spec.WING_PLANFORM, thickness_tip=W["thickness_tip"],
             tip_cap=4, camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
-            u0=0.0, u1=1.0, n_span=9, n_chord=12, mirror=mir)
+            u0=0.0, u1=TE_TRIM, n_span=NS_W, n_chord=NC_W, mirror=mir)
         out += from_mesh(v, f)
 
     v, f = pc.panel(
@@ -173,7 +201,7 @@ def lifting_surfaces():
         root_chord=V["root_chord"], tip_chord=V["tip_chord"],
         semi_span=V["height"], sweep_le=V["sweep_le"],
         thickness=V["thickness"], thickness_tip=V["thickness_tip"],
-        tip_cap=4, n_span=7, n_chord=10, vertical=True)
+        u1=TE_TRIM, tip_cap=4, n_span=NS_V, n_chord=NC_V, vertical=True)
     out += from_mesh(v, f)
 
     T = spec.HTAIL
@@ -185,13 +213,30 @@ def lifting_surfaces():
             dihedral=T["anhedral"], thickness=T["thickness"],
             thickness_tip=T["thickness_tip"], tip_cap=4,
             twist_root=T["deflect"], twist_tip=T["deflect"],
-            n_span=6, n_chord=9, mirror=mir)
+            u1=TE_TRIM, n_span=NS_T, n_chord=NC_T, mirror=mir)
         out += from_mesh(v, f)
     return out
 
 
+def _no_slivers(panels, frac=0.30):
+    """Drop panels too small for the solve to say anything about.
+
+    A source panel's strength should come out the order of the freestream. Two
+    panels a fraction of their own size apart facing opposite ways make the
+    influence matrix near-singular, the strengths run away, and the field
+    within a few millimetres of them is not flow but discretisation noise.
+
+    A fifth of a millimetre of a 440 mm aeroplane is not a shape the air can
+    tell is there. Dropping it changes the obstacle by nothing and changes the
+    field beside it completely.
+    """
+    sides = sorted(math.sqrt(a) for (_c, _n, a) in panels)
+    floor = sides[len(sides) // 2] * frac
+    return [p for p in panels if math.sqrt(p[2]) >= floor]
+
+
 def build():
-    panels = fuselage() + lifting_surfaces()
+    panels = _no_slivers(fuselage() + lifting_surfaces())
     return {
         "n": len(panels),
         "c": [v for (c, n, a) in panels for v in c],
