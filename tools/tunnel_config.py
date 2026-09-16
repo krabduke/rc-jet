@@ -120,7 +120,30 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         # still hold itself up. Below it the readout is describing an
         # aircraft that is falling. It was 8 m/s, which is well under the
         # stall.
-        "v_default": 22.0, "v_min": round(_stall_speed(), 1), "v_max": 45.0,
+        # The speed range is the aeroplane's, not a round number.
+        #
+        # v_default was 22 m/s, which is not cruise -- it is an approach. At
+        # 22 this aeroplane needs 9.6 degrees to hold itself up, which is a
+        # landing attitude; a jet cruises at three or four. The drag polar,
+        # trimmed at every speed:
+        #
+        #     V     alpha    CD      L/D    V/D
+        #     22     9.6   0.0699   5.4   21.4
+        #     28     6.4   0.0314   7.4   37.5   <- minimum drag
+        #     36     4.0   0.0208   6.7   43.9
+        #     38     3.6   0.0196   6.4   44.2   <- maximum range
+        #     46     2.6   0.0181   4.7   39.4
+        #
+        # A jet's best range is at maximum V/D, not maximum L/D -- about 1.3
+        # times the minimum-drag speed -- which lands at 38. 36 is taken
+        # because it trims at exactly the 4 degrees `alpha_default` already
+        # says, and it is within a per cent of best range.
+        #
+        # v_max is where military thrust runs out: thrust falls linearly with
+        # speed (T = mdot(Ve - V0) with the fan setting mdot) while drag rises
+        # as V squared, and they cross at 60 m/s. 45 was well short of what
+        # this aeroplane can do in level flight.
+        "v_default": 36.0, "v_min": round(_stall_speed(), 1), "v_max": 60.0,
         # Up to 22 degrees, because most of what is interesting about a delta
         # happens above sixteen.
         "alpha_default": 4.0, "alpha_min": -6.0, "alpha_max": 22.0,

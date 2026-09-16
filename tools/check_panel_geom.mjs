@@ -209,9 +209,19 @@ for(const c of cfg.controls){
  * detail: the readout said L/D 14 on an aeroplane whose real one is about 5,
  * and implied it cruised on 39 grammes of thrust. */
 {
-  const r = T.solve({...base, alpha: 10});
   const g9 = 9.81;
-  console.log('\nDRAG');
+  // at the trim point, not at a fixed incidence: drag at an angle the
+  // aeroplane does not fly at is not a number anyone wants
+  const W = cfg.mass_kg*g9, need = W/(0.5*1.225*cfg.v_default**2*cfg.s_ref);
+  const at = (a) => T.solve({...base, alpha: a}).CL - need;
+  let a0 = 0, a1 = 4, f0 = at(a0), f1 = at(a1);
+  for(let k = 0; k < 12; k++){
+    const df = f1 - f0; if(Math.abs(df) < 1e-10) break;
+    const a2 = a1 - f1*(a1 - a0)/df; a0 = a1; f0 = f1; a1 = a2; f1 = at(a1);
+    if(Math.abs(f1) < 1e-6) break;
+  }
+  const r = T.solve({...base, alpha: a1});
+  console.log(`\nDRAG at the ${a1.toFixed(1)} degree trim, ${cfg.v_default} m/s`);
   console.log(`   skin friction and form   ${r.CD0.toFixed(4)}`);
   console.log(`   base                     ${r.CDbase.toFixed(4)}`);
   console.log(`   due to lift              ${r.CDlift.toFixed(4)}`

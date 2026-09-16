@@ -677,9 +677,26 @@ function setDetent(i){
 function flowPorts(state){
   const want = DETENT[detent];
   const n1 = want.n1, ab = want.ab;
-  // scale with the tunnel speed so the intake capture ratio -- the thing you
-  // are actually looking at -- does not vanish when the wind comes up
-  const v = state && state.v ? state.v/22 : 1;
+  /* Mass flow does NOT scale with airspeed.
+   *
+   * It used to, "so the intake capture ratio does not vanish when the wind
+   * comes up" -- which is a reason about the picture, and the picture it was
+   * protecting was the wrong one. A turbofan at a fixed N1 passes very nearly
+   * a constant mass flow: the fan sets it, not the flight speed. Two real
+   * behaviours follow, and scaling Q with V hid both.
+   *
+   * Thrust FALLS with speed. T = mdot(Ve - V0) with mdot and Ve fixed by the
+   * engine, so every knot of airspeed is a knot of ram drag. Scaled with V it
+   * came out rising as V squared, which is not a jet -- it is a windmill.
+   *
+   * The capture ratio falls with speed too, and that is the thing worth
+   * looking at. At 22 m/s this engine wants 37 m/s through a mouth the air
+   * arrives at at 22, so the streamtube ahead of it is WIDER than the intake
+   * and you can see it being gathered in. At 45 it is narrower than the
+   * intake and the excess spills round the lip. That change is what an intake
+   * does, and holding it constant was hiding it.
+   */
+  const v = 1;
   /* Sized from THRUST, not from taste.
    *
    * It used to be 0.012 + 0.075.n1, which through this nozzle's 7.6 cm2 at

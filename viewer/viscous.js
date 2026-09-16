@@ -38,9 +38,19 @@
  * of it survives is decided by the solve's own leading-edge loading.
  */
 
-/* Flat-plate skin friction. */
-const cfLaminar   = (re) => 1.328 / Math.sqrt(Math.max(re, 1));
-const cfTurbulent = (re) => 0.074 / Math.pow(Math.max(re, 1), 0.2);
+/* Flat-plate skin friction.
+ *
+ * Above transition it is the MIXED form -- laminar to the transition point,
+ * turbulent after -- not the fully-turbulent one. Switching between the two
+ * pure forms puts a step in the drag at the transition Reynolds number:
+ * laminar gives 0.00188 there and fully turbulent 0.00536, so the aeroplane's
+ * profile drag jumped by a third between 36 and 38 m/s and the drag polar had
+ * a cliff in the middle of the cruise range. The mixed form is 0.00196 at the
+ * same point, which meets the laminar value, because it is the same boundary
+ * layer described continuously. */
+const cfLaminar = (re) => 1.328 / Math.sqrt(Math.max(re, 1));
+const cfMixed   = (re) => Math.max(0.074 / Math.pow(Math.max(re, 1), 0.2)
+                                   - 1700 / Math.max(re, 1), 1e-4);
 
 /* Transition, as a Reynolds number based on run length. Below it the plate is
  * laminar all the way. 5 x 10^5 is the textbook figure for a smooth surface
@@ -157,7 +167,7 @@ export function buildUp(pf, geom, o){
   let cd0 = 0;
   for(const c of parts(pf, geom)){
     const re = v * c.len / nu;
-    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfTurbulent(re);
+    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfMixed(re);
     /* A part is a body or a surface by its shape, not by its name: a fin and
      * a fuselage are told apart by how thick they are for their length. */
     const thin = c.thin;
@@ -180,7 +190,7 @@ export function buildUp(pf, geom, o){
    */
   for(const e of extra){
     const re = v * e.len / nu;
-    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfTurbulent(re);
+    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfMixed(re);
     const ff = ffSurface(Math.min(e.thin || 0.08, 0.3));
     const d = (cf * ff + bubbleDrag(re) * 0.5) * e.area / sRef;
     comps.push({name: e.name, re, cf, ff, bubble: bubbleDrag(re) * 0.5,
