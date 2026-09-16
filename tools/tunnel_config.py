@@ -34,6 +34,28 @@ TAIL_NS, TAIL_NC = 8, 5
 FIN_NS, FIN_NC = 6, 4
 
 
+def _stall_speed(rho=1.225):
+    """Where lift equals weight at the highest CL this planform reaches.
+
+    A delta's maximum CL is not the attached-flow one: separation at the
+    leading edge rolls into vortices that keep adding lift well past where a
+    straight wing would have stopped. Polhamus' leading-edge-suction analogy
+    (NASA TN D-3767) gives
+
+        CL = Kp sin.a cos^2.a + Kv cos.a sin^2.a
+
+    and with Kp ~ 2.2 per radian from this solver's own lift slope and
+    Kv ~ 1.3 measured from its own leading-edge suction, CL at 30 degrees --
+    about where vortex breakdown crosses the trailing edge on a wing this
+    slender -- comes to 0.95.
+    """
+    a = math.radians(30.0)
+    cl_max = 2.2*math.sin(a)*math.cos(a)**2 + 1.3*math.cos(a)*math.sin(a)**2
+    w = spec.total_mass_g() / 1000.0 * 9.81
+    s_ref = spec.wing_area_mm2() * MM * MM
+    return math.sqrt(2*w / (rho * s_ref * cl_max))
+
+
 def config(n_span=WING_NS, n_chord=WING_NC):
     W, H, V, FL = spec.WING, spec.HTAIL, spec.VTAIL, spec.FLAPERON
     sweep = math.tan(math.radians(W["sweep_le"]))
@@ -94,10 +116,25 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         "b_ref": spec.SPAN * MM,
         "x_le_mac": spec.mac_leading_edge_x() * MM,
         "mass_kg": spec.total_mass_g() / 1000.0,
-        "v_default": 22.0, "v_min": 8.0, "v_max": 45.0,
-        "alpha_default": 4.0, "alpha_min": -6.0, "alpha_max": 16.0,
-        "beta_default": 0.0, "beta_min": -15.0, "beta_max": 15.0,
-        "stall_alpha": 12.0,
+        # Slowest the tunnel will run: the speed at which this aeroplane can
+        # still hold itself up. Below it the readout is describing an
+        # aircraft that is falling. It was 8 m/s, which is well under the
+        # stall.
+        "v_default": 22.0, "v_min": round(_stall_speed(), 1), "v_max": 45.0,
+        # Up to 22 degrees, because most of what is interesting about a delta
+        # happens above sixteen.
+        "alpha_default": 4.0, "alpha_min": -6.0, "alpha_max": 22.0,
+        # A 40-degree cropped delta of aspect ratio 1.8 does not stall at
+        # twelve. It separates at the leading edge somewhere around there and
+        # then flies on the vortices that separation rolls up -- which is a
+        # change of regime, not a loss of lift, and the solver models it now.
+        # What ends it is vortex breakdown crossing the trailing edge, near
+        # 30 degrees for this sweep and aspect ratio.
+        "stall_alpha": 30.0,
+        # Where the leading edge lets go and the wing starts flying on its
+        # vortices instead. Reported separately because it is a different
+        # thing and it is the thing you can see.
+        "vortex_alpha": 11.0,
         "ground": False,
         "cg_frac": spec.cg_frac_mac(),
         "cg_x": spec.cg_x() * MM,

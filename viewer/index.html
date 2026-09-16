@@ -728,19 +728,30 @@ function buildTunnel(box){
       drawSpanLoad($('#t-span'), r.strips);
       $('#t-panels').textContent = `${r.panels} panels · ${r.v.toFixed(0)} m/s`;
       const n = $('#t-note');
+      const vor = data.tunnel.vortex_alpha || 99;
       if(r.stalled){
         n.className = 'tnote warn';
-        n.textContent = `Past ${r.stall_alpha}° this is beyond where a real wing `
-          + 'stalls. The solver has no boundary layer, so it keeps predicting '
-          + 'lift that the aircraft would not make.';
+        n.textContent = `Past ${r.stall_alpha}° the vortices break down before `
+          + 'the trailing edge and the wing loses them. Nothing here models '
+          + 'that, so the lift above this angle is lift the aircraft would '
+          + 'not make.';
+      }else if(r.alpha >= vor){
+        n.className = 'tnote';
+        n.textContent = `Past about ${vor}° the leading edge has let go: `
+          + `${((1-r.suctionKept)*100).toFixed(0)}% of its suction is gone and `
+          + 'the wing is flying on the vortices that separation rolls up. That '
+          + 'is what a delta does, and it costs drag — the resultant force is '
+          + 'no longer tilted forward by leading-edge suction.';
       }else{
         n.className = 'tnote';
-        n.textContent = 'Inviscid solve, live: a vortex lattice for the '
-          + 'lifting surfaces and source panels for the fuselage. No boundary '
-          + 'layer, no stall, no profile drag. Induced drag is shown but not '
-          + 'trusted — at aspect ratio 1.81 the Trefftz integral this solver '
-          + 'uses is well outside the range it was validated over. Lift, the '
-          + 'neutral point and the static margin are the reliable outputs.';
+        n.textContent = 'Source and doublet panels on one closed surface, with '
+          + 'a shed wake and a Kutta condition — the lift, the pressures and '
+          + 'the streamlines are one solution. Beside it: skin friction and '
+          + 'form drag per component at each part\'s own Reynolds number, a '
+          + 'laminar separation bubble term (this aeroplane cruises at Re '
+          + '262,000, where the bubble is over half the profile drag), base '
+          + 'drag, and the leading-edge suction a real boundary layer loses. '
+          + 'No stall, and the wake is straight rather than rolled up.';
       }
       $('#t-about').textContent = ABOUT;
     },

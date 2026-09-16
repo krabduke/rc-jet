@@ -202,6 +202,30 @@ for(const c of cfg.controls){
        + ' -- its hinge axis or its panels are wrong');
 }
 
+/* ---- the drag is an aeroplane's drag.
+ *
+ * An inviscid solve has no friction, no separation and no pressure drag on a
+ * closed body at all, and on a 440 mm model at Re 262,000 that is not a
+ * detail: the readout said L/D 14 on an aeroplane whose real one is about 5,
+ * and implied it cruised on 39 grammes of thrust. */
+{
+  const r = T.solve({...base, alpha: 10});
+  const g9 = 9.81;
+  console.log('\nDRAG');
+  console.log(`   skin friction and form   ${r.CD0.toFixed(4)}`);
+  console.log(`   base                     ${r.CDbase.toFixed(4)}`);
+  console.log(`   due to lift              ${r.CDlift.toFixed(4)}`
+            + `   (${(r.suctionKept*100).toFixed(0)} % of the leading-edge suction survives)`);
+  console.log(`   total                    ${r.CD.toFixed(4)}      L/D ${r.LD.toFixed(1)}`);
+  console.log(`   thrust to cruise         ${(r.drag_N*1000/g9).toFixed(0)} g`);
+  if(!(r.CD0 > 0.010 && r.CD0 < 0.045))
+    fail(`profile drag ${r.CD0.toFixed(4)} -- not a model aeroplane's`);
+  if(!(r.LD > 2 && r.LD < 9))
+    fail(`L/D ${r.LD.toFixed(1)} -- a 440 mm delta at Re 262,000 does not do that`);
+  if(!(r.CD > r.CDi * 1.5))
+    fail('total drag is barely above induced drag -- the viscous build-up is not running');
+}
+
 /* ---- the engine breathes.
  *
  * This is here because it silently stopped. The old source-panel field gave

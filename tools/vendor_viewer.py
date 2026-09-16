@@ -16,7 +16,7 @@ import shutil
 import sys
 
 FILES = ["flowfield.js", "panelkernel.js", "panelflow.js", "paneltunnel.js",
-         "cfd-view.js", "tunnel-ui.js", "anim.js"]
+         "cfd-view.js", "tunnel-ui.js", "anim.js", "viscous.js"]
 
 # The solver's own validation travels with the solver. A check that lives
 # only in _shared is a check this project's `make verify` does not run, and

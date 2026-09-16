@@ -12,6 +12,8 @@
  * incidence, sideslip or any control position costs a couple of milliseconds.
  */
 
+import { buildUp } from './viscous.js';
+
 const RHO = 1.225;
 
 export class PanelTunnel {
@@ -40,22 +42,79 @@ export class PanelTunnel {
     /* Lift and drag are across and along the FREESTREAM, not the body axes.
      * At twelve degrees the difference is a fifth of the drag. */
     const L = (-f[0]*Math.sin(a) + f[2]*Math.cos(a));
-    const CL = L/S;
+    const CLpot = L/S;
     const T = pf.trefftz();
-    const CDi = T.di/(q/RHO*S*2) * 0 + T.di/(0.5*o.v*o.v*S);
+    const CDi = T.di/(0.5*o.v*o.v*S);
     const CY = f[1]/S;
 
+    /* The inviscid answer is half the answer.
+     *
+     * Everything above is a correct potential flow, and a correct potential
+     * flow has no friction, no separation and -- by d'Alembert -- no pressure
+     * drag on a closed body at all. What that leaves out is not a detail on a
+     * 440 mm model at Reynolds 262,000: skin friction is about the size of
+     * the induced drag, the laminar separation bubble is bigger than either,
+     * and one flat disc at the back is bigger still. viscous.js works those
+     * out from what this solve found. */
+    const vis = buildUp(pf, {parts: this.parts}, {
+      v: o.v, sRef: S, alpha: a, CL: CLpot, CDi,
+      cpPeak: this.liftingPeakCp(),
+      jetFill: this.jetFill(),
+    });
+
     return {
-      CL, CDi, CY,
-      LD: CDi > 1e-9 ? CL/CDi : 0,
-      lift_N: CL*q*S,
-      drag_N: CDi*q*S,
+      CL: vis.CL, CLpot, CDi, CY,
+      CD: vis.CD, CD0: vis.cd0, CDbase: vis.cdBase, CDlift: vis.cdLift,
+      suctionKept: vis.kept, clVortex: vis.clVortex,
+      LD: vis.CD > 1e-9 ? vis.CL/vis.CD : 0,
+      LDi: CDi > 1e-9 ? CLpot/CDi : 0,
+      lift_N: vis.CL*q*S,
+      drag_N: vis.CD*q*S,
+      thrust_N: pf.thrust(RHO),
       side_N: CY*q*S,
       panels: pf.N,
       strips: this.spanLoad(o.v),
       bySurface: this.bySurface(q, a),
+      comps: vis.comps,
       v: o.v,
     };
+  }
+
+  /* The strongest suction anywhere on a lifting surface.
+   *
+   * This is the leading-edge peak, and it is what decides whether the
+   * boundary layer can stay attached round the leading edge or separates and
+   * takes the suction with it. Reading it off the solution rather than off a
+   * table means the criterion moves with incidence, sweep and flap setting,
+   * which is what it depends on. Panels the engine breathes through are not
+   * skin and are excluded; so are the caps, whose sharp corner is a
+   * singularity rather than a pressure.
+   */
+  liftingPeakCp(){
+    const pf = this.pf;
+    let lo = 0;
+    for(const p of this.parts){
+      if(/_(root|tip|cap)$/.test(p.name) || /^(fuselage|body|nose|tail)/.test(p.name))
+        continue;
+      for(let i = p.start; i < p.start + p.count; i++){
+        if(pf.isFlow && pf.isFlow[i]) continue;
+        if(pf.cp[i] < lo) lo = pf.cp[i];
+      }
+    }
+    return lo;
+  }
+
+  /* How much of the base the jet fills. A running engine puts its own gas
+   * into the base region, so the base pressure recovers towards ambient --
+   * which is why a jet at power has less base drag than one at idle. */
+  jetFill(){
+    const pf = this.pf;
+    if(!pf.flow || !pf.flow.in) return 0;
+    let aOut = 0;
+    for(const [j, sgn] of (pf.inflow || [])) if(sgn > 0) aOut += pf.area[j];
+    if(!(aOut > 0)) return 0;
+    const ve = pf.flow.out / aOut;
+    return Math.min(1, ve / Math.max(pf.vfs, 1e-6) / 3);
   }
 
   /* Lift per unit span, from the circulation the wake carries.
