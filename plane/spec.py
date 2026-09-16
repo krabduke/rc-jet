@@ -1,7 +1,13 @@
 """
-RC jet — master specification.
+VX-J1 — master specification.
 
-ALL dimensions are millimetres, angles degrees, masses grams.
+ALL dimensions are DRAWING UNITS, angles degrees. One drawing unit is 33 mm
+full size (SCALE_TO_FULL), so the aeroplane is 14.53 m long with a 9.90 m
+span and an F110-GE-129 in it at 1:1. See docs/FULL_SCALE.md.
+
+Masses in the legacy EQUIPMENT/HARDWARE/DISTRIBUTED tables are grams of the
+model that this used to be, and are being retired. The aeroplane's real mass
+is MASS_FULL, in kilogrammes.
 Nose at x = 0, aft is +x. +z is up, +y is right. Same convention as the engine.
 
 Every other module consumes this file. No geometry module contains a literal
@@ -208,11 +214,27 @@ INTAKE = {
     "x_duct_end":  300.0,       # meets the engine face
     "lip_width":    40.0,
     "lip_height":   19.0,
-    "z_lip":       -17.0,
+    # The roof of a chin inlet IS the forebody underside. At -17 the mouth's
+    # top edge was seven units inside solid fuselage and its floor hung twelve
+    # units under the skin in open air: the duct was a loose tube threaded
+    # through a closed body, which is why the inlet led nowhere. At -24 the
+    # mouth sits clear beneath the keel at station 52 and the chin fairing
+    # below wraps it back to the wing root.
+    "z_lip":       -24.0,
     "lip_radius":    2.6,
     "duct_r_end":   19.5,       # wraps the 17.9 mm fan radius with clearance
     "splitter_gap":  3.0,       # boundary-layer diverter standoff
     "wall":          1.1,
+    # The chin fairing: over this run the fuselage's lower surface is pushed
+    # down far enough to enclose the duct's outer wall with `chin_clear` to
+    # spare, rolled on and off with a cosine so the belly has no crease.
+    "chin_x0":      30.0,
+    "chin_x1":     195.0,
+    "chin_clear":    2.0,
+    "chin_halfarc": 78.0,       # degrees either side of the keel it reaches
+    # The mouth is cut through the skin between these stations.
+    "mouth_x0":     40.0,
+    "mouth_x1":     96.0,
 }
 
 # --------------------------------------------------------------------------
@@ -756,7 +778,7 @@ SKIN_DETAIL = {
     "panels": [
         ("battery",   188.0, 268.0,  58.0, 122.0, 0.9),
         ("receiver",  166.0, 202.0,  16.0,  54.0, 0.8),
-        ("avionics",  272.0, 312.0,  58.0, 122.0, 0.9),
+        ("avionics",  115.0, 312.0,  58.0, 122.0, 0.9),
         ("gearbay",   258.0, 300.0, 236.0, 304.0, 0.8),
         ("fuel",      312.0, 352.0, 236.0, 304.0, 0.8),
     ],
@@ -778,3 +800,113 @@ PROBE = {
     "pitot_z":        2.0,
     "fairing_r":      2.4,
 }
+
+
+# --------------------------------------------------------------------------
+# Full scale
+# --------------------------------------------------------------------------
+# The drawing was never wrong about shape. At 1:33 it is 14.53 m long on a
+# 9.90 m span with a 1.29 m duct round the fan -- an F-16-class airframe, near
+# enough exactly. What was wrong was that it carried an RC model's contents.
+# Nothing here changes a coordinate; it changes what the coordinates mean.
+
+SCALE_TO_FULL = 33.0            # mm of real aeroplane per drawing unit
+
+
+def mm_full(u):
+    """Drawing units to full-size millimetres."""
+    return u * SCALE_TO_FULL
+
+
+def m_full(u):
+    """Drawing units to full-size metres."""
+    return u * SCALE_TO_FULL / 1000.0
+
+
+# The VX-J1's real mass, in kilogrammes, by group: (name, x_centre, kg).
+# x is still a drawing station, because that is where the thing physically is.
+#
+# This is an agility demonstrator, not a fighter. There is no radar, no gun,
+# no pylons and no countermeasures, and the mass that would have gone into
+# them went into wing instead. The result is 204 kg/m^2 against an F-16's 431.
+#
+# Balancing it is the hard part and the reason the stations look the way they
+# do. An F110 is 1,996 kg sitting at 84 % of the length, and an aeroplane with
+# no radar, no gun and no ammunition has nothing heavy up front to answer it.
+# Laid out naively the CG came out at 46 % MAC -- ten to fourteen points behind
+# the neutral point, further unstable than an X-29 and not flyable by anything.
+# So the forward fuel cell carries twice what the aft one does, the avionics
+# bay sits right behind the cockpit rather than over the wing, and the ECS and
+# the electrical centre are ahead of the spar. That lands the CG at 38 % MAC,
+# about three points behind the neutral point: deliberately unstable, roughly
+# as much as a Rafale, which is where the pitch rate comes from.
+MASS_FULL = [
+    # structure
+    ("wing_structure",      265.0, 1300.0),
+    ("fuselage_structure",  202.0, 1700.0),
+    ("empennage",           412.0,  340.0),
+    ("landing_gear_nose",   105.0,  150.0),
+    ("landing_gear_main",   248.0,  410.0),
+    # propulsion: an F110-GE-129 is 1,996 kg dry
+    ("engine",              370.0, 1996.0),
+    ("engine_systems",      340.0,  220.0),   # gearbox, starter, oil, mounts
+    # systems
+    ("hydraulics",          215.0,  240.0),   # two 280 bar systems
+    ("electrical",          195.0,  290.0),
+    ("fcs_actuators",       285.0,  180.0),
+    ("avionics",            115.0,  190.0),
+    ("ecs_apu",             235.0,  250.0),
+    ("fuel_system",         220.0,  160.0),
+    # occupied
+    ("cockpit",             145.0,  230.0),   # seat, canopy, instruments
+    ("finish",              230.0,   80.0),
+    ("pilot",               145.0,  110.0),
+    ("oil_unusable",        330.0,   60.0),
+    # internal fuel, clean
+    ("fuel_forward",        170.0, 1000.0),
+    ("fuel_wing",           258.0, 1300.0),
+    ("fuel_aft",            290.0,  800.0),
+]
+
+# What the engine can actually do, for the thrust model and the tunnel.
+ENGINE_FULL = {
+    "designation":  "F110-GE-129",
+    "thrust_dry_n":     76300.0,
+    "thrust_ab_n":     129000.0,
+    "mass_flow_kgs":       122.0,   # at sea level static, max
+    "fan_diameter_m":        1.18,
+}
+
+
+def masses_full():
+    return list(MASS_FULL)
+
+
+def total_mass_kg():
+    return sum(m for (_, _, m) in MASS_FULL)
+
+
+def empty_mass_kg():
+    fuel = {"fuel_forward", "fuel_wing", "fuel_aft", "pilot", "oil_unusable"}
+    return sum(m for (n, _, m) in MASS_FULL if n not in fuel)
+
+
+def cg_x_full():
+    return (sum(x * m for (_, x, m) in MASS_FULL) /
+            sum(m for (_, _, m) in MASS_FULL))
+
+
+def cg_frac_mac_full():
+    return (cg_x_full() - mac_leading_edge_x()) / mean_aero_chord()
+
+
+def wing_area_m2():
+    return wing_area_mm2() * SCALE_TO_FULL ** 2 / 1e6
+
+
+def wing_loading_kg_m2():
+    return total_mass_kg() / wing_area_m2()
+
+
+def thrust_to_weight():
+    return ENGINE_FULL["thrust_ab_n"] / (total_mass_kg() * 9.80665)
