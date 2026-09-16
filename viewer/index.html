@@ -680,7 +680,21 @@ function flowPorts(state){
   // scale with the tunnel speed so the intake capture ratio -- the thing you
   // are actually looking at -- does not vanish when the wind comes up
   const v = state && state.v ? state.v/22 : 1;
-  const q = (0.012 + n1*0.075) * v;
+  /* Sized from THRUST, not from taste.
+   *
+   * It used to be 0.012 + 0.075.n1, which through this nozzle's 7.6 cm2 at
+   * the old expansion ratio came out at 332 m/s -- Mach 0.97 out of the back
+   * of a 440 mm model -- and implied several kilogrammes of thrust on a 564 g
+   * aeroplane. Solving T = rho.Q.(Q.expand/Ae - V0) for the thrust a model
+   * this size actually makes, about 0.7 of its weight dry:
+   *
+   *     Q = 0.0416 m3/s   face 37 m/s (1.7 x flight speed, so the capture
+   *                       tube is wider than the mouth, which is what a jet
+   *                       at low speed and high power looks like)
+   *     Ve = 99 m/s dry, 175 m/s reheated
+   *     T  = 3.9 N dry (0.71 W), 7.8 N reheated (1.4 W)
+   */
+  const q = (0.006 + n1*0.0356) * v;
   /* Volume flux, not mass flux. The solve is incompressible, so the tailpipe
    * has to pass the same mass through a much lower density: core gas leaves
    * near 900 K dry and 1900 K reheated against 288 K ambient, so the volume
@@ -689,7 +703,7 @@ function flowPorts(state){
    * rather than from taste also closes the mass budget -- the intake sink and
    * the tailpipe source now describe one engine instead of two unrelated
    * monopoles leaving a net source in the far field. */
-  const expand = 2.9 + 3.2*ab;
+  const expand = 1.8 + 1.4*ab;
   return [
     {p: [0.058, 0.0, -0.017], Q: -q,        r: 0.020},  // intake lip
     {p: [0.444, 0.0,  0.000], Q:  q*expand, r: 0.016},  // tailpipe

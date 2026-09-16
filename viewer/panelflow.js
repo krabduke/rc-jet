@@ -200,6 +200,23 @@ export class PanelFlow {
      * transpiration treatment a vortex lattice uses, and it is why the matrix
      * can be built once and every new attitude is a back-substitution. */
     this.controls = geom.controls || [];
+    /* Panels the machine breathes through.
+     *
+     * An intake is not a hole. A Dirichlet panel method needs a closed
+     * surface -- the interior potential is a statement about an inside --
+     * so the mouth stays closed and the engine becomes a prescribed NORMAL
+     * VELOCITY on those panels. The source strength already carries exactly
+     * that: sigma is the jump in normal velocity across the sheet, and a
+     * solid panel is only the case where the jump takes n.Vinf to zero.
+     * Air crossing the skin is the general case, not a special one.
+     */
+    this.inflow = geom.inflow || [];
+    this.flow = {in: 0, out: 0};
+    this.vn = new Float64Array(N);
+    // panels the air crosses: they are not wetted skin and they do not carry
+    // a pressure force on the airframe
+    this.isFlow = new Uint8Array(N);
+    for(const [j] of this.inflow) this.isFlow[j] = 1;
     this.deflect = {};
     this.nEff = new Float64Array(N*3);
     this.mu = new Float64Array(N);
@@ -462,6 +479,73 @@ export class PanelFlow {
    * surface velocity and the pressure off it. */
   setControl(id, deg){ this.deflect[id] = deg; return this; }
 
+  /* Volume flow the machine swallows and blows, in m3/s. They need not be
+   * equal: a hot exhaust passes the same mass through a lower density, and
+   * that extra volume is a real source the far field should see. */
+  setFlow(qIn, qOut){ this.flow = {in: qIn || 0, out: qOut || 0}; return this; }
+
+  /* Where a hot jet's extra volume is released.
+   *
+   * An incompressible solve has no temperature, so a jet leaving at 900 K
+   * carries its density change as a VOLUME source -- the same mass through
+   * a third of the density is three times the volume. That source is real
+   * and the far field should see it. Putting all of it on the nozzle face
+   * was the mistake: it makes a monopole a centimetre behind the tailplane,
+   * and at reheat it took 23 % off the aeroplane's lift. Mass-consistent
+   * volume crosses the nozzle; the expansion is released along the plume,
+   * over several diameters, which is where it happens.
+   */
+  _plume(){
+    const extra = this.flow.out - this.flow.in;
+    this.jet = [];
+    if(!(Math.abs(extra) > 1e-9) || !this.inflow.length) return;
+    let cx = 0, cy = 0, cz = 0, nx = 0, ny = 0, nz = 0, a = 0;
+    for(const [j, sgn] of this.inflow){
+      if(sgn < 0) continue;
+      cx += this.c[j*3]*this.area[j]; cy += this.c[j*3+1]*this.area[j];
+      cz += this.c[j*3+2]*this.area[j];
+      nx += this.nrm[j*3]*this.area[j]; ny += this.nrm[j*3+1]*this.area[j];
+      nz += this.nrm[j*3+2]*this.area[j];
+      a += this.area[j];
+    }
+    if(!(a > 0)) return;
+    cx /= a; cy /= a; cz /= a;
+    const ln = Math.hypot(nx, ny, nz) || 1;
+    nx /= ln; ny /= ln; nz /= ln;
+    const d = 2*Math.sqrt(a/Math.PI);          // an equivalent nozzle diameter
+    const n = 6;
+    for(let k = 0; k < n; k++){
+      // geometrically spaced, because a plume spreads as it goes and the
+      // near field is where the spacing has to be fine
+      const t = d * (0.6 * Math.pow(1.7, k));
+      this.jet.push({p: [cx + nx*t, cy + ny*t, cz + nz*t],
+                     Q: extra/n, r: d*(0.5 + 0.35*k)});
+    }
+  }
+
+  /* Potential and velocity of the plume at a point. A point source of
+   * strength Q has potential -Q/4.pi.r; the core keeps it finite. */
+  _jetPot(p){
+    if(!this.jet || !this.jet.length) return 0;
+    let f = 0;
+    for(const s of this.jet){
+      const dx = p[0]-s.p[0], dy = p[1]-s.p[1], dz = p[2]-s.p[2];
+      f += -s.Q/(4*Math.PI*Math.sqrt(dx*dx + dy*dy + dz*dz + s.r*s.r));
+    }
+    return f;
+  }
+
+  _jetVel(p, out){
+    if(!this.jet || !this.jet.length) return out;
+    for(const s of this.jet){
+      const dx = p[0]-s.p[0], dy = p[1]-s.p[1], dz = p[2]-s.p[2];
+      const r2 = dx*dx + dy*dy + dz*dz + s.r*s.r;
+      const k = s.Q/(4*Math.PI*r2*Math.sqrt(r2));
+      out[0] += k*dx; out[1] += k*dy; out[2] += k*dz;
+    }
+    return out;
+  }
+
   /* Rodrigues: turn n about `a` by `t`. */
   _turn(n, a, t, out){
     const c = Math.cos(t), s = Math.sin(t);
@@ -496,14 +580,37 @@ export class PanelFlow {
     this.vinf = [vinf[0], vinf[1], vinf[2]];
     this.vfs = Math.hypot(vinf[0], vinf[1], vinf[2]) || 1;
     this._effectiveNormals();
+    this.vn.fill(0);
     for(let j = 0; j < N; j++){
       this.sigma[j] = -(this.nEff[j*3]*vinf[0] + this.nEff[j*3+1]*vinf[1]
                       + this.nEff[j*3+2]*vinf[2]);
     }
+    /* sigma = Vn - n.Vinf, where Vn is the normal velocity through the skin,
+     * positive outward. A solid panel has Vn = 0; an intake face has it
+     * negative and a nozzle positive, spread over the tagged panels by area
+     * so the stated volume flow is what actually crosses. */
+    if(this.inflow.length && (this.flow.in || this.flow.out)){
+      let aIn = 0, aOut = 0;
+      for(const [j, sgn] of this.inflow)
+        if(sgn < 0) aIn += this.area[j]; else aOut += this.area[j];
+      const vIn = aIn > 0 ? this.flow.in / aIn : 0;
+      // the FACE passes the volume it swallowed; the expansion is the plume's
+      const vOut = aOut > 0 ? this.flow.in / aOut : 0;
+      for(const [j, sgn] of this.inflow){
+        const vn = sgn < 0 ? -vIn : vOut;
+        this.sigma[j] += vn;
+        this.vn[j] = vn;
+      }
+    }
+    this._plume();
+    const p = [0, 0, 0];
     for(let i = 0; i < N; i++){
       let s = 0;
       for(let j = 0; j < N; j++) s += this.B[i*N+j]*this.sigma[j];
-      this.rhs[i] = -s;
+      // the plume is a KNOWN field, so it goes in the right-hand side and
+      // costs no unknowns -- the same place the freestream itself sits
+      p[0] = this.c[i*3]; p[1] = this.c[i*3+1]; p[2] = this.c[i*3+2];
+      this.rhs[i] = -s - this._jetPot(p);
     }
     luSolve(this.LU, this.piv, this.rhs, N, this.mu);
     this._surface();
@@ -581,6 +688,21 @@ export class PanelFlow {
       this.vs[i*3]   = vt*F.t[0] + vs*F.s[0];
       this.vs[i*3+1] = vt*F.t[1] + vs*F.s[1];
       this.vs[i*3+2] = vt*F.t[2] + vs*F.s[2];
+      /* Bernoulli does not hold across an engine, so the faces it breathes
+       * through do not get a pressure.
+       *
+       * They are not wetted skin: they are a cut across a streamtube, drawn
+       * where the airframe happens to end. Putting the local speed into
+       * Cp = 1 - (V/Vinf)^2 gave the nozzle Cp = -62 at reheat, which is a
+       * faithful statement about the velocity and nonsense as a pressure --
+       * a jet leaves at very nearly ambient static pressure, having had
+       * energy ADDED, which is the one thing Bernoulli assumes did not
+       * happen. Integrated, it was 14 N of drag on a 5.5 N aeroplane.
+       *
+       * The engine is accounted for as thrust instead, which is where it
+       * belongs, and these panels are left out of the airframe's forces.
+       */
+      if(this.isFlow[i]){ this.cp[i] = 0; continue; }
       const q = (vt*vt + vs*vs)/(this.vfs*this.vfs);
       this.cp[i] = 1 - q;
     }
@@ -590,11 +712,28 @@ export class PanelFlow {
   forces(){
     const f = [0, 0, 0];
     for(let i = 0; i < this.N; i++){
+      if(this.isFlow[i]) continue;
       const k = -this.cp[i]*this.area[i];
       f[0] += k*this.nEff[i*3]; f[1] += k*this.nEff[i*3+1];
       f[2] += k*this.nEff[i*3+2];
     }
     return f;   // divided by q_inf; multiply by 0.5 rho V^2 for newtons
+  }
+
+  /* Net thrust, in newtons.
+   *
+   *     T = mdot (Ve - V0)
+   *
+   * with the mass flow taken at the intake, because mass is what is
+   * conserved: the exhaust passes the same mass through a lower density, so
+   * it leaves faster and through a volume this solve treats as a source. */
+  thrust(rho = 1.225){
+    if(!this.inflow.length) return 0;
+    let aOut = 0;
+    for(const [j, sgn] of this.inflow) if(sgn > 0) aOut += this.area[j];
+    if(!(aOut > 0) || !this.flow.in) return 0;
+    const ve = this.flow.out / aOut;
+    return rho * this.flow.in * (ve - this.vfs);
   }
 
   /* Induced drag, from the wake in the Trefftz plane.
@@ -822,6 +961,7 @@ export class PanelFlow {
    * for the elements near the point, lumped for the rest. */
   velocity(p, out){
     out[0] = this.vinf[0]; out[1] = this.vinf[1]; out[2] = this.vinf[2];
+    this._jetVel(p, out);
     const L = this.L, cell = this.cell, near = this.nearCells;
     const kx = Math.floor(p[0]/cell), ky = Math.floor(p[1]/cell),
           kz = Math.floor(p[2]/cell);
@@ -909,7 +1049,7 @@ export class PanelFlow {
     const b = this.box;
     if(p[0] < b[0] || p[0] > b[1] || p[1] < b[2] || p[1] > b[3]
        || p[2] < b[4] || p[2] > b[5]){
-      if(probe){ probe.near = Infinity; probe.size = 0; }
+      if(probe){ probe.near = Infinity; probe.size = 0; probe.solid = false; }
       return false;
     }
     /* The solid angle by its point approximation rather than the exact one.
@@ -959,7 +1099,9 @@ export class PanelFlow {
       probe.nx = this.nrm[ni*3]; probe.ny = this.nrm[ni*3+1];
       probe.nz = this.nrm[ni*3+2];
     }
-    if(om < -2*Math.PI) return true;
+    const solid = om < -2*Math.PI;
+    if(probe) probe.solid = solid;
+    if(solid) return true;
     const st = this.nearStop;
     return st > 0 && ni >= 0 && near < st*st;
   }
@@ -968,6 +1110,7 @@ export class PanelFlow {
      the thing it approximates. */
   velocityExact(p, out){
     out[0] = this.vinf[0]; out[1] = this.vinf[1]; out[2] = this.vinf[2];
+    this._jetVel(p, out);
     for(let i = 0; i < this.els.length; i++){
       const e = this.els[i];
       if(this.es[i]) sourceVelocity(p, e.q, this.es[i], out, e.F);

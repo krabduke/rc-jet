@@ -202,6 +202,38 @@ for(const c of cfg.controls){
        + ' -- its hinge axis or its panels are wrong');
 }
 
+/* ---- the engine breathes.
+ *
+ * This is here because it silently stopped. The old source-panel field gave
+ * the intake a point sink; closing the mouth for the Dirichlet condition was
+ * right, and the plan was to make it a prescribed normal velocity instead --
+ * which never got written. The geometry emitted an empty inflow list, the
+ * solver never read one, and the throttle moved nothing in the flow for as
+ * long as it took someone to look.
+ */
+{
+  const ins = geom.inflow.filter(x => x[1] < 0).length;
+  const out = geom.inflow.filter(x => x[1] > 0).length;
+  console.log(`\nENGINE`);
+  console.log(`   faces tagged   ${ins} intake, ${out} nozzle`);
+  if(!ins || !out) fail('the engine has no faces to breathe through');
+  console.log('   throttle      Q m3/s   thrust N    T/W      CL');
+  let lastT = -1e9;
+  for(const [nm, n1, ab] of [['off',0,0],['idle',0.62,0],['mil',1,0],['reheat',1,1]]){
+    const q = 0.006 + n1*0.0356, expand = 1.8 + 1.4*ab;
+    pf.setFlow(q, q*expand);
+    const r = T.solve({...base, alpha: 10});
+    const th = pf.thrust();
+    console.log(`   ${nm.padEnd(12)} ${q.toFixed(4)}   ${th.toFixed(2).padStart(7)}`
+              + `  ${(th/(cfg.mass_kg*9.81)).toFixed(2).padStart(6)}   ${r.CL.toFixed(4)}`);
+    if(th <= lastT) fail(`thrust did not rise from ${nm}`);
+    lastT = th;
+  }
+  if(lastT/(cfg.mass_kg*9.81) > 3 || lastT/(cfg.mass_kg*9.81) < 0.5)
+    fail(`full reheat gives T/W ${(lastT/(cfg.mass_kg*9.81)).toFixed(2)} -- not an aeroplane`);
+  pf.setFlow(0, 0);
+}
+
 /* ---- and the field is one a streamline can be drawn in */
 const a = (cfg.alpha_default || 4)*Math.PI/180;
 const V = cfg.v_default;

@@ -432,6 +432,7 @@ export class BodyField {
       omega += a[j]*(rx*n[j*3] + ry*n[j*3+1] + rz*n[j*3+2])/(r2*r);
     }
     // outward normals, r measured from the surface to p: -4.pi inside, 0 out
+    if(probe) probe.solid = omega < -2*Math.PI;
     if(omega < -2*Math.PI) return true;
     /* And stop short of the skin as well as at it.
      *
@@ -624,30 +625,38 @@ function slide(v, probe, cap){
 }
 
 
-export function traceLine(vel, seed, opts){
-  const {maxSteps = 260, ds = 0.05, xEnd = 1e9, bounds = null,
-         body = null, dsMin = ds*0.12, skin = 0} = opts || {};
+/* March one way along the field from a seed. `dir` is +1 downstream and -1
+ * upstream; everything else is the same arithmetic, because a streamline is
+ * a streamline whichever way you walk it. */
+function march(vel, seed, opts, dir){
+  const {maxSteps = 260, ds = 0.05, xEnd = 1e9, xStart = -1e9, bounds = null,
+         body = null, dsMin = ds*0.06, skin = 0} = opts || {};
   const pts = [], spd = [];
-  // how close this line ever came to the skin, for free: the inside test is
-  // run every step anyway and already knows
-  let near = Infinity;
+  let near = Infinity, stopped = 'steps';
   const p = [seed[0], seed[1], seed[2]];
-  const v = [0,0,0], k1 = [0,0,0], mid = [0,0,0];
+  const v = [0,0,0], k1 = [0,0,0], mid = [0,0,0], q = [0,0,0];
   const probe = body ? {near: Infinity} : null;
+  const cross = body ? {near: Infinity, solid: false} : null;
   const ports = body && body.ports && body.ports.length ? body.ports : null;
   for(let s = 0; s < maxSteps; s++){
-    if(body && body.inside(p, probe)) break;
+    if(body){
+      body.inside(p, probe);
+      // being close to the skin is not a reason to stop -- the flow is
+      // closest to the skin exactly where it is most worth seeing. Being
+      // INSIDE is, and by here that means the lift-out above failed too.
+      if(probe.solid){ stopped = 'skin'; break; }
+    }
     if(probe && probe.near < near) near = probe.near;
     vel(p, v);
     const m = Math.hypot(v[0], v[1], v[2]);
-    if(!isFinite(m) || m < 1e-6) break;
+    if(!isFinite(m) || m < 1e-6){ stopped = 'stagnation'; break; }
     pts.push(p[0], p[1], p[2]);
     spd.push(m);
-    if(p[0] > xEnd) break;
+    if(dir > 0 ? p[0] > xEnd : p[0] < xStart){ stopped = 'exit'; break; }
     if(bounds && (p[1] < bounds[0] || p[1] > bounds[1]
-               || p[2] < bounds[2] || p[2] > bounds[3])) break;
-    const h = probe && isFinite(probe.near)
-      ? Math.min(ds, Math.max(dsMin, probe.near * 0.55)) : ds;
+               || p[2] < bounds[2] || p[2] > bounds[3])){ stopped = 'bounds'; break; }
+    const h = dir * (probe && isFinite(probe.near)
+      ? Math.min(ds, Math.max(dsMin, probe.near * 0.45)) : ds);
     if(skin > 0 && probe) slide(v, probe, skin);
     const mt = Math.hypot(v[0], v[1], v[2]) || m;
     k1[0] = v[0]/mt; k1[1] = v[1]/mt; k1[2] = v[2]/mt;
@@ -657,8 +666,50 @@ export function traceLine(vel, seed, opts){
     vel(mid, v);
     if(skin > 0 && probe) slide(v, probe, skin);
     const m2 = Math.hypot(v[0], v[1], v[2]) || 1;
-    p[0] += v[0]/m2*h; p[1] += v[1]/m2*h; p[2] += v[2]/m2*h;
-    if(ports){
+    /* A streamline does not go INTO the aeroplane.
+     *
+     * The solved surface has no normal velocity on it, so a step that lands
+     * inside is integration error and nothing else -- measured, every line
+     * that used to stop at the skin was travelling at full freestream speed
+     * and the next step put it 13 to 18 mm in. It happens because the step is
+     * sized on the distance to the nearest panel CENTROID, which on a thin
+     * surface is not the distance to the surface: a point 13 mm from a
+     * centroid can be a millimetre from the skin, or on the far side of a
+     * 5 mm thick wingtip.
+     *
+     * So the step is halved until it stays outside, and if six halvings will
+     * not do it the point is lifted back out along the local normal and the
+     * line carries on. A line may only END where the air does: at a
+     * stagnation point, which is caught by the speed test above.
+     */
+    let hh = h, tries = 0;
+    for(;;){
+      q[0] = p[0] + v[0]/m2*hh;
+      q[1] = p[1] + v[1]/m2*hh;
+      q[2] = p[2] + v[2]/m2*hh;
+      if(!body) break;
+      body.inside(q, cross);
+      if(!cross.solid) break;
+      if(++tries > 8){
+        // lift it out along the local normal, in steps, rather than in one
+        // jump: under a car's floor the gap is a tenth of a panel and one
+        // full-size lift lands on the road instead of in the gap
+        let out = false;
+        for(let k = 0; k < 4 && !out; k++){
+          const lift = ((cross.size || 0) * 0.22
+                      + (isFinite(cross.near) ? cross.near * 0.5 : 0));
+          if(!(lift > 0)) break;
+          q[0] += cross.nx * lift; q[1] += cross.ny * lift; q[2] += cross.nz * lift;
+          body.inside(q, cross);
+          out = !cross.solid;
+        }
+        if(!out){ stopped = 'skin'; return {pts, spd, near, stopped}; }
+        break;
+      }
+      hh *= 0.5;
+    }
+    p[0] = q[0]; p[1] = q[1]; p[2] = q[2];
+    if(ports && dir > 0){
       // a sink mouth swallows the line: this is air entering an engine or a
       // fan, and the right thing to draw is a line that ends at the lip
       for(const q of ports){
@@ -666,13 +717,52 @@ export function traceLine(vel, seed, opts){
         const dx = p[0] - q.p[0], dy = p[1] - q.p[1], dz = p[2] - q.p[2];
         if(dx*dx + dy*dy + dz*dz < q.r*q.r*4){
           pts.push(p[0], p[1], p[2]); spd.push(m2);
-          return {pts, spd, near, captured: true};
+          return {pts, spd, near, stopped: 'ingested'};
         }
       }
     }
   }
-  return {pts, spd, near};
+  return {pts, spd, near, stopped};
 }
+
+/* Trace one streamline through a velocity field.
+ *
+ * BOTH WAYS from the seed, when `back` is set. A streamline seeded on the
+ * skin and walked only downstream is drawn as a line that BEGINS on the
+ * aeroplane -- air appearing out of the surface. Those seeds are 28 % of the
+ * budget and, being close to the model by construction, nearly all of them
+ * survive the proximity filter: 84 of the 161 lines on screen, over half the
+ * picture, started on the skin. Walked upstream as well, the same line comes
+ * in from the freestream, wraps the surface and leaves, which is what it is.
+ *
+ * The line is returned head to tail: the upstream half reversed, then the
+ * downstream half, so arc length runs with the flow and the travelling pulse
+ * still means something.
+ */
+export function traceLine(vel, seed, opts){
+  const fwd = march(vel, seed, opts, +1);
+  const back = (opts && opts.back) ? march(vel, seed, opts, -1) : null;
+  if(!back || back.spd.length < 2){
+    return {pts: fwd.pts, spd: fwd.spd, near: fwd.near,
+            captured: fwd.stopped === 'ingested',
+            ends: [back ? back.stopped : 'seed', fwd.stopped]};
+  }
+  const pts = [], spd = [];
+  // the backward march starts at the seed, so drop its first point and lay
+  // the rest down in reverse
+  for(let i = back.spd.length - 1; i >= 1; i--){
+    pts.push(back.pts[i*3], back.pts[i*3+1], back.pts[i*3+2]);
+    spd.push(back.spd[i]);
+  }
+  for(let i = 0; i < fwd.spd.length; i++){
+    pts.push(fwd.pts[i*3], fwd.pts[i*3+1], fwd.pts[i*3+2]);
+    spd.push(fwd.spd[i]);
+  }
+  return {pts, spd, near: Math.min(fwd.near, back.near),
+          captured: fwd.stopped === 'ingested',
+          ends: [back.stopped, fwd.stopped]};
+}
+
 
 /* Colour maps.
  *

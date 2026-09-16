@@ -107,6 +107,15 @@ export class CFDView {
      * pass wide: at this cut the discarded seeds sit 3.1 m off the centreline
      * on average against 0.9 m for the ones kept, on a car 4.6 m long. */
     this.disturb = {speed: 0.35, deflect: 0.55, near: 0.20};
+    /* `dash` is the arc length of one travelling pulse, and it has to be a
+     * fraction of the MODEL.
+     *
+     * It was 0.9 m, chosen on a car 4.98 m long whose lines run about ten
+     * metres -- eleven pulses a line, which reads as flow moving. The same
+     * 0.9 m on a 0.44 m aeroplane whose lines are 1.2 m long is 1.4 pulses a
+     * line, and since the pulse sits at 34 % brightness for about seventy
+     * per cent of its period, what that draws is one bright head and a line
+     * that has mostly vanished. Set in _buildSeeds from the model's length. */
     this.anim = {on: true, rate: 0.55, dash: 0.9, pulse: 1.0};
     this.range = {auto: true, lo: 0.35, hi: 1.45};   // x freestream
     this.cpRange = {lo: -3.0, hi: 1.0};
@@ -235,6 +244,11 @@ export class CFDView {
     this.surf = seeds.slice(this.rake.length);
     this.seeds = seeds;
     this.domain = {spanY, spanZ, xs, diag, L};
+    // Just under half the model's length, which puts about eleven pulses on a
+    // line that runs a few model lengths -- the density the car had, and the
+    // density at which a pulse reads as a travelling wave rather than as a
+    // dotted line.
+    this.anim.dash = L * 0.45;
   }
 
   /* ------------------------------------------------------------------ solve */
@@ -245,7 +259,7 @@ export class CFDView {
    * That leaves the validated lattice solve untouched and settles the coupling.
    */
   _prepare(vinf, latticeVel, ports){
-    if(this.pf) return this._preparePanel(vinf);
+    if(this.pf) return this._preparePanel(vinf, ports);
     const N = this.body.N;
     this.vinf = vinf;
     this.body.setPorts(ports || null);
@@ -288,6 +302,8 @@ export class CFDView {
       // panelled body -- a car's floor at 100 mm a panel -- from claiming a
       // band wider than the gap it has to leave open underneath it.
       skin: this.domain.diag * 0.045,
+      back: TRACE_STEPS,
+      xStart: this.domain.xs - span * 0.15,
       bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
     };
   }
@@ -300,8 +316,22 @@ export class CFDView {
    * whole reason for the method and the thing the two-solver arrangement
    * could not say.
    */
-  _preparePanel(vinf){
+  _preparePanel(vinf, ports){
     this.vinf = vinf;
+    /* The engine, as a boundary condition rather than as a point sink.
+     *
+     * The ports callback already says how much the machine swallows and
+     * blows -- it was written for the source-panel field, where an intake
+     * was a point sink sitting in front of a solid nose. On a closed panel
+     * surface the same numbers say something better: this much volume
+     * crosses these panels. The capture streamtube then forms because the
+     * skin is permeable there, not because a sink is pulling at it.
+     */
+    let qIn = 0, qOut = 0;
+    for(const q of (ports || [])){
+      if(q.Q < 0) qIn -= q.Q; else qOut += q.Q;
+    }
+    this.pf.setFlow(qIn, qOut);
     this.pf.solve(vinf);
     this.vel = (p, out) => this.pf.velocity(p, out);
     this.vfs = Math.hypot(vinf[0], vinf[1], vinf[2]) || 1;
@@ -324,6 +354,15 @@ export class CFDView {
        * zero either way. So: 6.
        */
       skin: this.domain.diag * 0.03,
+      /* Walked upstream from the seed as well.
+       *
+       * A line seeded on the skin and walked only downstream is drawn
+       * beginning ON the aeroplane, which is air appearing out of the
+       * surface. Those seeds are 28 % of the budget and nearly all of them
+       * survive the proximity filter, so over half the lines on screen
+       * started that way. */
+      back: TRACE_STEPS,
+      xStart: this.domain.xs - span * 0.15,
       bounds: [-mY, mY, this.cfg.ground ? 0.0 : zc - mZ, zc + mZ],
     };
     return this;
@@ -674,14 +713,26 @@ export class CFDView {
      * sqrt(170/n) -- and a floor, because a ribbon thinner than a pixel
      * stops reading as a ribbon and starts flickering.
      */
-    /* Scaled by the lines actually DRAWN, not the lines seeded.
+    /* Scaled by the RIBBON actually drawn, not by the number of lines.
      *
-     * Those parted company when the filter became a proximity test: the rake
-     * fires 560 and anywhere between 90 and 430 survive depending on the
-     * attitude, so keying the ink to 560 made the picture thin when it kept
-     * few and solid when it kept many -- the opposite of what the scaling is
-     * for. */
-    const ink = Math.sqrt(170 / Math.max(traced.length, 1));
+     * Ink on the picture is length times width, so the thing to hold constant
+     * is length times width -- and the length is not a property of the line
+     * count. Two changes broke that assumption in turn: the proximity filter,
+     * which made the drawn count vary between 90 and 430 with attitude while
+     * the seeded count stayed at 560; and walking each line upstream as well
+     * as down, which doubled every line's length at a stroke and doubled the
+     * ink without changing the count at all. So it is measured: total arc
+     * length, in model lengths, against what read well before.
+     */
+    let drawn = 0;
+    for(const L of traced){
+      const n = L.spd.length;
+      for(let i = 1; i < n; i++)
+        drawn += Math.hypot(L.pts[i*3] - L.pts[(i-1)*3],
+                            L.pts[i*3+1] - L.pts[(i-1)*3+1],
+                            L.pts[i*3+2] - L.pts[(i-1)*3+2]);
+    }
+    const ink = Math.sqrt(460 / Math.max(drawn / Math.max(this.domain.L, 1e-6), 1));
     /* The floor is a fraction of the model, not a number of metres.
      *
      * It used to be 0.0013 m, chosen on a car 4.98 m long. On a 0.44 m model
@@ -750,7 +801,15 @@ export class CFDView {
           // way of giving.
           float ph = fract(vArc/uDash - uTime*uRate*max(vSpd, 0.12));
           float head = smoothstep(0.0, 0.14, ph) * (1.0 - smoothstep(0.14, 0.85, ph));
-          float b = mix(1.0, 0.34 + 1.45*head, uPulse);
+          /* The trough stays bright enough to be a line.
+           *
+           * At 0.34 the pulse spends about seventy per cent of its period
+           * nearly invisible, so with many pulses on a line the line reads as
+           * a row of dots and with few it reads as one comet and a gap. The
+           * point of the pulse is to show WHICH WAY and HOW FAST the air is
+           * going, and a travelling brightening does that without the line
+           * having to disappear between heads. */
+          float b = mix(1.0, 0.72 + 0.85*head, uPulse);
           // Fake the round section: the middle of the ribbon reads as the lit
           // crown of a tube and the edges fall away, so a dense field of lines
           // reads as depth instead of as flat paint.

@@ -142,6 +142,37 @@ def _mirror(stations):
     return [(x, -y, z, c, t, w) for (x, y, z, c, t, w) in stations]
 
 
+# The intake mouth, on the chin under the nose. Same superellipse the old
+# source panelisation used to cut a HOLE with -- but a Dirichlet interior
+# condition needs an inside, so the mouth stays closed and the engine becomes
+# a prescribed normal velocity through those panels instead. That is what an
+# intake is: a piece of skin the air goes through.
+INTAKE = {"x0": 44.0, "x1": 68.0, "y": 23.0, "z": -17.0, "h": 13.5}
+
+
+def engine_faces(g):
+    """Tag the panels the engine breathes through.
+
+    Ingest through the intake mouth, exhaust through the nozzle. Both are
+    ordinary panels carrying an ordinary boundary condition; what makes them
+    an engine is that the condition says air crosses them.
+    """
+    intake, exhaust = [], []
+    for i, q in enumerate(g.quads):
+        c = _centroid(q)
+        if g.body[i] == "fuselage" and INTAKE["x0"] <= c[0] <= INTAKE["x1"]:
+            if ((c[1] / INTAKE["y"]) ** 2
+                    + ((c[2] - INTAKE["z"]) / INTAKE["h"]) ** 2) <= 1.0:
+                intake.append(i)
+    for (name, start, count) in g.parts:
+        if name == "tail_cap":
+            exhaust = list(range(start, start + count))
+    for i in intake:
+        g.inflow.append([i, -1])
+    for i in exhaust:
+        g.inflow.append([i, 1])
+
+
 def build(n_x=20, n_theta=16, gap=None):
     """The whole aeroplane, trimmed into one surface."""
     g = Geom()
@@ -189,6 +220,7 @@ def build(n_x=20, n_theta=16, gap=None):
             V["rudder_span"], vertical=True)
 
     g.trimmed = trim(g)
+    engine_faces(g)
     return g
 
 
