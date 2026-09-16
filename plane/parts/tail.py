@@ -1,4 +1,5 @@
-"""Tail surfaces: all-moving stabilators, swept fin with rudder, ventral fins."""
+"""Full-size jet tail: all-moving stabilators on trunnion bearings, swept fin
+with hydraulic rudder actuator in the root, ventral fins."""
 
 import math
 import sys, os
@@ -23,71 +24,85 @@ def build():
 
 
 def _pivots_hw():
-    """What the stabilators actually turn on.
+    """How the stabilators are carried and driven, full size.
 
-    An all-moving tail is carried on a shaft, and the shaft runs in a bearing.
-    None of that was here: the two surfaces ended at a root rib and the horn
-    floated inboard of it with nothing between.
+    Each surface turns on a steel trunnion shaft carried in two spherical
+    rolling bearings seated in a fuselage frame. A full-size machine carries
+    its all-moving tail on bearings sized for the hinge moment of an
+    eleven-tonne surface, so the bearing pitch is set by structure, not by
+    whatever fits between thrust tube and skin.
 
-    The whole assembly is squeezed into the pocket between the thrust tube and
-    the skin -- 4.8 mm tall, 9 mm wide, low on the fuselage side. That is why
-    the shaft is 3 mm, the bush is 4.2 mm across and the arm lies fore-and-aft
-    instead of standing up off the surface. A turbine's tailpipe leaves a model
-    this size nowhere else to put it.
+    It is driven by an integrated hydraulic servo-actuator, one per surface,
+    mounted inside the fuselage: body, ram, manifold block, and the two
+    pressure lines running forward to the utility system. Nothing protrudes
+    through the skin. A full-size aeroplane cannot use the model's horn and
+    clevis: a model servo can sit anywhere and its pushrod needs three
+    millimetres of access, so the link went through the pocket between the
+    thrust tube and the skin -- 4.8 mm tall, 9 mm wide, which is why the arm
+    lay fore-and-aft. An F110's actuators live behind sealed skin panels and
+    drive the trunnion directly, so there is no external linkage at all.
     """
     out = {}
     px, pz = spec.stab_pivot()
     for side, sgn in (("l", -1.0), ("r", 1.0)):
-        y_root = sgn * H["root_y"]
         parts = []
-        # the shaft: 3 mm, from inside the bearing out into the root rib
+        y_root = sgn * H["root_y"]
+        # trunnion shaft: from forward bearing out into the root rib, sized
+        # for a full-size hinge moment, not a 3 mm model wire
+        shank_r = H["thickness"] * H["root_chord"] * 0.42
         parts.append(mesh.pipe(
-            [(px, sgn * 6.0, pz), (px, y_root + sgn * 7.0, pz)], 1.5, 16))
-        # the bush it turns in, bonded into the side of the fuselage
-        bv, bf = mesh.revolve_ring([(0.0, 1.6), (0.0, 2.1), (7.0, 2.1),
-                                    (7.0, 1.6)], 20)
-        parts.append(([(pz_ + px, sgn * px_ + sgn * 6.2, py_ + pz)
-                       for (px_, py_, pz_) in bv], bf))
-        # the collar that stops the shaft walking out, and its grub screw
-        cv, cf = mesh.revolve_ring([(0.0, 1.6), (0.0, 2.2), (2.6, 2.2),
-                                    (2.6, 1.6)], 18)
-        parts.append(([(pz_ + px, sgn * px_ + y_root - sgn * 3.4, py_ + pz)
-                       for (px_, py_, pz_) in cv], cf))
-        gv, gf = mesh.cylinder(0.0, 2.2, 0.8, 10)
-        parts.append(([(pz_ + px, py_ + y_root - sgn * 2.1, px_ + pz + 1.7)
-                       for (px_, py_, pz_) in gv], gf))
+            [(px, sgn * 4.0, pz), (px, y_root + sgn * 7.0, pz)], shank_r, 16))
+        # two spherical bearings, one either side of the tailpipe, pressed
+        # into bores in a fuselage frame
+        for yb in (sgn * 5.0, sgn * 11.0):
+            bv, bf = mesh.revolve_ring(
+                [(0.0, shank_r * 1.12), (0.0, shank_r * 1.85),
+                 (shank_r * 1.55, shank_r * 1.85),
+                 (shank_r * 1.55, shank_r * 1.12)], 20)
+            parts.append(([(pz_ + px, px_ + yb, py_ + pz)
+                           for (px_, py_, pz_) in bv], bf))
+        # the fuselage frame web the bearings sit in, spanning the tailpipe
+        frv, frf = mesh.box(px + H["root_chord"] * 0.30, sgn * 8.0, pz,
+                            H["root_chord"] * 0.72, 2.4, H["root_chord"] * 0.34)
+        parts.append((frv, frf))
         out[f"stab_pivot_{side}"] = mesh.join(*parts)
-        out.update(_stab_horn(side, sgn, px, pz))
+        out.update(_stab_servo(side, sgn, px, pz))
     return out
 
 
-def _stab_horn(side, sgn, px, pz):
-    """The arm on the inboard end of the stabilator shaft, and its clevis.
+def _stab_servo(side, sgn, px, pz):
+    """Integrated hydraulic servo-actuator driving one stabilator.
 
-    A lever pointing forward, lying along the pocket: nine millimetres of arm
-    swinging a couple of millimetres either side of the shaft axis, which is
-    all the room there is. Three holes, because which one the rod goes in is
-    how the throw is set.
+    Body, ram, manifold block, and the two pressure lines, all inside the
+    fuselage. The ram picks up on the trunnion shaft inboard of the frame, so
+    the actuator torques the surface through its own pivot rather than through
+    a lever out on the shaft -- no horn, no clevis, nothing through the skin.
     """
-    tip = spec.stab_horn_tip(sgn)
-    y = tip[1]
-    arm = shapes.panel_outline(
-        [(px + 2.6, pz - 1.9), (px + 2.6, pz + 1.9),
-         (tip[0] - 1.6, pz + 1.1), (tip[0] - 1.6, pz - 1.1)], subdiv=4)
-    parts = [shapes.shaped_panel(arm, y, 2.0, rim_seg=3)]
-    for k in (0.55, 0.78, 1.0):
-        x = px + (tip[0] - px) * k
-        hv, hf = mesh.revolve_closed(
-            [(-1.3, 0.42), (1.3, 0.42), (1.3, 0.78), (-1.3, 0.78)], 12)
-        parts.append(([(pz_ + x, px_ + y, py_ + pz)
-                       for (px_, py_, pz_) in hv], hf))
-    # the boss where it is clamped to the shaft
-    bv, bf = mesh.revolve_ring([(0.0, 1.6), (0.0, 1.9), (2.4, 1.9),
-                                (2.4, 1.6)], 18)
-    parts.append(([(pz_ + px, sgn * px_ + y - sgn * 1.2, py_ + pz)
-                   for (px_, py_, pz_) in bv], bf))
-    return {f"horn_s{side}": mesh.join(*parts),
-            f"clevis_s{side}": shapes.clevis(tip, (-1.0, 0.0, 0.0), 1.3)}
+    parts = []
+    y = sgn * (H["root_y"] - 3.0)
+    # actuator body: barrel of the hydraulic cylinder, trunnion-mounted to a
+    # lug off the fuselage frame
+    r_b = H["root_chord"] * 0.055
+    bvv, bf = mesh.revolve_ring(
+        [(0.0, r_b), (0.0, r_b * 1.28), (r_b * 3.4, r_b * 1.28),
+         (r_b * 3.4, r_b)], 20)
+    parts.append(([(px_ + px + r_b * 0.6, px_ * sgn + y, py_ + pz - r_b * 1.7)
+                   for (px_, py_, pz_) in bvv], bf))
+    # ram: rod out forward to pick up on the trunnion shaft
+    parts.append(mesh.pipe(
+        [(px + r_b * 3.4, y, pz - r_b * 1.7), (px + r_b * 0.9, y, pz - r_b * 1.7)],
+        r_b * 0.42, 12))
+    # manifold block between the pressure lines and the cylinder ports
+    mv, mf = mesh.box(px + r_b * 1.6, y, pz - r_b * 2.6,
+                      r_b * 1.4, r_b * 1.6, r_b * 1.4)
+    parts.append((mv, mf))
+    # two pressure lines running forward into the fuselage
+    for dy in (-r_b * 0.9, r_b * 0.9):
+        parts.append(mesh.pipe(
+            [(px + r_b * 1.6, y + sgn * dy, pz - r_b * 2.6),
+             (px - H["root_chord"] * 0.32, y + sgn * dy, pz - r_b * 2.9)],
+            r_b * 0.22, 10))
+    return {f"stab_servo_{side}": mesh.join(*parts)}
 
 
 def _stabilators():
@@ -115,7 +130,15 @@ def _stabilators():
 
 
 def _fin():
-    """Vertical fin plus a hinged rudder."""
+    """Vertical fin plus a hinged rudder.
+
+    Full size, the rudder is driven by a hydraulic servo-actuator buried in
+    the fin root -- there is no pushrod out through the skin and no horn on
+    the rudder span, because anything proud of a full-size contour is drag
+    and a FOD/ice hazard. The fin tip carries an ECM/antenna fairing, which
+    is why the tip chord is as long as it is: the avionics inside need the
+    volume.
+    """
     out = {}
     ru = 1.0 - V["rudder_chord"]
     out["vtail_fin"] = common.panel(
@@ -125,6 +148,8 @@ def _fin():
         thickness=V["thickness"], thickness_tip=V["thickness_tip"],
         tip_cap=6, camber=0.0,
         u0=0.0, u1=ru, n_span=20, n_chord=NC, vertical=True)
+    out.update(_rudder_servo(ru))
+    out.update(_fin_tip_fairing(ru))
 
     h_span = V["height"] * V["rudder_span"]
     c_root = V["root_chord"]
@@ -143,6 +168,68 @@ def _fin():
           (x - hinge_x) * sa + y * ca, z) for (x, y, z) in v]
     out["rudder"] = (v, f)
     return out
+
+
+def _rudder_servo(ru):
+    """Hydraulic servo-actuator for the rudder, in the fin root.
+
+    Entirely inside the fin contour: a cylinder above the fin's lower rudder
+    cut pushing forward on a crank off the rudder's forward extension. A
+    full-size rudder is driven from inside its root fairing because the hinge
+    line is buried in the fin/fuselage junction, and no fitting may stand
+    proud of the contour -- a leak weeps into a bay, not over the skin.
+    """
+    parts = []
+    c_root = V["root_chord"]
+    # sit on the fin centreline, low on the fin, ahead of the hinge
+    hinge_x = V["x_root_le"] + ru * c_root
+    z = V["z_root"] + V["height"] * 0.12
+    r_b = c_root * 0.05
+    yc = 0.0
+    # actuator body: barrel of the hydraulic cylinder
+    bvv, bf = mesh.revolve_ring(
+        [(0.0, r_b), (0.0, r_b * 1.25), (r_b * 3.2, r_b * 1.25),
+         (r_b * 3.4, r_b)], 20)
+    parts.append(([(px_ + hinge_x - r_b * 3.6, px_ * 1.0 + yc, py_ + z)
+                   for (px_, py_, pz_) in bvv], bf))
+    # ram forward to a crank on the rudder's forward balance extension
+    parts.append(mesh.pipe(
+        [(hinge_x - r_b * 0.5, yc, z), (hinge_x - r_b * 3.2, yc, z)],
+        r_b * 0.42, 12))
+    # manifold block between the pressure lines and the cylinder ports
+    mv, mf = mesh.box(hinge_x - r_b * 3.0, yc, z - r_b * 2.4,
+                      r_b * 1.3, r_b * 1.5, r_b * 1.3)
+    parts.append((mv, mf))
+    # pressure lines forward into the fuselage spine, inside the root
+    for dy in (-r_b * 0.85, r_b * 0.85):
+        parts.append(mesh.pipe(
+            [(hinge_x - r_b * 3.0, yc + dy, z - r_b * 2.4),
+             (V["x_root_le"] - c_root * 0.18, yc, V["z_root"] + 2.0)],
+            r_b * 0.2, 10))
+    return {"rudder_servo": mesh.join(*parts)}
+
+
+def _fin_tip_fairing(ru):
+    """ECM/antenna fairing on the fin tip.
+
+    Fin-tip volume is free volume: it is above the boundary layer the fin
+    works in and costs nothing the fin did not already pay, which is why
+    emitter packages go there. The teardrop section is the shape the
+    fairing has to be, not a choice -- a cylinder of the same thickness
+    would spoil the fin's tip drag for the sake of housing a transceiver.
+    """
+    tip_chord = V["tip_chord"]
+    # leading edge of the fin tip
+    x_le = V["x_root_le"] + V["height"] * math.tan(
+        math.radians(V["sweep_le"]))
+    z_tip = V["z_root"] + V["height"]
+    path = [(x_le + tip_chord * 0.55, 0.0, z_tip + 0.6),
+            (x_le + tip_chord * 0.60, 0.0, z_tip + 1.1),
+            (x_le + tip_chord * 0.60, 0.0, z_tip + 1.5)]
+    v, f = shapes.fairing(path, tip_chord * 0.52, thickness=0.34, n_sec=12)
+    # tuck it down onto the fin tip
+    v = [(x, y, z - 0.4) for (x, y, z) in v]
+    return {"fin_tip_ecm_fairing": (v, f)}
 
 
 def _ventrals():

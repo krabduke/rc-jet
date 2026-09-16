@@ -1,12 +1,7 @@
-"""The F110-GE-129 from the sibling project, scaled down and installed.
+"""The F110 installation has discrete frame mounts, not a model turbine ring.
 
-Nothing about the engine is re-modelled here. Its generators are imported as
-they are, built at full size in their own millimetres, then scaled by
-spec.ENGINE_SCALE and translated so the inlet flange lands on the firewall.
-
-Tessellation is turned down first: at 140 mm long the engine's 96-segment
-revolutions and 2044 individually lofted airfoils are far finer than anything
-that can be seen, and would otherwise dominate the whole model's poly count.
+The engine stays in aircraft drawing units through ENGINE_SCALE; its load
+paths and removable belly must carry and release a full-size powerplant.
 """
 
 import sys, os
@@ -18,6 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import importlib
 
 import spec                                    # the aircraft spec
+import math
+import mesh
+from parts import intake, fuselage
 
 
 
