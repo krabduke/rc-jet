@@ -9,6 +9,7 @@
   "tunnel-ui.js": "79441904475b",
   "anim.js": "31e2189e4fac",
   "../tools/check_panelkernel.mjs": "26700d36adeb",
-  "../tools/check_panelflow.mjs": "288ce7de01b6"
+  "../tools/check_panelflow.mjs": "288ce7de01b6",
+  "../tools/panelgeom.py": "2853dea9db82"
  }
 }

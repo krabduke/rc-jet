@@ -21,7 +21,8 @@ FILES = ["flowfield.js", "panelkernel.js", "panelflow.js", "paneltunnel.js",
 # The solver's own validation travels with the solver. A check that lives
 # only in _shared is a check this project's `make verify` does not run, and
 # the point of vendoring is that what ships is what was tested.
-TOOLS = ["check_panelkernel.mjs", "check_panelflow.mjs"]
+TOOLS = ["check_panelkernel.mjs", "check_panelflow.mjs",
+         "panelgeom.py"]
 
 
 def digest(path):
