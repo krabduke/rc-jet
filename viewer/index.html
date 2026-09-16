@@ -215,14 +215,15 @@
 <div id="stage"></div>
 
 <div id="title">
-  <h1>RC Jet</h1>
-  <p>Cropped-delta · F110 turbofan at 1:33</p>
+  <h1>VX-J1</h1>
+  <p>Cropped-delta agility demonstrator · one F110-GE-129</p>
 </div>
 
 <div id="spec">
-  <div><b id="s-dim">—</b> mm</div>
-  <div><b id="s-mass">—</b> g all-up</div>
-  <div><b id="s-load">—</b> g/dm²</div>
+  <div><b id="s-dim">—</b> m</div>
+  <div><b id="s-mass">—</b> kg</div>
+  <div><b id="s-load">—</b> kg/m² wing loading</div>
+  <div><b id="s-tw">—</b> thrust/weight</div>
   <div><b id="s-parts">—</b> parts</div>
 </div>
 
@@ -291,7 +292,10 @@ import {WindTunnel, buildPanel, renderReadout, drawSpanLoad}
 import {drawLegend, speedColour, pressureColour}
   from './cfd-view.js';
 
-const MM = 0.001;
+// One drawing unit is 33 mm of real aeroplane, so a drawing unit is 0.033 m.
+// Every aerodynamic quantity downstream of this -- Reynolds number, dynamic
+// pressure, forces -- is full scale because of this one line.
+const MM = 0.033;
 
 // Anything inside named(...) is a claim that these are parts or groups in
 // viewer/parts.json, and tools/validate_viewer.mjs checks the claim. A
@@ -435,9 +439,12 @@ function fail(html){
 }
 
 function fillSpec(){
-  $('#s-dim').textContent = `${Math.round(data.length)} × ${Math.round(data.span)}`;
-  $('#s-mass').textContent = Math.round(data.mass_g);
-  $('#s-load').textContent = data.wing_loading.toFixed(1);
+  // The model is drawn at 1:33. Everything a person reads here is the real
+  // aeroplane; only geometry stays in drawing units.
+  $('#s-dim').textContent = `${data.length_m.toFixed(2)} × ${data.span_m.toFixed(2)}`;
+  $('#s-mass').textContent = Math.round(data.mass_kg).toLocaleString();
+  $('#s-load').textContent = data.wing_loading_kg_m2.toFixed(0);
+  $('#s-tw').textContent = data.thrust_to_weight.toFixed(2);
   $('#s-parts').textContent = Object.keys(data.parts).length;
 
   const pct = data.cg_frac * 100, lo = (data.cg_target - data.cg_tol) * 100,
@@ -782,13 +789,24 @@ function buildTunnel(box){
 }
 
 const ABOUT =
-  'A 440 mm cropped-delta jet around an F110 scaled to 1:33. The delta is '
-  + 'for roll rate and for a wing that keeps flying at high incidence; the '
-  + 'stabilators are all-moving because a delta has no room for an elevator '
-  + 'and needs the pitch authority. It sits at 13 % static margin — stable '
-  + 'enough to fly hands-off, loose enough to be quick in pitch. The tail is '
-  + 'where it is because the solver put it there: the first position sat in '
-  + 'the wing wake and left almost no margin at all.';
+  'A 14.5 m single-seat demonstrator built to find out how hard an aeroplane '
+  + 'can be made to turn. It carries 54 m² of cropped delta on a 9.9 m span '
+  + '— 204 kg/m², less than half an F-16\'s — around one F110-GE-129, which '
+  + 'puts thrust and weight almost exactly level. There is no radar, no gun '
+  + 'and nothing to hang under it; the mass that would have gone into a '
+  + 'mission went into wing.\n\n'
+  + 'At aspect ratio 1.81 the wing works by holding a leading-edge vortex '
+  + 'rather than by staying attached, which is what lets it keep making lift '
+  + 'far past where a conventional wing gives up. The stabilators are '
+  + 'all-moving because a delta has nowhere to put an elevator.\n\n'
+  + 'Balancing it was the hard part. An F110 is 1,996 kg sitting at 84 % of '
+  + 'the length, and an aeroplane with nothing heavy in the nose has no '
+  + 'answer to that: laid out the obvious way the centre of gravity came out '
+  + 'at 46 % of the mean chord, further behind the neutral point than an '
+  + 'X-29, which nothing could fly. Moving the forward fuel cell, the '
+  + 'avionics bay and the environmental pack ahead of the spar brings it to '
+  + '39 % — about three points unstable, roughly a Rafale. That instability '
+  + 'is not a compromise. It is where the pitch rate comes from.';
 
 // --- flow view switches (injected) ---
 
@@ -955,7 +973,7 @@ function setProbe(mesh){
   if(mesh.material.emissive) mesh.material.emissive.setHex(0x16333c);
   $('#p-name').textContent = pretty(mesh.name);
   $('#p-grp').textContent = grp ? grp.label : nfo.g;
-  $('#p-sta').textContent = `${Math.round(nfo.x0)} – ${Math.round(nfo.x1)} mm`;
+  $('#p-sta').textContent = `${(nfo.x0*0.033).toFixed(2)} – ${(nfo.x1*0.033).toFixed(2)} m`;
   $('#p-mat').textContent = nfo.mat.replace(/_/g,' ');
   box.style.setProperty('--pa', grp ? grp.color : '#6E93A8');
   box.classList.add('on');
@@ -980,7 +998,7 @@ function buildRail(){
     el.style.setProperty('--c', g.color);
     el.setAttribute('aria-pressed','true');
     el.innerHTML = `<span class="sw"></span>${g.label}<span class="ct">${g.parts}</span>`;
-    el.title = `${g.label} — ${g.parts} parts, station ${Math.round(g.x0)}–${Math.round(g.x1)} mm`;
+    el.title = `${g.label} — ${g.parts} parts, station ${(g.x0*0.033).toFixed(2)}–${(g.x1*0.033).toFixed(2)} m`;
     el.addEventListener('click', () => {
       const on = hidden.has(g.key);
       on ? hidden.delete(g.key) : hidden.add(g.key);

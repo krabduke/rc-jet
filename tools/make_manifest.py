@@ -76,9 +76,26 @@ def main():
     masses = [{"name": n, "x": x, "m": m} for (n, x, m) in spec.all_masses()]
     masses.sort(key=lambda d: -d["m"])
 
+    # Drawing units are 1:33. Everything the viewer shows a person is the real
+    # aeroplane -- metres and kilogrammes -- while everything it uses to place
+    # geometry stays in drawing units, because that is what the mesh is in.
+    # The two are kept as separate keys rather than one ambiguous number, so
+    # nothing can quietly read a length in the wrong one.
+    S = spec.SCALE_TO_FULL
     out = {
-        "name": "RC jet",
+        "name": "VX-J1",
         "length": spec.LENGTH, "span": spec.SPAN,
+        "scale_to_full": S,
+        "length_m": spec.LENGTH * S / 1000.0,
+        "span_m": spec.SPAN * S / 1000.0,
+        "mass_kg": spec.total_mass_kg(),
+        "empty_mass_kg": spec.empty_mass_kg(),
+        "wing_area_m2": spec.wing_area_m2(),
+        "wing_loading_kg_m2": spec.wing_loading_kg_m2(),
+        "thrust_to_weight": spec.thrust_to_weight(),
+        "cg_frac_full": spec.cg_frac_mac_full(),
+        "engine": spec.ENGINE_FULL["designation"],
+        "thrust_ab_kn": spec.ENGINE_FULL["thrust_ab_n"] / 1000.0,
         "envelope": [spec.ENVELOPE_LENGTH, spec.ENVELOPE_SPAN],
         "mass_g": spec.total_mass_g(),
         "wing_loading": spec.wing_loading_g_dm2(),
