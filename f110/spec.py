@@ -484,8 +484,12 @@ RES = {
     # turned surface; 144 puts that at 26 mm. The aerofoils dominate the
     # count -- 2,044 of them -- so chord and span points are what actually
     # move the total.
+    # span 13 -> 15. Rewriting the blade platforms as swept sectors took 70 k
+    # vertices of interior wall out of the model -- a wall between every
+    # angular step of every platform, inside the solid where nothing could
+    # see it. Spent on the blades instead, which is what the eye is on.
     "airfoil_chord_pts": 40,
-    "airfoil_span_pts": 13,
+    "airfoil_span_pts": 15,
     "revolve_segments": 144,
     "small_revolve": 36,
     "pipe_segments": 22,

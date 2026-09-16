@@ -134,6 +134,34 @@ def replicate_rotational(verts, faces, count, phase=0.0):
     return out_v, out_f
 
 
+def _sector(prof, dphi, n_seg):
+    """Sweep a closed meridional profile through an arc and close both ends.
+
+    A sector of an annulus is one closed surface: the profile swept round,
+    plus a cap at each angular end. The platforms and shrouds here used to be
+    written as a box per angular step, which leaves a wall between every pair
+    of steps -- interior faces inside the solid -- and no caps on the ends at
+    all. A blade platform came out with 38 edges used once instead of twice,
+    and every blade row in the engine was built on one.
+    """
+    verts, faces = [], []
+    n = len(prof)
+    for k in range(n_seg + 1):
+        a = -dphi / 2 + dphi * k / n_seg
+        ca, sa = math.cos(a), math.sin(a)
+        for (x, r) in prof:
+            verts.append((x, r * ca, r * sa))
+    for k in range(n_seg):
+        b0, b1 = k * n, (k + 1) * n
+        for i in range(n):
+            i2 = (i + 1) % n
+            faces.append((b0 + i, b0 + i2, b1 + i2, b1 + i))
+    faces.append(tuple(range(n - 1, -1, -1)))
+    base = n_seg * n
+    faces.append(tuple(range(base, base + n)))
+    return verts, faces
+
+
 def blade_platform(row, width_frac=1.0, height=9.0, n_seg=6):
     """The root platform the blade sits on -- one tangential sector of the
     hub flowpath, spanning this blade's share of the circumference."""
@@ -141,30 +169,8 @@ def blade_platform(row, width_frac=1.0, height=9.0, n_seg=6):
     dphi = 2.0 * math.pi / row.count * 0.97 * width_frac
     x0 = row.x - row.chord * 0.10
     x1 = row.x + row.chord * 1.10
-
-    verts, faces = [], []
-    for xi in (x0, x1):
-        for k in range(n_seg + 1):
-            a = -dphi / 2 + dphi * k / n_seg
-            for r in (r0 - height, r0):
-                verts.append((xi, r * math.cos(a), r * math.sin(a)))
-    per_x = (n_seg + 1) * 2
-    for k in range(n_seg):
-        for side in (0, 1):
-            i0 = side + k * 2
-            a0, a1 = i0, i0 + 2
-            b0, b1 = i0 + per_x, i0 + 2 + per_x
-            if side == 0:
-                faces.append((a0, a1, b1, b0))
-            else:
-                faces.append((a0, b0, b1, a1))
-    # inner and outer bands
-    for k in range(n_seg):
-        i = k * 2
-        faces.append((i, i + per_x, i + per_x + 1, i + 1))
-        j = i + 2
-        faces.append((j, j + 1, j + per_x + 1, j + per_x))
-    return verts, faces
+    return _sector([(x0, r0 - height), (x1, r0 - height), (x1, r0), (x0, r0)],
+                   dphi, n_seg)
 
 
 def tip_shroud(row, thickness=6.0, standoff=4.0):
@@ -174,23 +180,8 @@ def tip_shroud(row, thickness=6.0, standoff=4.0):
     dphi = 2.0 * math.pi / row.count * 0.99
     x0 = row.x - row.chord * 0.06
     x1 = row.x + row.chord * 1.06
-    verts, faces = [], []
-    n_seg = 5
-    for xi in (x0, x1):
-        for k in range(n_seg + 1):
-            a = -dphi / 2 + dphi * k / n_seg
-            for r in (r0, r0 + standoff + thickness):
-                verts.append((xi, r * math.cos(a), r * math.sin(a)))
-    per_x = (n_seg + 1) * 2
-    for k in range(n_seg):
-        i = k * 2
-        faces.append((i, i + 2, i + 3, i + 1))
-        faces.append((i + per_x, i + per_x + 1, i + per_x + 3, i + per_x + 2))
-        faces.append((i, i + 1, i + per_x + 1, i + per_x))
-        faces.append((i + 2, i + per_x + 2, i + per_x + 3, i + 3))
-        faces.append((i + 1, i + 3, i + per_x + 3, i + per_x + 1))
-        faces.append((i, i + per_x, i + per_x + 2, i + 2))
-    return verts, faces
+    r1 = r0 + standoff + thickness
+    return _sector([(x0, r0), (x1, r0), (x1, r1), (x0, r1)], dphi, 5)
 
 
 def cooling_hole_positions(row, n_rows=3, n_per_row=9):

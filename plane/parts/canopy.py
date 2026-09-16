@@ -47,13 +47,48 @@ def _glass():
             ring.append((x, w * math.cos(a), base + h * math.sin(a)))
         rings.append(ring)
 
+    # A moulding with a thickness, not a half-dome of single faces.
+    #
+    # As one layer the canopy had 130 of its 2,065 edges with a single face on
+    # them -- along both sills and round the front and rear rims. It had no
+    # inside, so nothing could tell whether the pilot was under it or through
+    # it. A blown canopy on a model this size is about 1.2 mm.
+    t = 1.2
+    inner = []
+    for i, r in enumerate(rings):
+        tt = i / (n - 1)
+        w, h = _profile(tt)
+        x = r[0][0]
+        zc = r[0][2] - h * math.sin(0.0)      # the sill z of this ring
+        row = []
+        for s_ in range(SEG + 1):
+            a = math.pi * s_ / SEG
+            row.append((x, max(w - t, 0.1) * math.cos(a),
+                        zc + max(h - t, 0.1) * math.sin(a)))
+        inner.append(row)
+
     per = SEG + 1
-    verts = [v for r in rings for v in r]
+    verts = [v for r in rings for v in r] + [v for r in inner for v in r]
+    off = n * per
     faces = []
     for i in range(n - 1):
         a, b = i * per, (i + 1) * per
-        for s in range(SEG):
-            faces.append((a + s, a + s + 1, b + s + 1, b + s))
+        for s_ in range(SEG):
+            faces.append((a + s_, a + s_ + 1, b + s_ + 1, b + s_))
+            faces.append((off + a + s_, off + b + s_,
+                          off + b + s_ + 1, off + a + s_ + 1))
+        # the two sills, where the glass meets the fuselage
+        for s_ in (0, SEG):
+            if s_ == 0:
+                faces.append((a, b, off + b, off + a))
+            else:
+                faces.append((a + s_, off + a + s_, off + b + s_, b + s_))
+    # and the front and rear rims
+    for i, flip in ((0, False), (n - 1, True)):
+        a = i * per
+        for s_ in range(SEG):
+            q = (a + s_, a + s_ + 1, off + a + s_ + 1, off + a + s_)
+            faces.append(q if flip else tuple(reversed(q)))
     return {"canopy_glass": (verts, faces)}
 
 

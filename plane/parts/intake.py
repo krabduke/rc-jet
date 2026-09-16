@@ -81,11 +81,17 @@ def _hardware():
                         py + zc + (r + 3.4) * math.sin(a))
                        for (px, py, pz) in bv], bf))
     # the bellows itself: three convolutions between the flange and the case
+    # Each convolution is a fold in a wall, so it has two sides. As a single
+    # band both its rims were edges with one face on them -- 432 of the
+    # coupling's 4,536 edges, which is what a bellows drawn as a ribbon is.
+    wall = 0.8
     for k in range(3):
         xb = x1 - 10.0 + k * 3.2
-        cv, cf = mesh.revolve_open(
-            [(xb, r + 1.0), (xb + 1.6, r + 3.2), (xb + 3.2, r + 1.0)],
-            SEG // 2, cap_start=False, cap_end=False)
+        cv, cf = mesh.revolve_ring(
+            [(xb, r + 1.0), (xb + 1.6, r + 3.2), (xb + 3.2, r + 1.0),
+             (xb + 3.2, r + 1.0 - wall), (xb + 1.6, r + 3.2 - wall),
+             (xb, r + 1.0 - wall)],
+            SEG // 2)
         parts.append(([(px, py, pz + zc) for (px, py, pz) in cv], cf))
     out["duct_coupling"] = mesh.join(*parts)
 

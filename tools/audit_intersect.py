@@ -115,6 +115,10 @@ EXPECTED = [
     ("doublers", "fuselage_skin"),
     ("panel_", "doublers"),
     ("panel_screws", "fuselage_skin"), ("panel_screws", "panel_"),
+    # the canopy's sill is bonded to the frame it lands on, and crosses the
+    # skin's production seam at that station
+    ("canopy_glass", "stringer"), ("canopy_glass", "longeron"),
+    ("canopy_glass", "seam_"), ("canopy_glass", "canopy_frame"),
     ("rib_", "wing_"),
     ("spar_", "wing_"),
     ("spar_", "fuselage_skin"),

@@ -741,29 +741,39 @@ def naca_duct(x0, x1, across, surface, width, depth, n=22, lip=1.1,
             return (x, across + off, surface + sgn * into)
         return (x, surface + sgn * into, across + off)
 
-    verts, faces = [], []
+    # A moulding, not a sheet.
+    #
+    # The ramp used to be one layer of faces with the two lips hung off its
+    # edges, so 66 of its 537 edges had a single face on them: it had no
+    # inside, nothing could weigh it, and the intersection audit skips a part
+    # it cannot fire a ray at. A scoop is about a millimetre of laminate, so
+    # the section is walked out along the wetted face and back along the
+    # dry one, and that closed loop is swept down the duct.
     nz = 11                             # points across the duct section
+    t = 1.1                             # laminate thickness
+    sections = []
     for (x, w, d) in rows:
+        top = [(-(w + lip), lip * 0.5)]
         for k in range(nz):
             g = k / (nz - 1)
             # floor section: flat in the middle, curving up into each wall
-            off = -w + 2 * w * g
             e = abs(2 * g - 1) ** 2.4
-            verts.append(place(x, off, -d * (1.0 - e)))
-    # and the rolled lips: a second row just outboard of each wall
-    base = len(verts)
-    for (x, w, d) in rows:
-        for s_ in (-1.0, 1.0):
-            verts.append(place(x, s_ * (w + lip), lip * 0.5))
+            top.append((-w + 2 * w * g, -d * (1.0 - e)))
+        top.append((w + lip, lip * 0.5))
+        loop = top + [(off, into - t) for (off, into) in reversed(top)]
+        sections.append([place(x, off, into) for (off, into) in loop])
+
+    m = len(sections[0])
+    verts = [v for sec in sections for v in sec]
+    faces = []
     for i in range(n - 1):
-        a, b = i * nz, (i + 1) * nz
-        for k in range(nz - 1):
-            faces.append((a + k, a + k + 1, b + k + 1, b + k))
-        for (j, side) in ((0, 0), (nz - 1, 1)):
-            l0 = base + i * 2 + side
-            l1 = base + (i + 1) * 2 + side
-            faces.append((a + j, l0, l1, b + j) if side
-                         else (a + j, b + j, l1, l0))
+        a, b = i * m, (i + 1) * m
+        for k in range(m):
+            k2 = (k + 1) % m
+            faces.append((a + k, a + k2, b + k2, b + k))
+    faces.append(tuple(range(m - 1, -1, -1)))
+    base = (n - 1) * m
+    faces.append(tuple(range(base, base + m)))
     return verts, faces
 
 

@@ -34,7 +34,17 @@ def _spinner():
         prof.append((x, r))
     # short cylindrical skirt where it bolts to the fan disc
     prof.append((s["x_nose"] + s["length"] + 40.0, s["base_radius"]))
-    v, f = mesh.revolve_open(prof, SEG, cap_start=True, cap_end=False)
+    # A shell with a wall, closed at the aft rim.
+    #
+    # Left open at the back its rim was an edge with one face on it all the
+    # way round, so the spinner bounded no volume. Closed with a fan to the
+    # axis instead it became a solid cone, and a solid cone at the front of an
+    # engine contains the fan disc, the LP shaft and the front bearing sump --
+    # which the intersection audit then reported, correctly. A spinner is a
+    # 2 mm moulding bolted to the disc.
+    wall = 2.0
+    loop = list(prof) + [(x, max(r - wall, 0.8)) for (x, r) in reversed(prof)]
+    v, f = mesh.revolve_ring(loop, SEG)
     skirt = mesh.tube(s["x_nose"] + s["length"] + 40.0 - 1.0,
                       s["x_nose"] + s["length"] + 40.0,
                       s["base_radius"] - 14.0, s["base_radius"], SEG)

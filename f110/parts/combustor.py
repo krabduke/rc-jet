@@ -110,10 +110,12 @@ def _dome():
     swirl = []
     for k in range(C["n_fuel_nozzles"]):
         a = 2 * math.pi * k / C["n_fuel_nozzles"]
-        cup_v, cup_f = mesh.revolve_open(
+        # a ring: the profile is a closed loop, so revolving it open leaves
+        # the cup's two rims as edges with one face on them
+        cup_v, cup_f = mesh.revolve_ring(
             [(x - 16.0, C["swirler_r"] * 0.45), (x - 16.0, C["swirler_r"]),
              (x + 16.0, C["swirler_r"] * 1.22), (x + 16.0, C["swirler_r"] * 0.7)],
-            20, cap_start=False, cap_end=False)
+            20)
         cup_v = mesh.translate(cup_v, 0.0, C["nozzle_r"], 0.0)
         # swirl vanes inside the cup
         vanes = []

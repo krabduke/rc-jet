@@ -362,7 +362,10 @@ def _seat():
     box = mesh.join(
         shapes.rounded_box(0.0, 0.0, 0.0, 7.2, hw * 1.68, 4.4, r=0.9, seg=6),
         shapes.rounded_box(0.6, 0.0, 2.6, 5.0, hw * 1.20, 1.6, r=0.5, seg=5))
-    hv = _cant(mesh.translate(box[0], x_hinge + 2.0, 0.0, z_pan + 11.9),
+    # z_pan + 9.2, not 11.9. The recline takes the box aft as well as up, and
+    # the canopy is tapering hard by then: at x 150 its crown is at z 37.65
+    # and the headbox's aft-top corner was at 37.9, through the glass.
+    hv = _cant(mesh.translate(box[0], x_hinge + 2.0, 0.0, z_pan + 9.2),
                K["seat_recline"], x_hinge, z_pan)
     out["seat_headbox"] = (hv, box[1])
 
@@ -372,11 +375,11 @@ def _seat():
         rails.append(mesh.pipe(
             [(x_hinge + 3.4, sgn * hw * 0.82, z_pan - 1.0),
              (x_hinge + 4.6, sgn * hw * 0.82, z_pan + 4.0),
-             (x_hinge + 5.8, sgn * hw * 0.82, z_pan + 9.0),
-             (x_hinge + 6.6, sgn * hw * 0.82, z_pan + 11.4)], 0.7, 12))
+             (x_hinge + 5.8, sgn * hw * 0.82, z_pan + 7.0),
+             (x_hinge + 6.6, sgn * hw * 0.82, z_pan + 8.8)], 0.7, 12))
     rails.append(mesh.pipe(
-        [(x_hinge + 6.4, -hw * 0.82, z_pan + 10.8),
-         (x_hinge + 6.4, hw * 0.82, z_pan + 10.8)], 0.5, 10))
+        [(x_hinge + 6.4, -hw * 0.82, z_pan + 8.2),
+         (x_hinge + 6.4, hw * 0.82, z_pan + 8.2)], 0.5, 10))
     out["seat_rails"] = mesh.join(*rails)
 
     # harness: two shoulder straps over the back, a lap belt across the pan

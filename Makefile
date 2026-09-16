@@ -14,6 +14,7 @@ verify:
 	python3 plane/verify.py
 	python3 tools/audit_structure.py
 	python3 tools/audit_geometry.py
+	python3 tools/audit_watertight.py
 	python3 tools/audit_intersect.py
 	python3 tools/audit_duct.py
 	python3 tools/audit_fit.py
