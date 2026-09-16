@@ -544,7 +544,7 @@ export class CFDView {
       // redraw every eighth slice is cheap next to the tracing.
       if(slice % 8 === 0 && traced.length > 4){
         this._setRanges(traced, vinf, latticeVel);
-        this._drawRibbons(traced);
+        this._drawRibbons(traced, Math.min(1, (i + 1) / Math.max(total, 1)));
       }
       await yieldToPage();
     }
@@ -639,7 +639,7 @@ export class CFDView {
 
   /* ---------------------------------------------------------------- ribbons */
 
-  _drawRibbons(traced){
+  _drawRibbons(traced, progress = 1){
     traced = this._shown(traced);
     let verts = 0, tris = 0;
     for(const L of traced){
@@ -732,7 +732,18 @@ export class CFDView {
                             L.pts[i*3+1] - L.pts[(i-1)*3+1],
                             L.pts[i*3+2] - L.pts[(i-1)*3+2]);
     }
-    const ink = Math.sqrt(460 / Math.max(drawn / Math.max(this.domain.L, 1e-6), 1));
+    /* Scaled to the FINISHED picture, not to the part of it drawn so far.
+     *
+     * Tracing runs progressively -- a slice of lines per frame, redrawn as
+     * they arrive -- and the ribbons were being re-sized on each partial set.
+     * At four lines in, `ink` came out at 6.3 and the screen filled with
+     * ribbons fifteen millimetres wide on a 440 mm aeroplane. It settled to
+     * 0.9 by the end, so the finished picture was right and every slider
+     * move flashed a wall of green on the way there. Dividing by the progress
+     * fraction estimates what the total will be, which is stable from the
+     * first slice because every line is about as long as every other. */
+    const est = drawn / Math.max(progress, 0.08);
+    const ink = Math.sqrt(460 / Math.max(est / Math.max(this.domain.L, 1e-6), 1));
     /* The floor is a fraction of the model, not a number of metres.
      *
      * It used to be 0.0013 m, chosen on a car 4.98 m long. On a 0.44 m model
