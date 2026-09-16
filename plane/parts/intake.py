@@ -8,6 +8,7 @@ import spec
 import mesh
 import shapes
 from parts import fuselage
+from parts import common as pc
 
 I = spec.INTAKE
 SEG = spec.RES["revolve"]
@@ -18,7 +19,42 @@ def build():
     out.update(_lip())
     out.update(_duct())
     out.update(_hardware())
+    # The skin is lofted closed from nose to tail, so without this the mouth
+    # is not a mouth: the duct ran up to a solid wall and the aeroplane could
+    # not breathe. The canopy has the same problem and solves it the same way.
+    pc.add_cut(out, "fuselage_skin", aperture())
     return out
+
+
+def aperture(pad=1.5, n_st=16):
+    """The hole the inlet breathes through, as a solid for the skin to lose.
+
+    Swept along the duct's BORE, not its outer wall: what has to be open is
+    the air path, and cutting to the outer wall would take the duct's own
+    material away with it and leave the moulding with no lip to end on.
+
+    It runs from ahead of the lip back past the throat, and stands `pad` proud
+    of the bore all round so the boolean has something to bite on rather than
+    meeting the duct's inner surface exactly -- coincident faces are how a
+    boolean leaves a hole with a membrane still across it.
+    """
+    x0, x1 = I["mouth_x0"], I["x_throat"] + 10.0
+    rings = []
+    for i in range(n_st):
+        x = x0 + (x1 - x0) * i / (n_st - 1)
+        w, h, zc, sq = duct_bore(x)
+        rings.append(_oval(x, w + pad, h + pad, zc, SEG, sq))
+    verts = [v for r in rings for v in r]
+    faces = []
+    for i in range(n_st - 1):
+        a, b = i * SEG, (i + 1) * SEG
+        for s_ in range(SEG):
+            s2 = (s_ + 1) % SEG
+            faces.append((a + s_, a + s2, b + s2, b + s_))
+    faces.append(tuple(range(SEG - 1, -1, -1)))          # front cap
+    base = (n_st - 1) * SEG
+    faces.append(tuple(range(base, base + SEG)))         # back cap
+    return verts, faces
 
 
 def _hardware():
@@ -95,27 +131,15 @@ def _hardware():
         parts.append(([(px, py, pz + zc) for (px, py, pz) in cv], cf))
     out["duct_coupling"] = mesh.join(*parts)
 
-    # the guard across the mouth: streamlined bars, not a mesh, because a
-    # mesh at this scale blocks more air than the engine can spare
-    bars = []
-    xl, w0, h0 = I["x_lip"] + I["lip_radius"] * 1.6, I["lip_width"] / 2, I["lip_height"] / 2
-    for k in range(5):
-        u = -0.66 + 1.32 * k / 4
-        y = u * (w0 - 2.0)
-        z_hi = I["z_lip"] + (h0 - 1.5) * math.sqrt(max(0.0, 1.0 - u * u))
-        z_lo = I["z_lip"] - (h0 - 1.5) * math.sqrt(max(0.0, 1.0 - u * u))
-        bars.append(shapes.swept_profile(
-            [(xl, y, z_lo), (xl + 3.0, y, (z_lo + z_hi) / 2), (xl, y, z_hi)],
-            [(-0.5, -1.7), (0.5, -1.7), (0.8, 0.0), (0.5, 1.7),
-             (-0.5, 1.7), (-0.8, 0.0)], subdiv=3))
-    out["intake_guard"] = mesh.join(*bars)
+    # no intake guard: full-size jets carry no FOD screen, and the bars stood
+    # in the freestream at the mouth, eating the capture area the chin was
+    # widened to give the fan
     return out
 
 
 def _squash(f):
     """The section exponent at fraction f along the duct, matching _duct."""
-    s = f * f * (3 - 2 * f)
-    return 2.4 + (2.0 - 2.4) * s
+    return 2.4 + (2.0 - 2.4) * f * f
 
 
 def _ring_prism(front_o, front_i, back_o, back_i):
@@ -167,6 +191,21 @@ def _lip():
     return {"intake_lip": (verts, faces)}
 
 
+def _duct_schedule(x):
+    """The duct's blend parameter at station x, and why it is quadratic.
+
+    The bore has to grow from the mouth to the fan -- a subsonic inlet
+    diffuses monotonically and never narrows -- but the blend it replaces was
+    smoothstep, whose dead start let the taper win all the way back to
+    station 212 and pinch the bore to 937 mm^2, under 80 % of the fan face.
+    Opening the start instead of steepening the end keeps the climb off the
+    fan face, where the check lives.
+    """
+    x0, x1 = I["x_throat"], I["x_duct_end"]
+    t = min(max((x - x0) / (x1 - x0), 0.0), 1.0)
+    return t * t
+
+
 def duct_section(x):
     """(half width, half height, z centre) of the duct's OUTER wall at x.
 
@@ -176,9 +215,7 @@ def duct_section(x):
     room. Guessing at it is how the flight pack, the fuel filter and the
     access tray all ended up inside the airflow.
     """
-    x0, x1 = I["x_throat"], I["x_duct_end"]
-    t = min(max((x - x0) / (x1 - x0), 0.0), 1.0)
-    s = t * t * (3 - 2 * t)
+    s = _duct_schedule(x)
     w0 = I["lip_width"] / 2 - 1.0
     h0 = I["lip_height"] / 2 - 1.0
     r1 = I["duct_r_end"]
@@ -195,9 +232,7 @@ def duct_bore(x):
     wall is duct_section(); the difference between them is the duct's own
     material.
     """
-    x0, x1 = I["x_throat"], I["x_duct_end"]
-    t = min(max((x - x0) / (x1 - x0), 0.0), 1.0)
-    s = t * t * (3 - 2 * t)
+    s = _duct_schedule(x)
     w0 = I["lip_width"] / 2 - 1.0
     h0 = I["lip_height"] / 2 - 1.0
     r1 = I["duct_r_end"]
@@ -276,8 +311,9 @@ def _duct():
     outer_rings, inner_rings = [], []
     for i in range(n_st):
         t = i / (n_st - 1)
-        # smoothstep the climb so the duct has no kink at either end
-        s = t * t * (3 - 2 * t)
+        # the climb and the growth share the quadratic schedule the section
+        # helpers publish, so the loft and the audits agree exactly
+        s = _duct_schedule(x0 + (x1 - x0) * t)
         w = w0 + (r1 - w0) * s
         h = h0 + (r1 - h0) * s
         zc = z0 + (spec.ENGINE_Z - z0) * s

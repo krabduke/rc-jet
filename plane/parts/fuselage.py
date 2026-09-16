@@ -9,6 +9,8 @@ import mesh
 
 SEG = spec.RES["fuse_sections"]
 NST = spec.RES["fuse_stations"]
+_INTAKE_MODULE = None
+CHIN_ROLL = 25.0  # belongs in spec.py
 
 
 def build():
@@ -53,24 +55,196 @@ def station_at(x):
     return tuple(out)
 
 
+# --------------------------------------------------------------------------
+
+def chin_profile(x):
+    """How far the lower surface is pushed down at station x, and how far out.
+
+    The duct is slung under the forebody and the body has to close round it
+    the way an F-16's belly does from the inlet back to the wing root. Before
+    this the duct's outer wall hung in open air below the skin -- worst at
+    station 86, where 73 % of the wall was outside the body -- so the inlet
+    led to nothing and everything that reads the section carried the error.
+
+    Returns (depth, width_gain), both zero outside the chin run. Depth is
+    however far the keel must go for the base section to clear the duct's
+    lowest point by chin_clear, clamped at zero where the base body already
+    clears it; width_gain is the same for the duct's half-width. Both roll
+    on and off with a cosine over the first and last CHIN_ROLL of the run so
+    the belly has no crease, and the section itself weights them round to the
+    keel so the chin fades out along the sides instead of ending at a rail.
+    """
+    global _INTAKE_MODULE
+    if _INTAKE_MODULE is None:
+        from parts import intake
+        _INTAKE_MODULE = intake
+    I = spec.INTAKE
+    x0, x1 = I["chin_x0"], I["chin_x1"]
+    if x < x0 or x > x1:
+        return 0.0, 0.0
+    if x - x0 < CHIN_ROLL:
+        roll = 0.5 * (1.0 - math.cos(math.pi * (x - x0) / CHIN_ROLL))
+    elif x1 - x < CHIN_ROLL:
+        roll = 0.5 * (1.0 - math.cos(math.pi * (x1 - x) / CHIN_ROLL))
+    else:
+        roll = 1.0
+    dw, dh, dzc = _INTAKE_MODULE.duct_section(x)
+    duct_bottom = dzc - dh
+    w, h, zc, _ = station_at(x)
+    # Both of these had the wrong sign or the wrong units and the chin came
+    # out zero everywhere, so the duct still hung in open air with the code
+    # apparently in place. z is up, so the keel is ABOVE the duct's bottom and
+    # the depth wanted is keel minus duct, not duct minus keel: at station 86
+    # the keel is at -19.95 and the duct bottom at -33.60, so the body has to
+    # come down 15.65 and the reversed form asked for -11.65 and clamped to 0.
+    drop = (zc - h) - (dzc - dh) + I["chin_clear"]
+    depth = max(drop, 0.0) * roll
+    # and the widening is applied as `y *= 1 + gain`, so gain is a fraction of
+    # the half-width, not a number of millimetres.
+    gain = (dw - w) / w * roll if dw > w else 0.0
+    return depth, gain
+
+
+def _chin_weight(angle):
+    """How much of the chin a ring point at `angle` picks up.
+
+    Full at the keel and gone by chin_halfarc either side of it, on a cosine,
+    so the fairing dies out along the belly instead of ending in a crease.
+    """
+    d = abs(math.degrees(angle) % 360.0 - 270.0)
+    if d >= spec.INTAKE["chin_halfarc"]:
+        return 0.0
+    return 0.5 * (1.0 + math.cos(math.pi * d / spec.INTAKE["chin_halfarc"]))
+
+
 def section_ring(x, inset=0.0, segments=SEG):
-    """One superellipse section. |y/w|^n + |z/h|^n = 1, centred at zc.
+    """One superellipse section, unioned with the intake duct beneath it.
 
     The exponent is what gives a fighter its flat-sided fuselage: n = 2 is a
     plain ellipse, n ~ 3 reads as slab-sided with rounded corners.
+
+    Under the forebody the section also has to contain the duct, and pushing
+    the keel down by a cosine-weighted depth does not do it. The duct at
+    station 86 is 40 mm across a 53 mm body but sits 26 mm lower, so its
+    widest points are out beyond the body's own surface at that height, where
+    a keel-weighted push has already faded to half strength. It got the wall
+    from 73 % outside to 33 % outside and no further, because the shape being
+    asked for is not a deeper section, it is a wider one low down.
+
+    So the chin is a union, not an offset: along every ray from the section
+    centre, the surface is whichever is further out, the body or the duct's
+    outer wall plus its clearance. Containment then holds by construction at
+    every angle rather than being approximated at one of them, and the roll
+    and the keel weighting only decide how quickly the union fades back to
+    the plain section fore and aft.
     """
     w, h, zc, n = station_at(x)
     w = max(w - inset, 0.05)
     h = max(h - inset, 0.05)
     p = 2.0 / n
+    env = _chin_envelope(x, inset)
     ring = []
     for i in range(segments):
         a = 2.0 * math.pi * i / segments
         ca, sa = math.cos(a), math.sin(a)
         y = w * math.copysign(abs(ca) ** p, ca)
         z = h * math.copysign(abs(sa) ** p, sa)
+        if env is not None:
+            # No angular weighting. The union already only moves the surface
+            # where the duct is outside it, which is the lower flanks and the
+            # keel and nowhere else; weighting it by distance from the keel as
+            # well throttled it to 29 % exactly where it was needed and left a
+            # third of the duct wall outside the body. The only fade is
+            # fore-and-aft, which is what `roll` is.
+            r_body = math.hypot(y, z)
+            r_duct = _ray_to_section(ca, sa, zc, env[:4])
+            if r_duct > r_body > 0.0:
+                f = 1.0 + env[4] * (r_duct / r_body - 1.0)
+                y *= f
+                z *= f
         ring.append((x, y, zc + z))
     return ring
+
+
+def _chin_envelope(x, inset=0.0):
+    """The duct's outer wall plus clearance at station x, or None.
+
+    Returned as (half_width, half_height, z_centre, exponent, roll) so the ray
+    test below can ask the same question of it that it asks of the body, and
+    the caller knows how far into the chin run it is. `inset`
+    comes off it as well, so the shell's inner surface follows the chin and
+    the skin keeps its thickness along it instead of closing to nothing.
+    """
+    I = spec.INTAKE
+    if x < I["chin_x0"] or x > I["chin_x1"]:
+        return None
+    global _INTAKE_MODULE
+    if _INTAKE_MODULE is None:
+        from parts import intake
+        _INTAKE_MODULE = intake
+    x0, x1 = I["chin_x0"], I["chin_x1"]
+    if x - x0 < CHIN_ROLL:
+        roll = 0.5 * (1.0 - math.cos(math.pi * (x - x0) / CHIN_ROLL))
+    elif x1 - x < CHIN_ROLL:
+        roll = 0.5 * (1.0 - math.cos(math.pi * (x1 - x) / CHIN_ROLL))
+    else:
+        roll = 1.0
+    dw, dh, dzc = _INTAKE_MODULE.duct_section(x)
+    c = I["chin_clear"]
+    return (max(dw + c - inset, 0.05), max(dh + c - inset, 0.05), dzc, 2.4,
+            roll)
+
+
+def _ray_to_section(ca, sa, zc, env):
+    """How far a ray from the body's section centre reaches the envelope.
+
+    The subtlety that cost a wrong answer: the body's section centre is not
+    inside the duct. At station 86 the body is centred at z +1.95 and the duct
+    at z -24, so a ray fired from the body's centre starts OUTSIDE the duct
+    envelope, crosses into it, and crosses out again. A plain bisection
+    assuming "inside at t = 0, outside at t = big" therefore reported zero at
+    every angle and the union never moved anything at all.
+
+    What is wanted is the FAR crossing -- where the ray leaves the duct --
+    because that is how far out the skin has to be to contain it. So: march
+    out coarsely to find a sample inside, keep marching to find the sample
+    after it that is outside, then bisect between those two.
+    """
+    ew, eh, ezc, en = env
+    dz = zc - ezc
+    reach = ew + eh + abs(dz) + 2.0
+
+    def outside(t):
+        yy = t * ca
+        zz = dz + t * sa
+        return (abs(yy / ew) ** en + abs(zz / eh) ** en) >= 1.0
+
+    n = 48
+    step = reach / n
+    t_in = None
+    for k in range(1, n + 1):
+        if not outside(k * step):
+            t_in = k * step
+            break
+    if t_in is None:
+        return 0.0                       # the ray misses the duct entirely
+    t_out = None
+    k = int(t_in / step) + 1
+    while k <= n:
+        if outside(k * step):
+            t_out = k * step
+            break
+        k += 1
+    if t_out is None:
+        return 0.0
+    lo, hi = t_out - step, t_out
+    for _ in range(26):
+        mid = 0.5 * (lo + hi)
+        if outside(mid):
+            hi = mid
+        else:
+            lo = mid
+    return 0.5 * (lo + hi)
 
 
 def _stations():

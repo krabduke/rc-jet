@@ -229,7 +229,13 @@ INTAKE = {
     # down far enough to enclose the duct's outer wall with `chin_clear` to
     # spare, rolled on and off with a cosine so the belly has no crease.
     "chin_x0":      30.0,
-    "chin_x1":     195.0,
+    # 195 was a guess and it was 55 units short. The duct only fits inside the
+    # unmodified body from station 230 aft -- at 220 the worst point of its
+    # outer wall is still 1 % outside, at 190 it is 37 % outside -- so a chin
+    # that has faded out by 195 leaves the duct hanging again just where
+    # nobody is looking. It runs to 250, by which point containment is the
+    # body's own doing and the chin has nothing left to add.
+    "chin_x1":     250.0,
     "chin_clear":    2.0,
     "chin_halfarc": 78.0,       # degrees either side of the keel it reaches
     # The mouth is cut through the skin between these stations.

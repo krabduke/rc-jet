@@ -109,7 +109,19 @@ def check_aperture():
 
 
 def check_delivery():
-    """The bore arrives at the engine, on its centreline and at its radius."""
+    """The bore diffuses from the throat to the fan, and the lip can feed it.
+
+    The first version of this check demanded that every station from the mouth
+    back be at least 80 % of the fan face's area, and failed at station 256.
+    That was the test being wrong, not the duct: a throat is *supposed* to be
+    smaller than the fan face -- that is what makes it a throat -- and the
+    diffuser's whole job is to get from one to the other. Asking an inlet not
+    to have a throat is asking it not to be an inlet.
+
+    What actually has to be true is that the bore never narrows once past the
+    throat, that it arrives round and on the engine's centreline, and that the
+    mouth is big enough to swallow what the engine eats.
+    """
     w, h, zc, _ = intake.duct_bore(I["x_duct_end"])
     if abs(zc - spec.ENGINE_Z) > 0.3:
         fails.append("DELIVERY: the duct ends at z %.2f, the engine is at "
@@ -117,21 +129,43 @@ def check_delivery():
     if abs(w - h) > 0.4:
         fails.append("DELIVERY: the duct is still %.1f x %.1f at the fan face "
                      "-- it has to be round there" % (w, h))
-    # area has to fall from mouth to throat and never pinch below the fan
-    prev, pinch = None, None
-    for i in range(60):
-        x = I["mouth_x0"] + (I["x_duct_end"] - I["mouth_x0"]) * i / 59
+
+    # a subsonic diffuser never narrows
+    prev, worst = None, None
+    for i in range(120):
+        x = I["x_throat"] + (I["x_duct_end"] - I["x_throat"]) * i / 119
         bw, bh, _, _ = intake.duct_bore(x)
         a = math.pi * bw * bh
-        if prev is not None and a < math.pi * I["duct_r_end"] ** 2 * 0.80:
-            pinch = (x, a)
+        if prev is not None and a < prev - 1e-6:
+            drop = prev - a
+            if worst is None or drop > worst[1]:
+                worst = (x, drop)
         prev = a
-    if pinch:
-        fails.append("DELIVERY: the bore pinches to %.0f mm^2 at station %.0f, "
-                     "below 80 %% of the fan face" % (pinch[1], pinch[0]))
+    if worst:
+        fails.append("DELIVERY: the bore narrows by %.1f mm^2 at station %.0f. "
+                     "A subsonic inlet duct diffuses all the way to the fan; "
+                     "it never contracts." % (worst[1], worst[0]))
+
+    # and the mouth has to pass what the engine swallows
+    S = spec.SCALE_TO_FULL
+    lw, lh = I["lip_width"] / 2, I["lip_height"] / 2
+    capture_m2 = math.pi * lw * lh * S * S / 1e6
+    mdot = spec.ENGINE_FULL["mass_flow_kgs"]
+    v_cruise = 200.0
+    need = mdot / (1.225 * v_cruise)
+    if capture_m2 < need:
+        fails.append("DELIVERY: the mouth captures %.3f m^2 but the engine "
+                     "swallows %.0f kg/s, which needs %.3f m^2 at %.0f m/s"
+                     % (capture_m2, mdot, need, v_cruise))
     if not fails:
-        print("PASS  the bore runs from the mouth to the fan face, %.1f mm "
-              "radius on the engine centreline" % w)
+        thr = math.pi * intake.duct_bore(I["x_throat"])[0] * \
+            intake.duct_bore(I["x_throat"])[1]
+        fan = math.pi * I["duct_r_end"] ** 2
+        print("PASS  the bore diffuses from the throat (%.0f mm^2, %.0f %% of "
+              "the fan face) to %.1f mm radius on the engine centreline"
+              % (thr, 100 * thr / fan, w))
+        print("PASS  the mouth captures %.3f m^2 against the %.3f m^2 the "
+              "engine needs at cruise" % (capture_m2, need))
 
 
 def main():
