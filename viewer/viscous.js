@@ -151,7 +151,7 @@ export function suctionKept(cpPeak){
  */
 export function buildUp(pf, geom, o){
   const {rho = 1.225, nu = 1.5e-5, v, sRef, alpha, cpPeak = 0,
-         CL: CLpot, CDi, jetFill = 0} = o;
+         CL: CLpot, CDi, jetFill = 0, extra = []} = o;
   const u = [Math.cos(alpha), 0, Math.sin(alpha)];
   const comps = [];
   let cd0 = 0;
@@ -166,6 +166,25 @@ export function buildUp(pf, geom, o){
     const bub = thin < 0.35 ? bubbleDrag(re) * 0.5 : 0;   // per wetted side
     const d = (cf * ff + bub) * c.area / sRef;
     comps.push({name: c.name, re, cf, ff, bubble: bub, area: c.area, cd: d});
+    cd0 += d;
+  }
+  /* Surfaces the aeroplane has and the panel model does not.
+   *
+   * A leading-edge root extension is 74 mm long and 13 mm wide on this
+   * aeroplane: thin enough that panelling it would put a sliver alongside the
+   * fuselage, which is the near-singular configuration everything here works
+   * to avoid, and it would represent nothing anyway. What a strake is FOR is
+   * shedding a vortex, which is the one thing a potential flow cannot do; its
+   * effect is in the vortex-lift model below. What it also is, though, is
+   * wetted area, and that is a thing this build-up can count.
+   */
+  for(const e of extra){
+    const re = v * e.len / nu;
+    const cf = re < RE_TRANSITION ? cfLaminar(re) : cfTurbulent(re);
+    const ff = ffSurface(Math.min(e.thin || 0.08, 0.3));
+    const d = (cf * ff + bubbleDrag(re) * 0.5) * e.area / sRef;
+    comps.push({name: e.name, re, cf, ff, bubble: bubbleDrag(re) * 0.5,
+                area: e.area, cd: d});
     cd0 += d;
   }
   const aBase = baseArea(pf, u);

@@ -3360,6 +3360,14 @@
   "alpha_max": 22.0,
   "stall_alpha": 30.0,
   "vortex_alpha": 11.0,
+  "extra_wetted": [
+   {
+    "name": "strakes",
+    "area": 0.003848,
+    "len": 0.074,
+    "thin": 0.06
+   }
+  ],
   "ground": false,
   "cg_frac": 0.24084360204087926,
   "cg_x": 0.23268322981366463,

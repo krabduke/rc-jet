@@ -60,6 +60,7 @@ export class PanelTunnel {
       v: o.v, sRef: S, alpha: a, CL: CLpot, CDi,
       cpPeak: this.liftingPeakCp(),
       jetFill: this.jetFill(),
+      extra: cfg.extra_wetted || [],
     });
 
     return {

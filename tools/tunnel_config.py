@@ -135,6 +135,19 @@ def config(n_span=WING_NS, n_chord=WING_NC):
         # vortices instead. Reported separately because it is a different
         # thing and it is the thing you can see.
         "vortex_alpha": 11.0,
+        # Wetted area the panel model does not carry.
+        #
+        # The strakes are 74 mm long and 13 mm wide: thin enough that
+        # panelling them would put a sliver alongside the fuselage, which is
+        # the near-singular configuration the whole geometry works to avoid,
+        # and it would represent nothing anyway -- what a strake is FOR is
+        # shedding a vortex at high incidence, which is the one thing a
+        # potential flow cannot do. That effect is in the vortex-lift model.
+        # This is the part a drag build-up can count: skin.
+        "extra_wetted": [
+            {"name": "strakes", "area": 2 * 2 * 74.0 * 13.0 * MM * MM,
+             "len": 74.0 * MM, "thin": 0.06},
+        ],
         "ground": False,
         "cg_frac": spec.cg_frac_mac(),
         "cg_x": spec.cg_x() * MM,

@@ -431,12 +431,24 @@ export function buildPanel(host, cfg, onChange, onCommit){
 }
 
 export function renderReadout(el, r, cfg, kind){
+  /* The car's rows show the WHOLE car.
+   *
+   * "Downforce" used to be the wings alone -- the only part the lattice
+   * solves -- while the header beside it advertised a CL.A of 5.90 and the
+   * note underneath explained that the floor and the fan were missing. Three
+   * numbers for one quantity, two of them wrong by a factor of three. The
+   * parts are worth showing; which of them is which is worth labelling. */
+  const totalKg = r.total_kg != null ? r.total_kg : Math.abs(r.lift_N/9.81);
   const rows = kind === 'car' ? [
-    ['Downforce', `${Math.abs(r.lift_N/9.81).toFixed(0)} kg`],
-    ['As % of car mass', `${(Math.abs(r.liftFrac)*100).toFixed(0)} %`],
-    ['C<sub>L</sub>A', `${Math.abs(r.CL*cfg.s_ref).toFixed(2)}`],
-    ['Induced drag', `${(r.drag_N/9.81).toFixed(0)} kg-force`],
-    ['Downforce / drag', `${r.LD.toFixed(1)}`],
+    ['Downforce', `${totalKg.toFixed(0)} kg`],
+    ['&nbsp;&nbsp;wings', `${(r.wings_kg != null ? r.wings_kg : 0).toFixed(0)} kg`],
+    ['&nbsp;&nbsp;underbody', `${(r.under_kg != null ? r.under_kg : 0).toFixed(0)} kg`],
+    ['&nbsp;&nbsp;of which the fan', `${(r.fan_kg != null ? r.fan_kg : 0).toFixed(0)} kg`],
+    ['As % of car mass', `${(100*totalKg/(cfg.mass_kg || 1)).toFixed(0)} %`],
+    ['Wing C<sub>L</sub>A', `${Math.abs(r.CL*cfg.s_ref).toFixed(2)}`],
+    ['C<sub>D</sub>A accounted', `${((r.cda_induced||0)+(r.cda_bluff||0)).toFixed(2)}`],
+    ['&nbsp;&nbsp;wing induced', `${(r.cda_induced||0).toFixed(2)}`],
+    ['&nbsp;&nbsp;bluff and friction', `${(r.cda_bluff||0).toFixed(2)}`],
     ['Aero balance', `${(r.frontFrac*100).toFixed(0)} % front`],
   ] : [
     /* Drag, not induced drag.
