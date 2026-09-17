@@ -461,6 +461,11 @@ EXPECTED = [
     ("avionics_tray", "wing_bolt_"), ("wing_bolt_", "duct_inlet"),
     ("cooling_exit_", "stringer"), ("intake_lip", "longeron"),
     ("longeron", "gear_door_actuator_"), ("fuel_pump", "rx_mount"),
+    # Joints made while closing the assembly, each of which IS the joint:
+    # the retract jack's hoses run up into the bay's hydraulic lines, and the
+    # rudder ram's rod-end lands on the rudder's balance horn.
+    ("gear_main_retract_actuator_", "gear_bay_hydraulic_lines_"),
+    ("rudder_servo", "rudder"),
 ]
 
 if __name__ == "__main__":

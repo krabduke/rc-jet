@@ -221,20 +221,39 @@ def main():
 
     rows, n_bool, n_ok, n_sharp = [], 0, 0, 0
     eng_axis_x = spec.ENGINE_X * MM      # unused for rotation, kept for clarity
+
+    # Every module is built before any object is made, and the cutters are
+    # pooled across all of them.
+    #
+    # This used to read each module's cutters out of that same module's
+    # build and apply them to that same module's objects, so a `cut:` aimed
+    # at a part another module builds was silently thrown away. There is
+    # exactly one of those and it is the important one: intake.py declares
+    # `cut:fuselage_skin` -- the hole the inlet breathes through -- and
+    # fuselage.py builds the skin. The aperture was never cut. Every gate
+    # passed, because `check_intake.py` verifies that the cut is REGISTERED,
+    # which it always was, and nothing verified that it was applied.
+    all_built = []
+    cutters = {}
     for modname, module in MODULES:
-        t1 = time.time()
         built = module.build()
+        for key, geom in built.items():
+            if key.startswith("cut:"):
+                cutters.setdefault(key[4:], []).append(geom)
+        all_built.append((modname, module, built))
+
+    for modname, module, built in all_built:
+        t1 = time.time()
         arrays = getattr(module, "ARRAYS", {})
         objects = {k: v for k, v in built.items() if not k.startswith("cut:")}
-        cutters = {k[4:]: v for k, v in built.items() if k.startswith("cut:")}
         piv = module.pivots() if hasattr(module, "pivots") else {}
 
         for name, (v, f) in sorted(objects.items()):
             cname = collection_for(name)
             ob = make_object(name, v, f, cols[cname])
-            if name in cutters:
+            for cut in cutters.get(name, ()):
                 n_bool += 1
-                if apply_cutters(ob, *cutters[name]):
+                if apply_cutters(ob, *cut):
                     n_ok += 1
             if name in arrays:
                 array_rotational(ob, arrays[name], 0.0, spec.ENGINE_Z * MM)

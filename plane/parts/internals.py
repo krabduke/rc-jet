@@ -26,6 +26,10 @@ def _default_build():
         out[f"fcs_loom_trunk_{name}"] = mesh.pipe(
             points, fcs["loom_r"], 32, subdiv=100
         )
+    for name, points in fcs.get("tail_runs", {}).items():
+        out[f"fcs_loom_{name}"] = mesh.pipe(
+            points, fcs.get("tail_r", fcs["loom_r"]), 20, subdiv=60
+        )
     for name, (verts, _) in out.items():
         if any(intake.in_duct(point) for point in verts):
             raise ValueError(f"Specified geometry for {name} enters the intake duct")

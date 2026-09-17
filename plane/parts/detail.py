@@ -94,6 +94,33 @@ def _plate(loop, thickness):
     return verts, faces
 
 
+_SKIN = {}
+
+
+def _skin_z(name, x, y, upper=True):
+    """Height of the built wing skin at (x, y), read off the mesh itself.
+
+    `common.surface_z` computes this from the aerofoil and z_root, and leaves
+    out the washout: the sections are twisted 1.5 degrees towards the tip, so
+    the further out you go the further its answer is from the skin. Measured
+    on the built wing, every vortex generator was standing 1.4 units clear of
+    it at the root and 2.2 at the tip -- 24 tabs, none of them touching the
+    aeroplane, all of them in a render nobody could read at that size.
+
+    Reading the part that is actually built cannot drift. This does mean the
+    wing has to be built before the detail that lands on it, which is why the
+    module is imported here and not at the top.
+    """
+    if name not in _SKIN:
+        from parts import wing
+        _SKIN[name] = wing.build()[name][0]
+    near = [pz for (px, py, pz) in _SKIN[name]
+            if (px - x) ** 2 + (py - y) ** 2 <= 36.0]
+    if not near:
+        return None
+    return max(near) if upper else min(near)
+
+
 def _vg_rows():
     """Retain the paired vortex generators; the wing fences go.
 
@@ -119,7 +146,10 @@ def _vg_rows():
             x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
                                   W["sweep_le"], fr)
             h = chord * D["vg_h"]
-            z0 = common.surface_z(W, fr, D["vg_x"])
+            x_vg = x_le + chord * D["vg_x"]
+            z0 = _skin_z(f"wing_{'lr'[0 if sgn < 0 else 1]}", x_vg, y)
+            if z0 is None:
+                z0 = common.surface_z(W, fr, D["vg_x"])
             # A vortex generator is a swept triangular vane, tall at the
             # back and faired into the skin at the front: that geometry is
             # what rolls the flow up into a discrete vortex. A rectangular

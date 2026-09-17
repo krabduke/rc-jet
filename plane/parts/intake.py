@@ -303,7 +303,17 @@ def _duct():
     """S-duct from the chin inlet up to the engine centreline. The offset is
     real: the inlet sits below the cockpit and the engine sits on the datum, so
     the duct has to climb, which is exactly why fighters have S-ducts."""
-    n_st = 22
+    n_st = 26
+    # Forward to the lip, not to the throat.
+    #
+    # The duct used to begin at x_throat and the lip ends at x 60, so there
+    # were 26 units -- 860 mm at full size -- of open air between the mouth
+    # the aeroplane breathes through and the duct that carries the air to the
+    # engine. Every intake gate passed: `check_intake` tests that the duct is
+    # enclosed, that the aperture is cut and that the bore diffuses from the
+    # throat to the fan, and none of those asks whether the lip and the duct
+    # are the same piece of ducting.
+    x_lip = I["x_lip"] + 2.0
     x0, x1 = I["x_throat"], I["x_duct_end"]
     w0, h0, z0 = I["lip_width"] / 2 - 1.0, I["lip_height"] / 2 - 1.0, I["z_lip"]
     r1 = I["duct_r_end"]
@@ -311,13 +321,25 @@ def _duct():
     outer_rings, inner_rings = [], []
     for i in range(n_st):
         t = i / (n_st - 1)
+        x = x_lip + (x1 - x_lip) * t
+        if x < x0:
+            # the mouth, contracting gently from the lip section to the
+            # throat. It stays on the lip's own centreline: the climb only
+            # starts where the diffuser does.
+            u = (x - x_lip) / (x0 - x_lip)
+            w = I["lip_width"] / 2 + (w0 - I["lip_width"] / 2) * u
+            h = I["lip_height"] / 2 + (h0 - I["lip_height"] / 2) * u
+            zc, squash = z0, 2.4
+            outer_rings.append(_oval(x, w + I["wall"], h + I["wall"], zc,
+                                     SEG, squash))
+            inner_rings.append(_oval(x, w, h, zc, SEG, squash))
+            continue
         # the climb and the growth share the quadratic schedule the section
         # helpers publish, so the loft and the audits agree exactly
-        s = _duct_schedule(x0 + (x1 - x0) * t)
+        s = _duct_schedule(x)
         w = w0 + (r1 - w0) * s
         h = h0 + (r1 - h0) * s
         zc = z0 + (spec.ENGINE_Z - z0) * s
-        x = x0 + (x1 - x0) * t
         squash = 2.4 + (2.0 - 2.4) * s          # oval inlet -> round at the fan
         outer_rings.append(_oval(x, w + I["wall"], h + I["wall"], zc, SEG, squash))
         inner_rings.append(_oval(x, w, h, zc, SEG, squash))

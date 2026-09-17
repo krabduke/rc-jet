@@ -951,8 +951,9 @@ FCS = {
     # and where each loom terminates: the electrical port on every actuator
     # this aeroplane has. Each is inside the skin and clear of the duct.
     "actuators": {
-        "stabilator_l": (405.0, -12.0, -15.0),
-        "stabilator_r": (405.0, 12.0, -15.0),
+        # on the servo body at z -20, not 5 units above it
+        "stabilator_l": (398.0, -10.0, -19.2),
+        "stabilator_r": (398.0, 10.0, -19.2),
         "rudder":       (352.0, 0.0, 26.0),
         # on the rear spar at 0.68 chord, just ahead of the hinge at 0.74 --
         # an actuator anywhere else has to reach across the flap bay
@@ -974,5 +975,38 @@ FCS = {
         "lower_r": [(140.0, 20.0, -6.0), (200.0, 25.0, -4.0),
                     (250.0, 27.0, -2.0), (300.0, 24.0, 0.0)],
     },
-    "loom_r": 1.4,          # loom radius, ~46 mm full size with its conduit
+    # Aft of the firewall, to the tail.
+    #
+    # The trunks stopped at x 300 and the stabilator servos are at 387-413,
+    # so 94 units of aeroplane had no wiring in it and three powered surfaces
+    # sat in it. These are separate parts rather than four more waypoints on
+    # the trunks, because `mesh.pipe` fits one spline through the whole list
+    # and adding points at the back moved the front of the run through the
+    # NACA inlets.
+    #
+    # The corridor is narrow: the engine casing is 14.9 units in radius about
+    # z = -1, the mount rails fill z -18.7 to -3.3, the cooling exits are
+    # outboard above z 8, and the skin closes from y 28.4 at x 306 to 21.4 at
+    # x 400. What is left is a run at z = -1, just outboard of the casing.
+    "tail_runs": {
+        # Along the bottom of the bay, just inside the skin.
+        #
+        # There is one way aft and it took a sweep of the whole section to
+        # find it. Above the engine the corridor closes to 1.4 units at the
+        # forward fire hoop; on the upper flank the cooling exits and the
+        # fin root fill it; at 4 and 8 o'clock the ventral fins' roots reach
+        # in to r 13.5 and the engine mount rails fill z -18.7 to -3.3. At
+        # 6 o'clock, between r 20.7 and 25.3, nothing is in the way as far
+        # as the stabilator servos. Even there the annulus between the
+        # engine's external pipework and the skin is under one unit at
+        # station 394, which is why these run at the thinner `tail_r`.
+        "tail_l": [(310.0, -6.0, -23.6), (342.0, -5.8, -22.6),
+                   (378.0, -5.4, -21.2), (392.0, -6.0, -20.0),
+                   (398.0, -10.0, -19.2)],
+        "tail_r": [(310.0, 6.0, -23.6), (342.0, 5.8, -22.6),
+                   (378.0, 5.4, -21.2), (392.0, 6.0, -20.0),
+                   (398.0, 10.0, -19.2)]
+    },
+    "loom_r": 1.4,
+    "tail_r": 0.6,      # a single harness on a rail, not a four-channel trunk          # loom radius, ~46 mm full size with its conduit
 }

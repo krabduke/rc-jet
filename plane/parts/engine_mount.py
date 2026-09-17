@@ -94,8 +94,20 @@ ARRAYS = {}
 # fuel_pump, turbine_ecu, ecu_battery -- and fitting a scaled F110 oil tank
 # beside a model fuel hopper would be the wrong object twice. So the airframe
 # takes the engine and leaves the nacelle kit behind.
+#
+# The variable nozzle goes the same way, and for a sharper reason: hardware.py
+# builds one. The engine's own nozzle is a static ring of flaps at one area;
+# the airframe's is twelve separate flaps, twelve links, twelve seals and six
+# actuators posed on a unison ring, so the nozzle can be shown at dry power
+# and at reheat. Both were being built, in the same 17 mm of tailpipe --
+# `nozzle_unison_ring` and `engine_nozzle_actuator_ring` have identical
+# bounding boxes -- so every flap in the aeroplane was two flaps, and the
+# audits allowed it because ("nozzle", "nozzle") reads as one assembly.
 NOT_INSTALLED = ("oil_tank", "heat_exchanger", "engine_control",
-                 "ignition_exciters")
+                 "ignition_exciters",
+                 "nozzle_actuator_ring", "nozzle_actuators",
+                 "nozzle_ext_flaps", "nozzle_flaps_convergent",
+                 "nozzle_flaps_divergent", "nozzle_links", "nozzle_seals")
 
 
 def build():
@@ -279,6 +291,25 @@ def _bay_installation(espec):
                 [(xs - 3.0, sgn * 2.0, zc - h + 1.0),
                  (xs + 3.0, sgn * 2.0, zc - h + 1.0)], 0.7, 8))
     out["engine_bay_doors"] = mesh.join(*doors)
+
+    # The forward mount links.
+    #
+    # The engine's own forward trunnion is at x 332.5-335.3, y +/-12.8,
+    # z 11.3-16.5. The airframe's thrust ring is at x 306-315. Between them
+    # was 18 units of nothing: the engine was carried by its rear links and
+    # by the fact that nobody asked. A forward mount is two links, not a
+    # collar -- a collar cannot take thermal growth along the case.
+    links = []
+    for sgn in (-1.0, 1.0):
+        links.append(mesh.pipe(
+            [(313.0, sgn * 20.5, 4.0), (322.0, sgn * 17.0, 9.0),
+             (334.0, sgn * 12.0, 13.5)], 1.6, 12, subdiv=3))
+        for at in ((313.0, sgn * 20.5, 4.0), (334.0, sgn * 12.0, 13.5)):
+            ev, ef = mesh.revolve_ring(
+                [(0.0, 1.6), (0.0, 3.2), (2.4, 3.2), (2.4, 1.6)], 14)
+            links.append(([(pz + at[0], py + at[1], px + at[2])
+                           for (px, py, pz) in ev], ef))
+    out["engine_mount_links_fwd"] = mesh.join(*links)
     return out
 
 

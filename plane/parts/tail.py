@@ -194,9 +194,14 @@ def _rudder_servo(ru):
          (r_b * 3.4, r_b)], 20)
     parts.append(([(px_ + hinge_x - r_b * 3.6, px_ * 1.0 + yc, py_ + z)
                    for (px_, py_, pz_) in bvv], bf))
-    # ram forward to a crank on the rudder's forward balance extension
+    # ram aft onto a crank on the rudder's forward balance extension.
+    #
+    # It used to stop at hinge_x - 0.5 r_b, which is forward of the hinge and
+    # therefore forward of the rudder: the actuator drove nothing. The rudder
+    # panel starts 0.03 chord aft of the hinge line, which is 0.6 r_b, so the
+    # rod has to reach past that to land on it.
     parts.append(mesh.pipe(
-        [(hinge_x - r_b * 0.5, yc, z), (hinge_x - r_b * 3.2, yc, z)],
+        [(hinge_x - r_b * 3.2, yc, z), (hinge_x + r_b * 1.4, yc, z)],
         r_b * 0.42, 12))
     # manifold block between the pressure lines and the cylinder ports
     mv, mf = mesh.box(hinge_x - r_b * 3.0, yc, z - r_b * 2.4,

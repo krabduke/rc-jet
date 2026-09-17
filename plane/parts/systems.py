@@ -266,27 +266,18 @@ def _retracts():
     # The wing is 18.5 mm thick at the gear station and the leg is already
     # there. The unit goes on the wing's own mean line, just inboard of the
     # trunnion, which is what the docstring above has always said it does.
-    W = spec.WING
-    y_r = G["main_y"] - 2.0
-    fr = y_r / W["semi_span"]
-    chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
-    x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], fr)
-    x_r = G["main_x"] + 10.0
-    u = (x_r - x_le) / chord
-    z_r = 0.5 * (common.surface_z(W, fr, u, upper=True)
-                 + common.surface_z(W, fr, u, upper=False))
-    for side, sgn in (("l", -1.0), ("r", 1.0)):
-        out[f"retract_main_{side}"] = shapes.rounded_box(
-            x_r, sgn * y_r, z_r, 36.0, 20.0, 14.0, 3.0)
-        # with the retract, in the wing root. clear_duct lifted these into the
-        # upper fuselage, which is the one place a gear door actuator cannot
-        # be -- it has to reach the door, and the door is under the wing.
-        out[f"gear_door_actuator_{side}"] = shapes.linear_actuator(
-            (G["main_x"] - 14.0, sgn * (y_r + 4.0), z_r - 3.0),
-            (G["main_x"] + 6.0, sgn * (y_r - 9.0), z_r - 7.0), 2.0)
-    out["gear_door_actuator_n"] = shapes.linear_actuator(
-        inside(G["nose_x"] - 14.0, 0.40, -0.40, 4.0),
-        inside(G["nose_x"] + 4.0, 0.52, -0.58, 4.0), 2.0)
+    # The main legs' retract jacks and all four door actuators belong to
+    # gear.py.
+    #
+    # They were built here as well, and `retract_main_l` and
+    # `gear_main_retract_actuator_l` came out 0.19 units apart -- two jacks
+    # in the same place on the same leg, one of them a 36x20x14 box from
+    # when this was a model with electric retract units in it. gear.py's set
+    # is the one that is a mechanism: a jack, a downlock, a drag stay, a side
+    # stay and a trailing link per leg, with its own door hinges, latches and
+    # actuators. Nothing here could tell, because every audit was asking
+    # whether parts got in each other's way and two coincident actuators
+    # read as one assembly.
     return out
 
 

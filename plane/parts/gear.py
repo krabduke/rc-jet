@@ -167,8 +167,19 @@ def _mains():
         out[f"gear_main_drag_stay_{side}"] = mesh.pipe(
             [(x - B["main_bay_length"] / 2 + r, y, z_top),
              (x - r * 3, y, z_top - G["main_leg"] * 0.25), lower], r * 0.45, 14)
-        out[f"gear_main_retract_actuator_{side}"] = _actuator(
-            (x + r * 3, y + sgn * r * 4, z_top), lower, r * 0.38)
+        # the jack, and the two hoses that feed it.
+        #
+        # Without them the bay's hydraulic lines ran along the roof and the
+        # jack hung under them unconnected -- a hydraulic actuator with no
+        # hydraulics, three units from the pipes that are drawn for it.
+        anchor_a = (x + r * 3, y + sgn * r * 4, z_top)
+        roof_z = B["main_roof"] - B["wall"] * 2
+        hoses = [mesh.pipe([anchor_a,
+                            (x + r * 3, sgn * B["main_bay_y"] + d, roof_z)],
+                           r * 0.12, 8)
+                 for d in (-B["wall"], B["wall"])]
+        out[f"gear_main_retract_actuator_{side}"] = mesh.join(
+            _actuator(anchor_a, lower, r * 0.38), *hoses)
         out.update(_bay(f"main_{side}", x, sgn * B["main_bay_y"],
                         B["main_bay_length"], B["main_bay_width"],
                         B["main_bay_floor"], B["main_roof"], sgn))
