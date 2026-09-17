@@ -916,3 +916,63 @@ def wing_loading_kg_m2():
 
 def thrust_to_weight():
     return ENGINE_FULL["thrust_ab_n"] / (total_mass_kg() * 9.80665)
+
+
+# --------------------------------------------------------------------------
+# Flight control system
+# --------------------------------------------------------------------------
+# An agent asked to route the flight-control wiring refused the job, and it
+# was right to: docs/FULL_SCALE.md asks for a flight-control computer in an
+# avionics bay and then defines neither its envelope nor a single electrical
+# port, and the only endpoints in the spec were an RC receiver and a turbine
+# ECU. It declined to invent coordinates rather than produce plausible
+# nonsense. This is the answer to that refusal.
+#
+# The aeroplane is unstable by about three points of MAC, so it does not fly
+# at all without this; the FCS is not an accessory here, it is what makes the
+# configuration legal. Hence quadruplex -- four independent channels, four
+# separate looms on separate routes, so no single burst or bird takes more
+# than one.
+#
+# The bay is under the cockpit floor, which is where a fighter puts avionics
+# and the only place at that station with room: at station 118 the duct's top
+# is at z -10.6 and the cockpit floor is near z +4, giving a bay a shade over
+# fourteen units deep between them.
+FCS = {
+    # the computer itself, four channels in one chassis on shock mounts
+    "fcc": {"x": 118.0, "y": 0.0, "z": -4.0,
+            "length": 26.0, "width": 22.0, "height": 10.0,
+            "channels": 4},
+    # where each channel's loom leaves the chassis, on its aft face
+    "ports": [
+        (131.0, -7.0, -6.5), (131.0, 7.0, -6.5),
+        (131.0, -7.0, -1.5), (131.0, 7.0, -1.5),
+    ],
+    # and where each loom terminates: the electrical port on every actuator
+    # this aeroplane has. Each is inside the skin and clear of the duct.
+    "actuators": {
+        "stabilator_l": (405.0, -12.0, -15.0),
+        "stabilator_r": (405.0, 12.0, -15.0),
+        "rudder":       (352.0, 0.0, 26.0),
+        # on the rear spar at 0.68 chord, just ahead of the hinge at 0.74 --
+        # an actuator anywhere else has to reach across the flap bay
+        "flaperon_l":   (311.0, -55.0, -6.0),
+        "flaperon_r":   (311.0, 55.0, -6.0),
+        "le_flap_l":    (232.0, -70.0, -1.0),
+        "le_flap_r":    (232.0, 70.0, -1.0),
+    },
+    # Looms run along the fuselage sides in the pocket over the duct's
+    # shoulder, two a side, high and low, so a single failure cannot take a
+    # pair. These are the waypoints between the bay and the wing root.
+    "routes": {
+        "upper_l": [(140.0, -18.0, 6.0), (200.0, -22.0, 10.0),
+                    (250.0, -24.0, 12.0), (300.0, -22.0, 14.0)],
+        "upper_r": [(140.0, 18.0, 6.0), (200.0, 22.0, 10.0),
+                    (250.0, 24.0, 12.0), (300.0, 22.0, 14.0)],
+        "lower_l": [(140.0, -20.0, -6.0), (200.0, -25.0, -4.0),
+                    (250.0, -27.0, -2.0), (300.0, -24.0, 0.0)],
+        "lower_r": [(140.0, 20.0, -6.0), (200.0, 25.0, -4.0),
+                    (250.0, 27.0, -2.0), (300.0, 24.0, 0.0)],
+    },
+    "loom_r": 1.4,          # loom radius, ~46 mm full size with its conduit
+}
