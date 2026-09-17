@@ -13,6 +13,10 @@ W = spec.WING
 FL = spec.FLAPERON
 NS = spec.RES["wing_stations"]
 NC = spec.RES["airfoil_pts"]
+LE_HINGE_U = 0.15
+LE_SPAN_IN = 0.25
+LE_SPAN_OUT = 0.95
+LE_CRUISE_DEG = 1.0
 
 
 def build():
@@ -21,7 +25,7 @@ def build():
     out.update(_flaperons())
     out.update(_strakes())
     out.update(_spar())
-    out.update(_servo_hatches())
+    out.update(_leading_edge_flaps())
     return out
 
 
@@ -44,43 +48,6 @@ def _rounded_rect(cx, cy, sx, sy, r, seg=4):
         for k in range(seg + 1):
             a = a0 + math.pi / 2 * k / seg
             out.append((px + r * math.cos(a), py + r * math.sin(a)))
-    return out
-
-
-def _servo_hatches():
-    """The way the aileron servo gets in and out.
-
-    Each one lies flat in eighteen millimetres of wing with three millimetres
-    of skin under it and no way to reach it: to change a servo you would have
-    to cut the wing open. A moulded wing has a hatch there -- a cover screwed
-    down over the bay, a little proud of the skin because it is bonded on top
-    of a doubler rather than let into the surface.
-
-    It follows the skin. A flat card over a section that falls a millimetre
-    and a half across the hatch would stand off it at one corner and sink
-    into it at the other.
-    """
-    out = {}
-    for tag, sgn in (("l", -1.0), ("r", 1.0)):
-        srv = [h for h in spec.HARDWARE if h[0] == f"servo_ail_{tag}"][0]
-        x, y = srv[1], srv[2]
-        sx, sy, t = srv[4] + 13.0, srv[5] + 8.0, 1.2
-        outline = _rounded_rect(x, y, sx, sy, 4.0)
-        z_ref = _lower_z(x, y)
-        parts = [shapes.shaped_panel(
-            outline, z_ref + t / 2 - 0.35, t, axis="z", rim_seg=4, rim=1.1,
-            bow=lambda fx, fy, x0=x - sx / 2, y0=y - sy / 2, sx=sx, sy=sy,
-                       z0=z_ref: _lower_z(x0 + fx * sx, y0 + fy * sy) - z0)]
-        # four screws into the doubler under the skin
-        for ox in (-1, 1):
-            for oy in (-1, 1):
-                hx, hy = x + ox * (sx / 2 - 4.5), y + oy * (sy / 2 - 4.5)
-                hv, hf = mesh.revolve_ring(
-                    [(0.0, 0.5), (0.0, 1.5), (0.7, 1.15), (0.7, 0.5)], 10)
-                parts.append(([(px + hx, py + hy, -pz + _lower_z(hx, hy) - 0.3)
-                               for (px, py, pz) in
-                               [(v[1], v[2], v[0]) for v in hv]], hf))
-        out[f"servo_hatch_{tag}"] = mesh.join(*parts)
     return out
 
 
@@ -127,9 +94,27 @@ def _panels():
             thickness_tip=W["thickness_tip"], tip_cap=7,
             camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
-            u0=0.0, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir,
+            u0=LE_HINGE_U, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir,
             span0=_root_span0())
         out[f"wing_{side}"] = (v, f)
+    return out
+
+
+def _leading_edge_flaps():
+    out = {}
+    for side, mir in (("l", True), ("r", False)):
+        v, f = common.panel(
+            root_le=(W["x_root_le"], 0.0, W["z_root"]),
+            root_chord=W["root_chord"], tip_chord=W["tip_chord"],
+            semi_span=W["semi_span"], sweep_le=W["sweep_le"],
+            dihedral=W["dihedral"], thickness=W["thickness"],
+            planform=spec.WING_PLANFORM,
+            thickness_tip=W["thickness_tip"], tip_cap=7,
+            camber=W["camber"], twist_root=W["incidence"],
+            twist_tip=W["incidence"] - W["washout"],
+            u0=0.0, u1=LE_HINGE_U, n_span=NS, n_chord=NC, mirror=mir,
+            span0=_root_span0())
+        out[f"leading_edge_flap_{side}"] = (v, f)
     return out
 
 

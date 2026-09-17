@@ -6,8 +6,8 @@ but max reheat, and it is not the nozzle this airframe is seen with: the
 aircraft sits on the ground and cruises dry, and what a nozzle looks like at
 dry power is closed down to a convergent cone with a ring of external flaps
 over it. So the nozzle that ships with the aeroplane is the engine's own
-hardware re-posed: same flap count, same unison ring, same linkages, rebuilt
-at the dry-power station and radius.
+hardware re-posed: its installed hinge and exit geometry locate the flaps,
+and the dry-power throat closes down inside the external petal envelope.
 
 The old `thrust_tube` and `tailpipe_cone` were a model's jet pipe -- a plain
 tube necking down to a cone on a spider, the exhaust of a ducted-fan airframe
@@ -25,15 +25,37 @@ import mesh
 from parts import engine_mount
 
 
+# these dry-power display proportions belong in spec.py; 1090 mm is the
+# reference open exit diameter, not the smaller dry-power throat diameter.
+NOZZLE_EXIT_DIAMETER = 1090.0 / spec.SCALE_TO_FULL
+DRY_THROAT_RATIO = 0.65
+DRY_EXIT_RATIO = 0.82
+PETAL_OVERLAP = 1.04
+
+# hardware owns these installed meshes, otherwise the open engine nozzle
+# remains superimposed on the dry-power one during assembly.
+_NOZZLE_PARTS = ("nozzle_flaps_convergent", "nozzle_flaps_divergent",
+                 "nozzle_seals", "nozzle_ext_flaps", "nozzle_actuator_ring",
+                 "nozzle_actuators", "nozzle_links", "flameholder", "spraybars")
+engine_mount.NOT_INSTALLED = tuple(dict.fromkeys(
+    engine_mount.NOT_INSTALLED + _NOZZLE_PARTS))
+
+
 def _nozzle_panel(x0, x1, r0, r1, z, angle, width, thickness):
-    verts = []
-    for radius_offset in (0.0, -thickness):
-        for x, radius in ((x0, r0), (x1, r1)):
-            for a in (angle - width / 2, angle + width / 2):
-                r = radius + radius_offset
-                verts.append((x, r * math.sin(a), z + r * math.cos(a)))
-    faces = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1),
-             (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
+    """Curved overlapping sectors keep the throat open without polygonal gaps."""
+    verts, faces = [], []
+    segments = 6
+    for j in range(segments + 1):
+        a = angle - width / 2 + width * j / segments
+        for x, r in ((x0, r0), (x1, r1),
+                     (x1, r1 - thickness), (x0, r0 - thickness)):
+            verts.append((x, r * math.sin(a), z + r * math.cos(a)))
+    for j in range(segments):
+        for k in range(4):
+            k2 = (k + 1) % 4
+            faces.append((j * 4 + k, j * 4 + k2,
+                          (j + 1) * 4 + k2, (j + 1) * 4 + k))
+    faces.extend([(3, 2, 1, 0), tuple(segments * 4 + k for k in range(4))])
     return verts, faces
 
 
