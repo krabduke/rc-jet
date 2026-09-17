@@ -1,8 +1,8 @@
-"""Airframe detail: the parts that make a model look like an aircraft.
+"""External fittings on the full-size agility demonstrator.
 
-Control horns and linkages, pitot and antennas, wing fences and vortex
-generators, navigation lights, gear doors, wheel hubs, access panels, the
-tailpipe shroud and static dischargers.
+Pitot and antennas, vortex generators, navigation lights, gear doors,
+wheel hubs, flush access panels and the tailpipe shroud remain outside.
+Flight-control actuation belongs under the skin, not in the airstream.
 
 There are no stores and no pylons. This aircraft is built for speed and roll
 rate, and a pylon is a bluff body hanging in the flow that buys neither.
@@ -23,75 +23,27 @@ V = spec.VTAIL
 G = spec.GEAR
 FL = spec.FLAPERON
 
+# belongs in spec.py (next to SKIN_DETAIL): how far flush access relief may
+# stand proud of the skin. 0.15 units is 5 mm full size -- a panel line plus a
+# fastener row, which is all an inspection panel shows on a real airframe.
+SKIN_RELIEF = 0.15
+
 
 def build():
     out = {}
-    out.update(_control_horns())
     out.update(_probes())
-    out.update(_fences())
+    out.update(_vg_rows())   # wing fences deleted: see _vg_rows
     out.update(_lights())
     out.update(_gear_doors())
     out.update(_wheel_hubs())
     out.update(_access_panels())
     out.update(_exhaust_petals())
-    out.update(_dischargers())
     out.update(_speed_kit())
-    out.update(_linkages())
     return out
 
 
-def _control_horns():
-    """A horn and clevis on every moving surface, where the pushrod meets it."""
-    horns, clevises = [], []
-
-    def horn(x, y, z, h=None):
-        h = spec.WING_DETAIL["horn_h"] if h is None else h
-        sgn_h = 1.0 if h >= 0 else -1.0
-        # A horn is a moulded arm with a row of holes in it: the hole you use
-        # sets the throw, and the base flange is what bonds it to the surface.
-        arm = shapes.panel_outline(
-            [(x - 3.4, z), (x + 3.4, z),
-             (x + 2.4, z + h * 0.62), (x + 1.8, z + h),
-             (x - 1.8, z + h), (x - 2.6, z + h * 0.62)], subdiv=4)
-        parts = [shapes.shaped_panel(arm, y, 2.2, rim_seg=3)]
-        for k in (0.52, 0.74, 0.94):
-            hv, hf = mesh.revolve_closed(
-                [(-1.6, 0.62), (1.6, 0.62), (1.6, 1.05), (-1.6, 1.05)], 12)
-            parts.append(([(pz + x, px + y, py + z + h * k)
-                           for (px, py, pz) in hv], hf))
-        parts.append(shapes.rounded_box(x, y, z + sgn_h * 0.8, 11.0, 7.0,
-                                        1.6, 1.4, seg=4))
-        horns.append(mesh.join(*parts))
-        clevises.append(shapes.clevis(
-            (x, y, z + h), (0.0, 0.0, sgn_h), 1.9))
-
-    f = (FL["span_in"] + FL["span_out"]) / 2
-    for sgn in (-1.0, 1.0):
-        y = sgn * W["semi_span"] * f
-        chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
-        x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
-        # under the wing: a horn and rod on the upper surface sit in the
-        # working flow and cost drag, which is the opposite of the brief
-        horn(x_le + chord * (1 - FL["chord_frac"]) + 6.0, y,
-             common.surface_z(W, f, 1 - FL["chord_frac"], upper=False),
-             -spec.WING_DETAIL["horn_h"])
-
-    # The stabilators' horns are not here. They are built on the pivot shaft
-    # in parts/tail.py, because an all-moving surface is driven through its
-    # shaft, not off its skin -- these two stood on the tailplane's upper
-    # surface at y 18 and drove straight up into the side of the fuselage.
-    horn(V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)
-    tags = ["fl", "fr", "rud"]
-    out2 = {}
-    for i, m in enumerate(horns):
-        out2[f"horn_{tags[i]}"] = m
-    for i, m in enumerate(clevises):
-        out2[f"clevis_{tags[i]}"] = m
-    return out2
-
-
 def _probes():
-    """Pitot boom on the nose, plus UHF and GPS antennas."""
+    """A pitot boom on the nose, plus the UHF blade aerial."""
     out = {}
     P = spec.PROBE
     tip, z = P["pitot_tip"], P["pitot_z"]
@@ -104,8 +56,9 @@ def _probes():
     cone = ([(x, y, z + zz) for (x, y, zz) in cone[0]], cone[1])
     out["pitot"] = mesh.join(probe, cone)
 
-    # A 440 mm model carries a small blade aerial, not a shark fin -- sized
-    # from the spine it sits on rather than picked by eye.
+    # A blade aerial is sized from the spine it sits on, so it follows the
+    # skin rather than being picked by eye, and the whole blade is well under
+    # the shark fin a full-size UHF fit would hang there.
     ants = []
     x_a = 262.0
     base = fus.surface_point(x_a, 90.0)
@@ -121,9 +74,6 @@ def _probes():
     ants.append(shapes.shaped_panel(prof, base[1], 1.9, rim_seg=5))
     ants.append(shapes.rounded_box(base[0], base[1], base[2] - 0.4,
                                    26.0, 5.0, 1.4, 1.2, seg=5))
-    # There used to be a GPS patch here as well, and a GPS module in
-    # systems.py -- two GPS aerials on a 440 mm aeroplane with one receiver.
-    # `gps_puck` is the one that survived; this is the UHF telemetry blade.
     out["antennas"] = mesh.join(*ants)
     return out
 
@@ -145,41 +95,20 @@ def _plate(loop, thickness):
     return verts, faces
 
 
-def _fences():
-    """Wing fences and counter-rotating vortex generators.
+def _vg_rows():
+    """Retain the paired vortex generators; the wing fences go.
 
-    On a delta at high angle of attack the outer wing sheds first; the
-    generators re-energise that boundary layer so the flaperon keeps working.
-    Both are sized off the local chord, so they stay in proportion out to the
-    tip instead of turning into scenery.
+    The old fences stood 3.0 m tall over a third of the chord at full size --
+    a fence, not a fillet, and no delta this size carries them. Leading-edge
+    vortices are fed at the root by the LERX strakes, which already exist, so
+    the fences bought drag and said nothing. The generator pairs stay: on a
+    delta the outer wing sheds first and the generators re-energise that
+    boundary layer so the flaperon keeps working. Both are sized off the
+    local chord, so they stay in proportion out to the tip instead of turning
+    into scenery.
     """
     D = spec.WING_DETAIL
     out = {}
-    fences = []
-    for sgn in (-1.0, 1.0):
-        for fr in D["fence_stations"]:
-            y = sgn * W["semi_span"] * fr
-            chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
-            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
-                                  W["sweep_le"], fr)
-            h = chord * D["fence_h"]
-            z0 = common.surface_z(W, fr, 0.30)
-            # A fence is cut to a profile: tall at its leading edge where the
-            # spanwise flow it is stopping is strongest, faired away aft so it
-            # does not stand in the flaperon's flow. A constant-height slab
-            # does the second half of that job badly.
-            c = chord * D["fence_chord"]
-            x0 = x_le + chord * 0.30 - c / 2
-            prof = shapes.panel_outline(
-                [(x0, z0), (x0 + c, z0), (x0 + c, z0 + h * 0.30),
-                 (x0 + c * 0.62, z0 + h * 0.86), (x0 + c * 0.24, z0 + h),
-                 (x0 - c * 0.04, z0 + h * 0.52)], subdiv=8)
-            fences.append(shapes.shaped_panel(
-                prof, y, D["fence_t"], rim_seg=6,
-                bow=lambda fx, fz, sgn=sgn: sgn * 2.4 * fx * fx))
-    half = len(fences) // 2
-    for i, m in enumerate(fences):
-        out[f"wing_fence_{'lr'[i // half]}{i % half + 1}"] = m
 
     vgs = []
     n = D["n_vg"]
@@ -332,11 +261,65 @@ def _hub(x, y, z, r, half_w, spokes):
 
 
 def _access_panels():
-    """Hatches and bay covers, each lying down on the skin it covers."""
+    """Access panels as flush relief, not raised hatches.
+
+    The old panels were `surface_patch` shells standing 0.8-0.9 units off the
+    skin -- 27-30 mm at full size, a crate on the spine rather than an
+    inspection panel. A full-size access panel is flush: it reads as a panel
+    line and a fastener row, nothing more. Emitted here as shallow relief
+    whose top face sits just above the skin (0.15 units, 5 mm full size) and
+    whose skirt runs under it, so the relief never floats; the build boolean
+    later buries the skirt in the skin it follows.
+    """
     out = {}
-    for (name, x0, x1, a0, a1, h) in spec.SKIN_DETAIL["panels"]:
-        out[f"panel_{name}"] = fus.surface_patch(x0, x1, a0, a1, h)
+    t = SKIN_RELIEF
+    for (name, x0, x1, a0, a1, _h) in spec.SKIN_DETAIL["panels"]:
+        if name == "receiver":
+            # no receiver on a full-size aeroplane, so no panel for one
+            continue
+        out[f"panel_{name}"] = _panel_relief(x0, x1, a0, a1, t)
     return out
+
+
+def _panel_relief(x0, x1, a0, a1, height, nx=6, na=6):
+    """One flush panel: a shallow cap over the skin it covers.
+
+    The same loft `fuselage.surface_patch` uses, driven by the same
+    `surface_point` solve, with the outer ring 0.15 units out instead of a
+    hatch-height standoff. The inner ring runs 0.6 units UNDER the skin so
+    the relief is bonded to it rather than floating over it -- the build
+    boolean subtracts the skin, and what survives is the proud face.
+    """
+    inner, outer = [], []
+    for i in range(nx):
+        x = x0 + (x1 - x0) * i / (nx - 1)
+        for j in range(na):
+            a = a0 + (a1 - a0) * j / (na - 1)
+            inner.append(fus.surface_point(x, a, -0.6))
+            outer.append(fus.surface_point(x, a, height))
+    verts = inner + outer
+    off = len(inner)
+    faces = []
+    for i in range(nx - 1):
+        for j in range(na - 1):
+            k = i * na + j
+            faces.append((k, k + 1, k + na + 1, k + na))
+            faces.append((off + k, off + k + na, off + k + na + 1, off + k + 1))
+    for i in range(nx - 1):
+        for j in (0, na - 1):
+            k = i * na + j
+            if j == 0:
+                faces.append((k, k + na, off + k + na, off + k))
+            else:
+                faces.append((k + na, k, off + k, off + k + na))
+    for j in range(na - 1):
+        for i in (0, nx - 1):
+            k = i * na + j
+            if i == 0:
+                faces.append((k + 1, k, off + k, off + k + 1))
+            else:
+                faces.append((k, k + 1, off + k + 1, off + k))
+    return verts, faces
 
 
 def _exhaust_petals():
@@ -391,35 +374,6 @@ def _exhaust_petals():
         faces.append(tuple(range(base, base + m)))
         parts.append((verts, faces))
     return {"tailpipe_shroud": mesh.join(*parts)}
-
-
-def _dischargers():
-    """Static wicks on the trailing edges."""
-    parts = []
-    for sgn in (-1.0, 1.0):
-        for fr in (0.58, 0.80, 0.95):
-            y = sgn * W["semi_span"] * fr
-            chord = common.local_chord(W["root_chord"], W["tip_chord"], fr)
-            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
-                                  W["sweep_le"], fr)
-            # a wick is a base, a stub, and a bundle of filaments -- the
-            # filaments are the part that actually bleeds the charge
-            p0 = (x_le + chord * 0.74, y, W["z_root"])
-            p1 = (x_le + chord * 0.74 + 8.0, y + sgn * 2.0,
-                  W["z_root"] + 1.6)
-            d = tuple(p1[k] - p0[k] for k in range(3))
-            bv, bf = mesh.revolve_closed(
-                [(0.0, 0.0), (2.2, 0.0), (2.2, 0.9), (1.4, 1.5),
-                 (0.0, 1.5)], 14)
-            parts.append((shapes.orient(bv, p0, d), bf))
-            parts.append(mesh.pipe([p0, p1], [0.72, 0.34], 12, subdiv=2))
-            for k in range(5):
-                a = 2 * math.pi * k / 5
-                tip2 = (p1[0] + d[0] * 0.34 + math.cos(a) * 0.9,
-                        p1[1] + d[1] * 0.34 + math.sin(a) * 0.9,
-                        p1[2] + d[2] * 0.34)
-                parts.append(mesh.pipe([p1, tip2], 0.16, 6))
-    return {"static_dischargers": mesh.join(*parts)}
 
 
 def _speed_kit():
@@ -478,86 +432,3 @@ def _speed_kit():
                 [0.35, 0.12, 0.35], seg=5), subdiv=3))
     out["nose_strakes"] = mesh.join(*strakes)
     return out
-
-
-def _linkages():
-    """Every control surface needs a pushrod from its horn to its servo, and
-    a snake or a bellcrank where the run changes direction. Modelling the
-    horns and not the rods is modelling half a control system.
-    """
-    out = {}
-    W, FL, V, H = spec.WING, spec.FLAPERON, spec.VTAIL, spec.HTAIL
-    rods = []
-    # A rod runs from the servo's output arm to the surface's horn. It used to
-    # run from the horn to a point in mid-air near the servo bay, while a
-    # second complete set of rods in internals.py ran from the servos to the
-    # hinge lines. Both existed; neither joined a servo to a horn.
-    servo = {h[0]: h for h in spec.HARDWARE}
-
-    def arm(tag, dz=0.0):
-        s_ = servo[tag]
-        return (s_[1] + s_[4] * 0.52, s_[2], s_[3] + s_[6] * 0.46 + dz)
-
-    f = (FL["span_in"] + FL["span_out"]) / 2
-    for sgn, tag in ((-1.0, "servo_ail_l"), (1.0, "servo_ail_r")):
-        y = sgn * W["semi_span"] * f
-        chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
-        x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
-        horn = (x_le + chord * (1 - FL["chord_frac"]) + 6.0, y,
-                common.surface_z(W, f, 1 - FL["chord_frac"], upper=False)
-                - spec.WING_DETAIL["horn_h"])
-        rods.append(_rod(arm(tag), horn))
-    # Up over the duct's shoulder and along the spine to the fin. A rod from
-    # the wing root straight to the rudder horn crosses the intake.
-    rud_horn = (V["x_root_le"] + V["root_chord"] * 0.78, 4.0, 44.0)
-    # above the avionics tray, which tops out at z 22, and inboard of the
-    # NACA inlets, which start at y 23
-    # up the LEFT side, where its servo is, and only then across to the fin.
-    # A rod that crosses to the right at the wing root cuts the loom lane.
-    rods.append(_rod(arm("servo_rudder"), (244.0, -20.0, 26.0)))
-    rods.append(_rod((244.0, -20.0, 26.0), (320.0, -6.0, 26.0)))
-    rods.append(_rod((320.0, -6.0, 26.0), rud_horn))
-    # Up the fuselage side, not through the engine bay: the tail servos are in
-    # the wing root now and a straight rod from there to the tail goes through
-    # the thrust tube and the engine mount rails.
-    for sgn, tag in ((-1.0, "servo_stab_l"), (1.0, "servo_stab_r")):
-        a = arm(tag)
-        tip = spec.stab_horn_tip(sgn)
-        # out of the wing root over the retract, then aft outside the
-        # thrust tube's standoff mounts, which stand to y 20.4
-        rods.append(_rod(a, (280.0, sgn * 30.0, 9.0)))
-        rods.append(_rod((280.0, sgn * 30.0, 9.0), (336.0, sgn * 24.5, 4.0)))
-        # then down OUTSIDE the tube and into the pocket the stabilator pivot
-        # lives in. A rod that cuts straight across to the horn at y 8 goes
-        # through the jet pipe.
-        # then down and UNDER the engine mount rails, which run from x 306 to
-        # 420 out to y 20 -- the same low pocket the stabilator pivot is in.
-        rods.append(_rod((336.0, sgn * 24.5, 4.0), (362.0, sgn * 20.0, -21.0)))
-        rods.append(_rod((362.0, sgn * 20.0, -21.0), tip))
-    out["pushrod_linkages"] = mesh.join(*rods)
-
-    horns = []
-    for sgn in (-1.0, 1.0):
-        horns.append(shapes.rounded_box(298.0, sgn * 22.0, 8.0, 22.0, 4.0, 16.0, 1.5))
-    out["bellcranks"] = mesh.join(*horns)
-    return out
-
-
-def _rod(p0, p1, r=1.3):
-    """A pushrod: a threaded rod with a ball link swaged on each end.
-
-    The links are the whole linkage -- they take out the misalignment between
-    a surface swinging on its hinge line and a servo arm swinging on a
-    different one. A bare cylinder between two points cannot articulate.
-    """
-    d = tuple(p1[k] - p0[k] for k in range(3))
-    parts = [mesh.pipe([p0, p1], [r * 0.78, r * 0.78], 14, subdiv=3)]
-    for (p, dirn) in ((p0, tuple(-c for c in d)), (p1, d)):
-        bv, bf = mesh.revolve_closed(
-            [(0.0, 0.0), (r * 1.1, 0.0), (r * 1.6, r * 1.1),
-             (r * 1.1, r * 1.8), (0.0, r * 1.8), (-r * 0.9, r * 1.5),
-             (-r * 1.4, r * 0.9), (-r * 2.8, r * 0.62),
-             (-r * 4.0, r * 0.62)], 20)
-        parts.append((shapes.orient([(-px, py, pz) for (px, py, pz) in bv],
-                                    p, tuple(-c for c in dirn)), bf))
-    return mesh.join(*parts)

@@ -82,7 +82,7 @@ def _stab_servo(side, sgn, px, pz):
     y = sgn * (H["root_y"] - 3.0)
     # actuator body: barrel of the hydraulic cylinder, trunnion-mounted to a
     # lug off the fuselage frame
-    r_b = H["root_chord"] * 0.055
+    r_b = H["root_chord"] * 0.012
     bvv, bf = mesh.revolve_ring(
         [(0.0, r_b), (0.0, r_b * 1.28), (r_b * 3.4, r_b * 1.28),
          (r_b * 3.4, r_b)], 20)

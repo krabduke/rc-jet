@@ -1,20 +1,8 @@
-"""The cockpit: tub, panel, seat and the pilot who has to fit in it.
+"""The pressure tub extends below the sill to leave room for a seated pilot.
 
-This was three rounded boxes -- a slab for the instrument panel, a slab for
-the seat pan, a slab for its back -- floating under the canopy at sill level.
-The canopy is the one place on this model you look *into*, so it is the worst
-place to leave a stand-in.
-
-The shape of it is decided by what is underneath. The flight pack fills the
-bay from the datum up to z = 20, so the tub floor sits on top of the pack and
-the whole cockpit is 19 mm deep from floor to canopy crown. That is not a
-compromise, it is what a model this size is, and it is why the pilot is a
-bust cut below the chest: a full figure would need a well the battery is
-already in. Scale RC jets carry half pilots for exactly this reason.
-
-Everything here is checked against `canopy_top(x)` by tools/audit_fit.py --
-the bubble is the ceiling, and the ceiling falls away fore and aft, which is
-what sets the headbox height and where the HUD can go.
+The former battery shelf forced a half figure and a shallow seat. The
+full-size demonstrator instead needs a footwell above the inlet, while its
+headbox and optics must still clear the unchanged canopy aperture.
 """
 
 import math
@@ -25,8 +13,14 @@ import spec
 import mesh
 import shapes
 
-K = spec.COCKPIT
+# these full-size cockpit dimensions belong in spec.py.
+K = dict(spec.COCKPIT, z_floor=6.0, depth=17.8)
 C = spec.CANOPY
+HUD = dict(half_width=4.6, half_height=2.3, thickness=0.35,
+           spacing=1.8, cant=-26.0, frame_radius=0.32,
+           projector_length=6.0, projector_depth=3.4)
+SEAT = dict(restraint_radius=0.22, restraint_half_width=2.4,
+            leg_radius=1.75, boot_length=4.8)
 
 
 def build():
@@ -280,25 +274,34 @@ def _hud():
     how tall the combiner can be.
     """
     out = {}
-    x0, z0 = K["x_hud"], K["z_panel_top"] + 1.0
-    hw = 5.4
-    glass = shapes.shaped_panel(
-        _rounded_rect(0.0, 0.0, hw, 2.4, 0.7, seg=7), 0.0, 0.5,
-        rim_seg=6, axis="z")
-    v = [(pz, px, py) for (px, py, pz) in glass[0]]
-    v = _cant(mesh.translate(v, x0, 0.0, z0 + 2.4), -26.0, x0, z0 + 2.4)
-    out["hud_glass"] = (v, glass[1])
-
+    x0, z0 = K["x_hud"], K["z_panel_top"]
+    hw, hh = HUD["half_width"], HUD["half_height"]
+    fr = HUD["frame_radius"]
     posts = []
-    for sgn in (-1.0, 1.0):
-        posts.append(mesh.pipe(
-            [(x0 + 1.2, sgn * hw, z0 - 1.4), (x0 + 0.5, sgn * hw, z0 + 1.4),
-             (x0 - 0.6, sgn * hw, z0 + 4.2)], 0.55, 10))
-    posts.append(mesh.pipe(
-        [(x0 - 0.6, -hw, z0 + 4.2), (x0 - 0.6, hw, z0 + 4.2)], 0.55, 10))
-    posts.append(shapes.rounded_box(x0 + 2.4, 0.0, z0 - 1.0,
-                                    5.0, hw * 2 + 1.4, 2.4, r=0.5, seg=3))
-    out["hud_frame"] = mesh.join(*posts)
+    for i in range(2):
+        x = x0 + i * HUD["spacing"]
+        z = z0 + hh
+        outline = _rounded_rect(0.0, 0.0, hw, hh, fr * 2, seg=7)
+        gv, gf = shapes.shaped_panel(
+            outline, 0.0, HUD["thickness"], rim_seg=6, axis="z")
+        gv = [(x + pz, px, z + py) for px, py, pz in gv]
+        out[f"hud_glass_combiner_{i + 1}"] = (
+            _cant(gv, HUD["cant"], x, z), gf)
+        rim = [(x, u, z + v) for u, v in outline]
+        for j in range(len(rim)):
+            posts.append(mesh.pipe(_cant(
+                [rim[j], rim[(j + 1) % len(rim)]], HUD["cant"], x, z), fr, 8))
+        for sgn in (-1.0, 1.0):
+            bottom = _cant([(x, sgn * hw, z - hh)], HUD["cant"], x, z)[0]
+            posts.append(mesh.pipe(
+                [(x, sgn * hw, z0 - HUD["projector_depth"] / 2), bottom], fr, 10))
+    out["hud_frame_combiner"] = mesh.join(*posts)
+    out["hud_frame_projector"] = shapes.rounded_box(
+        x0, 0.0, z0 - HUD["projector_depth"] / 2,
+        HUD["projector_length"], hw * 2, HUD["projector_depth"], r=fr, seg=4)
+    lv, lf = mesh.cylinder(0.0, HUD["thickness"], hw * 0.42, 28)
+    out["hud_glass_projector_lens"] = (
+        [(x0 + pz, py, z0 + px) for px, py, pz in lv], lf)
     return out
 
 
@@ -359,9 +362,10 @@ def _seat():
 
     # headbox: the parachute container above the shoulders, with the drogue
     # can stepped in on top of it
-    box = mesh.join(
-        shapes.rounded_box(0.0, 0.0, 0.0, 7.2, hw * 1.68, 4.4, r=0.9, seg=6),
-        shapes.rounded_box(0.6, 0.0, 2.6, 5.0, hw * 1.20, 1.6, r=0.5, seg=5))
+    box = shapes.rounded_box(
+        0.0, 0.0, 0.0, 7.2, hw * 1.68, 4.4, r=0.9, seg=6)
+    drogue = shapes.rounded_box(
+        0.6, 0.0, 2.6, 5.0, hw * 1.20, 1.6, r=0.5, seg=5)
     # z_pan + 9.2, not 11.9. The recline takes the box aft as well as up, and
     # the canopy is tapering hard by then: at x 150 its crown is at z 37.65
     # and the headbox's aft-top corner was at 37.9, through the glass.
@@ -424,6 +428,27 @@ def _seat():
     tv = mesh.translate(mesh.rot_z(tv, math.pi / 2),
                         xs + 1.8, 0.0, z_pan + 2.9)
     out["ejection_handle"] = (tv, tf)
+    out["seat_bucket"] = mesh.join(*[
+        shapes.rounded_box(xs + hw, sgn * hw, (z_pan + K["z_floor"]) / 2,
+                           hw * 2, K["wall"], z_pan - K["z_floor"],
+                           r=K["wall"] / 3, seg=3)
+        for sgn in (-1.0, 1.0)])
+    dv = _cant(mesh.translate(drogue[0], x_hinge + 2.0, 0.0, z_pan + 9.2),
+               K["seat_recline"], x_hinge, z_pan)
+    out["seat_drogue_container"] = (dv, drogue[1])
+    restraints = []
+    for sgn in (-1.0, 1.0):
+        y = sgn * hw * 0.52
+        knee = xs - hw
+        z = K["z_floor"] + K["depth"] * 0.58
+        restraints.append(mesh.pipe(
+            [(xs + hw, sgn * hw, z_pan - K["wall"]),
+             (knee, y + sgn * SEAT["restraint_half_width"], z),
+             (knee - K["wall"], y, z - SEAT["leg_radius"]),
+             (knee, y - sgn * SEAT["restraint_half_width"], z),
+             (xs, sgn * hw * 0.3, z_pan - K["wall"])],
+            SEAT["restraint_radius"], 10))
+    out["seat_harness_leg_restraints"] = mesh.join(*restraints)
     return out
 
 
@@ -468,6 +493,20 @@ def _controls():
             [(K["x_pedals"] + 1.0, y, K["z_floor"] + 1.0),
              (K["x_pedals"] + 9.0, y, K["z_floor"] + 0.8)], 0.5, 10))
     out["rudder_pedals"] = mesh.join(*pedals)
+    out["rudder_pedals_rail"] = mesh.join(*[
+        shapes.rounded_box(
+            (K["x_pedals"] + K["x_seat"]) / 2, sgn * K["seat_half_width"] * 0.52,
+            K["z_floor"] + K["wall"], K["x_seat"] - K["x_pedals"],
+            K["wall"], K["wall"], r=K["wall"] / 4, seg=3)
+        for sgn in (-1.0, 1.0)])
+    out["control_stick_hotas"] = mesh.join(*[
+        shapes.rounded_box(K["x_seat"] - 3.0 + dx, y_c + dy, z_top + dz,
+                           K["wall"], K["wall"], K["wall"],
+                           r=K["wall"] / 4, seg=3)
+        for dx, dy, dz in ((0.0, 0.0, 5.6), (-1.1, 0.0, 4.5), (0.0, -0.9, 4.9))])
+    out["throttle_lever_hotas"] = shapes.rounded_box(
+        K["x_seat"] - 13.6, -y_c + K["wall"], z_top + 3.8,
+        K["wall"], K["wall"], K["wall"], r=K["wall"] / 4, seg=3)
     return out
 
 
@@ -476,12 +515,10 @@ def _controls():
 # --------------------------------------------------------------------------
 
 def _pilot():
-    """A bust: helmet, visor, mask and shoulders, cut off below the chest.
+    """The seated pilot reaches the pedals rather than ending at the harness.
 
-    This is not a shortcut, it is the part. A 440 mm airframe has its flight
-    pack where a pilot's legs would be, so a scale jet carries a half figure
-    that drops into the seat back -- which is also why the shoulders are
-    wide, the torso is short, and nothing below the harness exists.
+    The pressure tub now has a footwell instead of a battery shelf; bent
+    knees and boots connect the existing upper body to the rudder controls.
     """
     out = {}
     hw = K["seat_half_width"]
@@ -512,6 +549,21 @@ def _pilot():
             ring.append((xc + depth * ca, w * math.sin(a), z))
         rings.append(ring)
     out["pilot_torso"] = _loft(rings)
+    legs, boots = [], []
+    for sgn in (-1.0, 1.0):
+        y = sgn * hw * 0.52
+        legs.append(mesh.pipe(
+            [(x_h, y, z_pan + SEAT["leg_radius"]),
+             (K["x_seat"] - hw, y, z_pan + SEAT["leg_radius"]),
+             (K["x_pedals"] + SEAT["boot_length"], y,
+              K["z_floor"] + SEAT["leg_radius"] * 2)], SEAT["leg_radius"], 16))
+        boots.append(shapes.rounded_box(
+            K["x_pedals"] + SEAT["boot_length"] / 2, y,
+            K["z_floor"] + SEAT["leg_radius"], SEAT["boot_length"],
+            SEAT["leg_radius"] * 1.7, SEAT["leg_radius"] * 1.5,
+            r=SEAT["leg_radius"] / 3, seg=4))
+    out["pilot_torso_legs"] = mesh.join(*legs)
+    out["control_stick_boots"] = mesh.join(*boots)
 
     # arms: forward and inboard to the stick and the throttle. The pose is
     # what makes a figure look like a pilot rather than a passenger, and it

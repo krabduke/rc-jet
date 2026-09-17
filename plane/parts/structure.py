@@ -339,6 +339,36 @@ def _inset(sect, chord, inset, u0, u1):
     return out
 
 
+def _wing_section(f, u0, u1, n_pts=48):
+    """The wing's own lofted section at span fraction f, between u0 and u1.
+
+    The skin is lofted by `common.panel` from `common.section_arc` with the
+    section's v scaled by a thickness taper and the whole section rotated
+    about the quarter chord by the washout twist. A rib has to come from the
+    same function and go through the same two transforms, or it is a
+    different aerofoil from the one over it: the old rib read `surface_z`,
+    which ignores the twist, and at the tip the two disagree by more than the
+    skin is thick -- which is exactly what made the ribs read as tan stripes
+    standing through a closed wing.
+    """
+    chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
+    x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
+    tw = math.radians(-W["washout"] * f)
+    t_ratio = W["thickness_tip"] / max(W["thickness"], 1e-6)
+    tv = 1.0 + (t_ratio - 1.0) * f
+    sect = common.section_arc(n_pts, W["thickness"], W["camber"], u0, u1)
+    ct, st = math.cos(tw), math.sin(tw)
+    pivot = 0.25
+
+    def place(u, v, yy):
+        du = (u - pivot) * chord
+        dv = v * chord * tv
+        return (x_le + pivot * chord + du * ct - dv * st,
+                yy, W["z_root"] + du * st + dv * ct)
+
+    return sect, place
+
+
 def _rib(y, f, t, u1):
     """One wing rib: cap strips top and bottom, webs between them, and a
     doubler where each spar passes through.
@@ -349,27 +379,14 @@ def _rib(y, f, t, u1):
     is a truss: full-depth cap strips carrying the bending, vertical webs
     carrying the shear between them, and local doublers at the spars. It is
     also what makes a cutaway of this aeroplane worth looking at.
+
+    The contour comes from `_wing_section`, the same section function the
+    skin is lofted from, pulled in by the rib inset all round so the caps sit
+    strictly under the skin even where washout tips the section.
     """
     chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
-    x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
-    tw = math.radians(-W["washout"] * f)
-    # The wing tapers thinner towards the tip (thickness -> thickness_tip).
-    # A rib drawn at ROOT thickness is therefore deeper than the local skin
-    # outboard and pokes through the upper and lower surfaces -- which is
-    # exactly what made the ribs read as tan stripes on the closed wing.
-    # Scale the section by the same linear taper the lofted panel uses.
-    t_ratio = W["thickness_tip"] / max(W["thickness"], 1e-6)
-    tv = 1.0 + (t_ratio - 1.0) * f
-    sect = _inset(common.section_arc(48, W["thickness"], W["camber"], 0.0, u1),
-                  chord, ST["rib_inset"], 0.0, u1)
-    ct, st = math.cos(tw), math.sin(tw)
-    pivot = 0.25
-
-    def place(u, v, yy):
-        du = (u - pivot) * chord
-        dv = v * chord * tv
-        return (x_le + pivot * chord + du * ct - dv * st,
-                yy, W["z_root"] + du * st + dv * ct)
+    sect, place = _wing_section(f, 0.0, u1)
+    sect = _inset(sect, chord, ST["rib_inset"], 0.0, u1)
 
     # the cap strips: the section, and the same section drawn inwards by the
     # strip width, clamped so the two never cross near the trailing edge

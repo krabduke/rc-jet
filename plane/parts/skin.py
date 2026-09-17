@@ -15,7 +15,14 @@ import mesh
 import shapes
 from parts import common, fuselage as fus
 
-SD = spec.SKIN_DETAIL
+# these full-size relief dimensions belong in spec.py: seams 6 mm wide,
+# rivets 4.6 mm across and 0.33 mm proud, straps 66 mm wide and 2 mm proud,
+# doublers 1.5 mm proud; seam relief is only 0.165 mm.
+SD = dict(spec.SKIN_DETAIL, seam_w=0.18, seam_h=0.005, screw_r=0.07)
+RIVET_HEIGHT = 0.01
+STRAP_WIDTH = 2.0
+STRAP_HEIGHT = 0.06
+DOUBLER_HEIGHT = 0.045
 W = spec.WING
 V = spec.VTAIL
 SEG = spec.RES["fuse_sections"]
@@ -36,16 +43,17 @@ def build():
 def _proud_ring(x, h, segments=SEG):
     """The skin section at x, pushed out by h. Both scaled together, so the
     raised strip follows the section's shape instead of bulging at the sides."""
-    w, hh, zc, n = fus.station_at(x)
-    p = 2.0 / n
-    ring = []
-    for i in range(segments):
-        a = 2.0 * math.pi * i / segments
-        ca, sa = math.cos(a), math.sin(a)
-        y = (w + h) * math.copysign(abs(ca) ** p, ca)
-        z = (hh + h) * math.copysign(abs(sa) ** p, sa)
-        ring.append((x, y, zc + z))
-    return ring
+    return fus.section_ring(x, inset=-h, segments=segments)
+
+
+def _surface_point(x, angle, h=0.0):
+    """Sample the live skin ring so belly details inherit the inlet fairing."""
+    ring = _proud_ring(x, h)
+    pos = (angle % 360.0) * len(ring) / 360.0
+    i = int(pos)
+    f = pos - i
+    a, b = ring[i], ring[(i + 1) % len(ring)]
+    return tuple(a[k] + f * (b[k] - a[k]) for k in range(3))
 
 
 def _swept_band(x, half, h, profile):
@@ -102,7 +110,8 @@ def _circumferential_seams():
     for i, x in enumerate(SD["seam_x"], start=1):
         major = any(abs(x - xb) < 4.0 for xb in splits)
         out[f"seam_ring_{i:02d}"] = _swept_band(
-            x, SD["seam_w"] * 0.5, SD["seam_h"],
+            x, (STRAP_WIDTH / 5.2 if major else SD["seam_w"] / 3.4),
+            STRAP_HEIGHT if major else SD["seam_h"],
             _JOINT_MAJOR if major else _JOINT_MINOR)
     return out
 
@@ -134,7 +143,7 @@ def _dome(cx, cy, cz, r, segments=8, rings=3):
     for j in range(rings + 1):
         phi = (math.pi / 2) * j / rings
         rr = r * math.cos(phi)
-        zz = r * 0.55 * math.sin(phi)
+        zz = RIVET_HEIGHT * math.sin(phi)
         for i in range(segments):
             a = 2 * math.pi * i / segments
             verts.append((cx + rr * math.cos(a), cy + rr * math.sin(a), cz + zz))

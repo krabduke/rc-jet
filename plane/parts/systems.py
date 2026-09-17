@@ -98,13 +98,9 @@ def fits(x, fy, fz, half_y, half_z, clear=2.0):
 
 def build():
     out = {}
-    out.update(_fuel_system())
     out.update(_retracts())
-    out.update(_avionics())
     out.update(_cooling())
-    out.update(_cockpit())
     out.update(_engine_bay())
-    out.update(_aerials())
     return out
 
 
