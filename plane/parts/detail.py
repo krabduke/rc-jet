@@ -35,7 +35,6 @@ def build():
     out.update(_vg_rows())   # wing fences deleted: see _vg_rows
     out.update(_lights())
     out.update(_gear_doors())
-    out.update(_wheel_hubs())
     out.update(_access_panels())
     out.update(_exhaust_petals())
     out.update(_speed_kit())
@@ -222,25 +221,12 @@ def _door(x, y, z, length, depth, sgn, link=6.0):
     return mesh.join(*parts)
 
 
-def _wheel_hubs():
-    """Spoked hubs, so the wheels are not featureless discs."""
-    G = spec.GEAR
-    parts = []
-    _, hh, zc, _ = fus.station_at(G["nose_x"])
-    z_ax = (zc - hh + 1.0) - G["nose_leg"] * math.cos(math.radians(-6.0))
-    x_ax = G["nose_x"] + G["nose_leg"] * math.sin(math.radians(-6.0))
-    parts.append(_hub(x_ax, 0.0, z_ax, G["nose_wheel_r"] * 0.55,
-                      G["nose_wheel_w"] * 0.42, 5))
-    _, hh, zc, _ = fus.station_at(G["main_x"])
-    z_top = zc - hh * 0.55
-    z_ax = z_top - G["main_leg"] * math.cos(math.radians(4.0))
-    x_ax = G["main_x"] + G["main_leg"] * math.sin(math.radians(4.0))
-    for sgn in (-1.0, 1.0):
-        parts.append(_hub(x_ax, sgn * G["main_y"], z_ax,
-                          G["main_wheel_r"] * 0.55,
-                          G["main_wheel_w"] * 0.42, 5))
-    tags = ["n", "ml", "mr"]
-    return {f"wheel_hub_{tags[i]}": m for i, m in enumerate(parts)}
+# _wheel_hubs used to live here and built wheel_hub_n / _ml / _mr from
+# spec.GEAR's nose_x and leg lengths. gear.py now builds the legs and their
+# hubs together, so these were a second set computed from geometry that had
+# stopped matching: wheel_hub_n came out at station 72 with the nose wheel it
+# belonged to at station 40, and rendered as a spoked star hanging in the air
+# under the forward fuselage, attached to nothing.
 
 
 def _hub(x, y, z, r, half_w, spokes):
