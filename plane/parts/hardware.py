@@ -29,8 +29,9 @@ from parts import engine_mount
 # reference open exit diameter, not the smaller dry-power throat diameter.
 NOZZLE_EXIT_DIAMETER = 1090.0 / spec.SCALE_TO_FULL
 DRY_THROAT_RATIO = 0.65
-DRY_EXIT_RATIO = 0.82
+DRY_EXIT_RATIO = 0.72
 PETAL_OVERLAP = 1.04
+NOZZLE_PETALS = 24
 
 # hardware owns these installed meshes, otherwise the open engine nozzle
 # remains superimposed on the dry-power one during assembly.
