@@ -178,10 +178,17 @@ def _bay_installation(espec):
     w, h, zc = half(x1 - 4.0)
     r_pipe = 11.0
     r_skin = min(w, h) - 1.6
-    out["engine_tailpipe_shroud"] = mesh.tube(x1 - 26.0, x1 - 2.0,
-                                              r_pipe + 1.2, r_pipe + 2.4, 48)
-    out["engine_bay_cooling_exit"] = mesh.tube(x1 - 6.0, x1 - 2.0,
-                                               r_pipe + 2.4, r_skin, 48)
+    # The jet pipe and its shroud belong to hardware.py, which builds them
+    # with the nozzle. Building a second one here put two shrouds in the same
+    # 14 units of tailcone -- audit_intersect found them sharing material and
+    # the render showed it as a doubled edge. What is left is only the annular
+    # exit between that shroud and the skin, which is the part of this that
+    # belongs to the bay.
+    # Outside hardware.py's shroud, which the built model puts at 16.4, not
+    # outside the bare jet pipe -- starting at r_pipe + 2.6 = 13.6 put this
+    # annulus inside the shroud rather than around it.
+    out["engine_bay_cooling_exit"] = mesh.tube(x1 - 8.0, x1 - 2.0,
+                                               17.0, max(r_skin, 17.8), 48)
 
     # ---- fire detection and suppression -----------------------------------
     # A continuous sensing loop round the case at two stations, on standoffs,
