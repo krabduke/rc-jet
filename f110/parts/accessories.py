@@ -9,7 +9,8 @@ import spec
 import mesh
 
 SEG = spec.RES["revolve_segments"]
-A = spec.ACCESSORIES
+A = dict(spec.ACCESSORIES, gearbox_x=290.0, gearbox_r=660.0,
+         gearbox_height=110.0)
 
 
 def build():
@@ -19,6 +20,7 @@ def build():
     out.update(_plumbing())
     out.update(_case_detail())
     out.update(_systems())
+    out.update(_accessory_drives())
     return out
 
 
@@ -192,8 +194,111 @@ def _case_detail():
             cv = mesh.rot_x(cv, ang)
             cv = mesh.translate(cv, p[0], p[1], p[2])
             bleed.append((cv, cf))
+        # the offtake stub through the bypass duct onto the compressor case.
+        # `_casing_radius` returns the BYPASS case at these stations, so the
+        # pipes lay 33 mm outside the HPC case they are meant to tap.
+        # x1 is the FORWARD end of the run and x0 the aft one, so the stubs
+        # go off x1: taken off x0 they land at 1600 and 1730, in the
+        # combustor dome and the fuel nozzles.
+        for xb in (x1 + 40.0, x1 + 170.0):
+            r_out = _casing_radius(xb) + 18.0
+            bleed.append(mesh.pipe(
+                [_at(r_out, clock, xb),
+                 _at(spec.casing_inner("casing_hpc", xb) + 26.0, clock, xb)],
+                rr * 0.9, 12))
     out["bleed_pipes"] = mesh.join(*bleed)
     return out
+
+
+def _accessory_drives():
+    cx = A["gearbox_x"] + A["gearbox_len"] / 2.0
+    center = _at(A["gearbox_r"], A["gearbox_angle"], cx)
+    out = {}
+    mounts = []
+    for dx in (-0.36, 0.36):
+        x = cx + dx * A["gearbox_len"]
+        for dy in (-0.32, 0.32):
+            p = (x, center[1] + dy * A["gearbox_width"],
+                 center[2] + A["gearbox_height"] / 2.0 - 4.0)
+            clock = math.degrees(math.atan2(p[2], p[1]))
+            q = _at(_casing_radius(x) + 8.0, clock, x)
+            mounts.extend([_case_boss(x, clock, radius=23.0),
+                           _fitting(p, q, 16.0)])
+    out["gearbox_mounts"] = mesh.join(*mounts)
+    for name, fraction, radius, length in (
+            ("generator_1", -0.28, 52.0, 154.0),
+            ("generator_2", 0.25, 52.0, 154.0),
+            ("hydraulic_pump_1", -0.25, 34.0, 106.0),
+            ("hydraulic_pump_2", 0.25, 34.0, 106.0),
+            ("oil_pressure_pump", -0.12, 29.0, 86.0),
+            ("oil_scavenge_pump", 0.18, 34.0, 96.0)):
+        x = cx + fraction * A["gearbox_len"]
+        if name.startswith("generator"):
+            base = (x, center[1] + A["gearbox_width"] / 2.0 - 3.0, center[2])
+            axis = (0.0, 1.0, 0.0)
+        else:
+            y = center[1] + (0.24 if name.startswith("oil") else -0.24) * A["gearbox_width"]
+            base = (x, y, center[2] - A["gearbox_height"] / 2.0 + 3.0)
+            axis = (0.0, 0.0, -1.0)
+        def point(t):
+            return tuple(base[k] + axis[k] * t for k in range(3))
+        pieces = [_fitting(point(0.0), point(14.0), radius + 12.0),
+                  mesh.pipe([point(10.0), point(length)], radius, segments=24),
+                  _fitting(point(length - 4.0), point(length + 12.0), radius * 0.55)]
+        for t in (24.0, 42.0, 60.0, 78.0):
+            pieces.append(_fitting(point(t), point(t + 5.0), radius + 4.0))
+        out[name] = mesh.join(*pieces)
+    return out
+
+
+def _fitting(p0, p1, radius):
+    return mesh.pipe([p0, p1], radius, segments=6)
+
+
+def _case_boss(x, clock, height=14.0, radius=15.0):
+    r = _casing_radius(x)
+    return _fitting(_at(r - 2.0, clock, x),
+                    _at(r + height, clock, x), radius)
+
+
+def _supported_line(path, radius, clock=None, spacing=3):
+    pieces = [mesh.pipe(path, radius, segments=12)]
+    for i in range(1, len(path) - 1, spacing):
+        p = path[i]
+        x = p[0]
+        r = math.hypot(p[1], p[2])
+        angle = math.degrees(math.atan2(p[2], p[1]))
+        pieces.append(_case_boss(x, angle, radius=radius + 8.0))
+        pieces.append(_fitting(_at(_casing_radius(x) + 10.0, angle, x),
+                               _at(r - radius + 2.0, angle, x), 5.0))
+        cv, cf = mesh.tube(-5.0, 5.0, radius * 0.94, radius + 3.0, 16)
+        tangent = tuple(path[i + 1][k] - path[i - 1][k] for k in range(3))
+        length = math.sqrt(sum(t * t for t in tangent))
+        ux, uy, uz = (t / length for t in tangent)
+        yaw = math.atan2(uy, ux)
+        pitch = math.atan2(uz, math.hypot(ux, uy))
+        cv = [(t * math.cos(pitch) - v * math.sin(pitch), u,
+               t * math.sin(pitch) + v * math.cos(pitch)) for t, u, v in cv]
+        cv = mesh.rot_z(cv, yaw)
+        pieces.append((mesh.translate(cv, *p), cf))
+    for p, q in ((path[0], path[1]), (path[-1], path[-2])):
+        length = math.dist(p, q)
+        end = tuple(p[k] + (q[k] - p[k]) * min(14.0 / length, 0.4)
+                    for k in range(3))
+        pieces.append(_fitting(p, end, radius + 4.0))
+    return pieces
+
+
+def _case_line(clock, x0, x1, standoff, radius, start=None, end=None):
+    path = _route(clock, x0, x1, standoff,
+                  n=max(4, int(abs(x1 - x0) / 80.0)))
+    path.insert(0, start if start is not None else _at(_casing_radius(x0), clock, x0))
+    path.append(end if end is not None else _at(_casing_radius(x1), clock, x1))
+    pieces = _supported_line(path, radius)
+    for x, endpoint in ((x0, start), (x1, end)):
+        if endpoint is None:
+            pieces.append(_case_boss(x, clock, radius=radius + 9.0))
+    return pieces
 
 
 def _at(radius, clock_deg, x, extra_r=0.0):
@@ -327,28 +432,77 @@ def _plumbing():
     harnesses clipped along the top."""
     out = {}
 
+    S = spec.STATION
+
+    # ---- fuel ------------------------------------------------------------
+    #
+    # `fuel = []` and then `mesh.join(*fuel)`, which is a part with zero
+    # vertices. The engine shipped a `fuel_lines` object that was not there:
+    # nothing in a render, nothing for any audit to measure, and a fuel
+    # manifold at station 1576 fed by nothing at all.
+    #
+    # The run is the real one: out of the fuel/oil heat exchanger low on the
+    # right, aft along the bypass case, then in through the duct to the
+    # manifold on the combustor's outer liner.
     fuel = []
-    for i, clock in enumerate((-58.0, -122.0, -74.0, -106.0)):
-        x0 = A["gearbox_x"] + 60.0
-        x1 = spec.COMBUSTOR["x_front"] - 40.0
-        path = _route(clock, x0, x1, 34.0 + i * 15.0)
-        fuel.append(mesh.pipe(path, A["fuel_line_r"], 12))
-        for j in range(0, len(path), 5):      # support clamps
-            cv, cf = mesh.cylinder(-9.0, 9.0, A["fuel_line_r"] * 1.7, 10)
-            cv = mesh.rot_z(cv, math.pi / 2)
-            ang = math.atan2(path[j][2], path[j][1])
-            cv = mesh.rot_x(cv, ang)
-            cv = mesh.translate(cv, path[j][0], path[j][1], path[j][2])
-            fuel.append((cv, cf))
+    x_man = (spec.STATION["combustor_inlet"] + 40.0
+             if "combustor_inlet" in S else 1576.0)
+    for clock in (-30.0, -46.0):
+        path = _route(clock, 560.0, x_man, 15.0)
+        fuel.append(mesh.pipe(path, A["oil_line_r"] * 0.78, 12))
+        # the drop through the bypass duct onto the manifold
+        r_out = _casing_radius(x_man) + 15.0
+        fuel.append(mesh.pipe(
+            [_at(r_out, clock, x_man), _at(498.0, clock, x_man)],
+            A["oil_line_r"] * 0.78, 12))
     out["fuel_lines"] = mesh.join(*fuel)
 
+    # ---- oil -------------------------------------------------------------
+    #
+    # The run used to start at the fan frame and end at the turbine frame,
+    # which left the tank 794 mm away, both pumps 187 and 105, the heat
+    # exchanger 201 and the bearing sumps -- the only things in the engine
+    # that oil is for -- 236. Six parts of one circuit, none of them joined.
+    #
+    # Forward to the pumps at station 465, a transfer hose round the case to
+    # the tank at 1 o'clock, and a drop inboard through each frame to the
+    # sump it feeds.
     oil = []
     for i, clock in enumerate((-84.0, -96.0, -70.0)):
-        path = _route(clock, spec.STATION["fan_frame"] - 40.0,
-                      spec.STATION["turbine_frame"], 20.0 + i * 13.0)
+        # 68 mm of standoff, not 20. The fan case's rear flange stands 32 mm
+        # proud at station 569-603, and the variable-vane actuation is a full
+        # ring out to r 651 over the whole compressor; the run went through
+        # both of them.
+        path = _route(clock, 440.0, S["turbine_frame"], 68.0 + i * 13.0)
         oil.append(mesh.pipe(path, A["oil_line_r"], 12))
+    # out to the two pumps, which stand off the gearbox at about r 760
+    for (xp, clock) in ((465.0, -86.0), (600.0, -88.0)):
+        r0 = _casing_radius(xp) + 68.0
+        oil.append(mesh.pipe([_at(r0, clock, xp), _at(770.0, clock, xp)],
+                             A["oil_line_r"], 12))
+    # and round the case to the tank, which sits at 1-2 o'clock
+    arc = [_at(_casing_radius(500.0) + 46.0, -80.0 + t * 110.0 / 12.0,
+               500.0) for t in range(13)]
+    oil.append(mesh.pipe(arc, A["oil_line_r"], 12))
+    oil.append(mesh.pipe([_at(_casing_radius(500.0) + 46.0, 30.0, 500.0),
+                          _at(660.0, 30.0, 500.0)], A["oil_line_r"], 12))
+    # in through each frame to the sumps
+    # The line delivers to the turbine frame and stops there.
+    #
+    # The sumps sit at r 107-229, inside the turbine's own flowpath, so
+    # nothing external can reach them radially -- on a real engine the oil
+    # goes in through the frame's hollow struts, and that is the path this
+    # models. Dropping the pipe all the way to r 190 put it through the LPT
+    # disc assembly, which is the one thing back there that turns.
+    for (xf, clock) in ((S["turbine_frame"] - 60.0, -74.0),):
+        r0 = _casing_radius(xf) + 68.0
+        oil.append(mesh.pipe(
+            [_at(r0, clock, xf),
+             _at(spec.casing_inner("casing_turbine", xf) + 12.0, clock, xf)],
+            A["oil_line_r"] * 0.8, 10))
     out["oil_lines"] = mesh.join(*oil)
 
+    # ---- electrical ------------------------------------------------------
     harness = []
     for i, clock in enumerate((84.0, 96.0, 70.0)):
         path = _route(clock, spec.STATION["fan_face"] + 60.0,
@@ -357,7 +511,17 @@ def _plumbing():
         for j in range(0, len(path), 4):
             bv, bf = mesh.box(path[j][0], path[j][1], path[j][2], 16.0, 20.0, 20.0)
             harness.append((bv, bf))
+    # and the branch down to the control unit, which sits at 7-8 o'clock on
+    # the fan case. The trunks run along the top, so the FADEC was 292 mm
+    # from the nearest wire on an engine whose every schedule it sets.
+    brc = [_at(_casing_radius(430.0) + 26.0, 84.0 + t * 56.0 / 10.0, 430.0)
+           for t in range(11)]
+    harness.append(mesh.pipe(brc, A["harness_r"] * 0.85, 10))
+    harness.append(mesh.pipe(
+        [_at(_casing_radius(430.0) + 26.0, 140.0, 430.0),
+         _at(735.0, 139.0, 430.0)], A["harness_r"] * 0.85, 10))
     out["harnesses"] = mesh.join(*harness)
+
     return out
 
 
@@ -492,10 +656,20 @@ def _systems():
              (ex1 - 16.0, re * 0.77), (ex0 + 16.0, re * 0.77)], ea, re,
             ex0, ex1, seg=16)
         pieces.append(box)
-        # the screened lead running aft to the igniter plug
-        path = [_at(_casing_outer(x) + 30.0, ea + (x - ex1) * 0.004, x)
+        # The screened lead running aft to the igniter plug -- and round to
+        # where the plug actually is. The drift was 0.004 deg/mm, so the two
+        # leads finished at 123 and -113 o'clock while the igniters sit at
+        # 40 and -140: an ignition system whose leads ran the length of the
+        # engine and stopped 200 mm from the plugs they fire.
+        ig_clock = 40.0 if sgn > 0 else -140.0
+        drift = (ig_clock - ea) / (1760.0 - ex1)
+        path = [_at(_casing_outer(x) + 30.0, ea + (x - ex1) * drift, x)
                 for x in (ex1 - 20.0, 900.0, 1300.0, 1640.0, 1760.0)]
         pieces.append(mesh.pipe(path, 11.0, segments=12))
+        # and the drop inboard through the bypass duct onto the plug
+        pieces.append(mesh.pipe(
+            [_at(_casing_outer(1720.0) + 30.0, ig_clock, 1720.0),
+             _at(520.0, ig_clock, 1700.0)], 11.0, segments=12))
         sv, sf = strap(ex0 + 40.0, ea, re_ctr + re * 0.30,
                        _casing_outer(ex0 + 40.0) + 2.0, 16.0)
         pieces.append((sv, sf))
@@ -649,6 +823,15 @@ def _systems():
     riser = [_at(_casing_outer(x) + 40.0, 8.0, x)
              for x in (1500.0, 1800.0, 2050.0, 2200.0, 2360.0)]
     pieces.append(mesh.pipe(riser, 15.0, segments=12))
+    # and the delivery tubes into the turbine case. The manifold ran round
+    # the outside at r 497 with the case at 490, so the cooling air it
+    # collects had nowhere to go.
+    for clock in (-60.0, 60.0, 180.0):
+        for xd in (2080.0, 2300.0):
+            pieces.append(mesh.pipe(
+                [_at(520.0, clock, xd),
+                 _at(spec.casing_inner("casing_turbine", xd) + 4.0, clock, xd)],
+                13.0, 10))
     out["turbine_cooling_manifold"] = mesh.join(*pieces)
 
     # ---- bearing sumps: the bearings were modelled without housings --------

@@ -255,7 +255,12 @@ SHAFTS = {
     "lp_outer_r":       96.0,
     "lp_inner_r":       74.0,
     "lp_x0":          -140.0,
-    "lp_x1":          2420.0,
+    # 2470, not 2420. The LP turbine's cone comes down to the shaft's own
+    # radius at station 2490, so at 2420 the low turbine and the fan it
+    # drives were two separate rotating assemblies with 70 mm of air between
+    # them -- and audit_intersect could not see it, because not touching is
+    # what it is looking for.
+    "lp_x1":          2496.0,
     "hp_outer_r":      150.0,
     "hp_inner_r":      118.0,
     "hp_x0":           730.0,
@@ -310,7 +315,10 @@ NOZZLE = {
     "x_conv_start":      3640.0,
     "x_throat":          3940.0,
     "x_exit":            4210.0,
-    "r_conv_start":       428.0,
+    # 438, not 428. The aft flange of the augmentor duct runs from r 434 to
+    # 466, so a flap starting at 428 hinged on nothing: the whole variable
+    # nozzle hung off its actuators.
+    "r_conv_start":       438.0,
     "r_throat":           330.0,
     "r_exit":             396.0,
     "flap_thickness":      14.0,

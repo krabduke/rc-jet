@@ -59,7 +59,13 @@ def _cells(verts, faces, h):
     for a, b, c in _tris(verts, faces):
         e = max(max(abs(a[i] - b[i]), abs(a[i] - c[i]), abs(b[i] - c[i]))
                 for i in range(3))
-        n = min(16, int(e * inv) + 1)
+        # 40, not 16. The cap is there to stop one enormous triangle
+        # costing everything, but at 16 a 300 mm triangle is sampled every
+        # 19 mm on a 2 mm grid -- so the rasterisation has holes in it and
+        # two parts that genuinely touch can be reported as separate. That
+        # is a false PASS on the assembly check and a false failure on a
+        # circuit, which is the worst way for this tool to be wrong.
+        n = min(40, int(e * inv) + 1)
         for i in range(n + 1):
             for j in range(n + 1 - i):
                 u, v = i / n, j / n

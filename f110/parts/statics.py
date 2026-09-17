@@ -21,6 +21,8 @@ def build():
     out.update(_bypass_duct())
     out.update(_frames())
     out.update(_variable_geometry())
+    out.update(_borescope_bosses())
+    out.update(_mount_pads())
     return out
 
 
@@ -44,11 +46,22 @@ def _casings():
     return out
 
 
+def _casing_outer(x):
+    for (name, x0, x1, r0, r1, wall) in spec.CASINGS:
+        if x0 <= x <= x1:
+            return spec.casing_inner(name, x) + wall
+    return 300.0
+
+
 def _flanges():
     out = {}
     for (name, x, r_in, r_out, thick, bolts) in spec.FLANGES:
-        out[name] = mesh.flange(x, r_in, r_out, thick, bolts,
-                                bolt_r=(r_out - r_in) * 0.26)
+        ring = mesh.tube(x - thick / 2, x + thick / 2, r_in, r_out, 96)
+        bolt_r = (r_out - r_in) * 0.26
+        pitch = (r_in + r_out) / 2 + (r_out - r_in) * 0.18
+        fwd = mesh.bolt_ring(x - thick / 2, pitch, bolts, bolt_r, thick * 0.55)
+        aft = mesh.bolt_ring(x + thick / 2, pitch, bolts, bolt_r, thick * 0.55)
+        out[name] = mesh.join(ring, fwd, aft)
     return out
 
 
@@ -190,13 +203,16 @@ def _variable_geometry():
     parts = []
     for row in variable_rows:
         r_tip = max(row.r_tip_le, row.r_tip_te)
-        ring_r = r_tip + 34.0
+        case_r = max((spec.casing_inner(name, row.x + row.chord * 0.4) + wall
+                      for name, x0, x1, r0, r1, wall in spec.CASINGS
+                      if x0 <= row.x + row.chord * 0.4 <= x1), default=r_tip)
+        ring_r = max(r_tip, case_r) + 34.0
         parts.append(mesh.ring_torus(row.x + row.chord * 0.4, ring_r, 11.0, SEG, 12))
 
         # one spindle + lever per vane
         lever = []
         sp_v, sp_f = mesh.cylinder(0.0, 40.0, 7.0, 12)
-        sp_v = mesh.rot_z(sp_v, -math.pi / 2)
+        sp_v = mesh.rot_z(sp_v, math.pi / 2)
         sp_v = mesh.translate(sp_v, row.x + row.chord * 0.4, r_tip + 2.0, 0.0)
         lever.append((sp_v, sp_f))
         lv, lf = mesh.box(row.x + row.chord * 0.4, r_tip + 30.0, 14.0,
@@ -207,3 +223,39 @@ def _variable_geometry():
 
     out["variable_vane_actuation"] = mesh.join(*parts)
     return out
+
+
+def _borescope_bosses():
+    pieces = []
+    for (bx, ang) in ((900.0, 42.0), (1080.0, -42.0), (1260.0, 42.0),
+                      (1440.0, -42.0), (2060.0, 34.0), (2240.0, -34.0),
+                      (2380.0, 34.0)):
+        cr = _casing_outer(bx)
+        bv, bf = mesh.revolve_closed(
+            [(-5.0, 6.0), (8.0, 6.0), (8.0, 18.0), (14.0, 18.0),
+             (14.0, 24.0), (-5.0, 24.0)], segments=16)
+        bv = mesh.rot_x(mesh.rot_z(bv, math.pi / 2), math.radians(ang))
+        a = math.radians(ang)
+        pt = (bx, cr * math.cos(a), cr * math.sin(a))
+        pieces.append((mesh.translate(bv, pt[0], pt[1], pt[2]), bf))
+    return {"borescope_bosses": mesh.join(*pieces)}
+
+
+def _mount_pads():
+    pads = []
+    for x in (spec.ACCESSORIES["mount_fwd_x"], spec.ACCESSORIES["mount_aft_x"]):
+        pad_r = spec.ACCESSORIES["mount_pad_r"] if x < 1000 else 480.0
+        for ang in (55.0, 125.0):
+            a = math.radians(ang)
+            cr = _casing_outer(x)
+            pv, pf = mesh.revolve_closed(
+                # 96 mm proud of the casing, not 22. The trunnion it carries
+                # is a yoke whose inner jaw does not begin until r 674, and
+                # the pad stopped at 604 -- so the engine's forward mount was
+                # a pad and a trunnion that never touched each other.
+                [(-2.0, 6.0), (14.0, 6.0), (14.0, 30.0), (96.0, 30.0),
+                 (96.0, 38.0), (-2.0, 38.0)], segments=20)
+            pv = mesh.rot_x(mesh.rot_z(pv, math.pi / 2), a)
+            pt = (x, cr * math.cos(a), cr * math.sin(a))
+            pads.append((mesh.translate(pv, pt[0], pt[1], pt[2]), pf))
+    return {"mount_pads": mesh.join(*pads)}

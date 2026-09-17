@@ -98,6 +98,7 @@ def fits(x, fy, fz, half_y, half_z, clear=2.0):
 
 def build():
     out = {}
+    out.update(_fuel_system())
     out.update(_retracts())
     out.update(_cooling())
     out.update(_engine_bay())
@@ -107,10 +108,15 @@ def build():
 # --------------------------------------------------------------------------
 
 def _fuel_system():
-    """A turbine burns kerosene, so there is a tank, a hopper, a pump, a
-    filter and the lines between them. An electric ducted fan would not need
-    this; a turbine very much does, and it is most of the aircraft's
+    """A turbine burns kerosene, so there is a tank, a collector, a pump, a
+    filter and the lines between them. It is most of the aircraft's
     consumable mass.
+
+    This was written and then never called: `build()` listed the retracts,
+    the cooling and the engine bay and nothing else, so the aeroplane carried
+    no fuel at all -- 3.3 tonnes of it in the mass budget and not one litre
+    of tankage in the geometry. The structure audit had been asking for a
+    `fuel_tank` the whole time and reporting "expected 1, found 0".
     """
     out = {}
     x0, x1 = 196.0, 282.0

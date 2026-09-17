@@ -86,7 +86,10 @@ def _nozzle():
               z + 438 * scale * math.cos(angle)),
              (x + 4156 * scale, 402 * scale * math.sin(angle),
               z + 402 * scale * math.cos(angle))],
-            14 * scale, segments=10)
+            # 24 segments, not 10: at 10 this was a 40-vertex tube and the
+            # geometry audit's floor is 180. There are twelve of them and
+            # they are the linkage you can actually see working.
+            14 * scale, segments=24, subdiv=3)
     verts, faces = mesh.ring_torus(x + 4010 * scale, 452 * scale,
                                     20 * scale, 64, 14)
     out["nozzle_unison_ring"] = (mesh.translate(verts, dz=z), faces)

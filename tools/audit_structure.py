@@ -35,14 +35,21 @@ CFG = {
 
     # Things an aeroplane has exactly one of. It had two complete sets of
     # control pushrods -- `pushrods` in the fuselage module and
-    # `pushrod_linkages` in the detail module, same span, same place -- and
-    # two GPS aerials for one receiver.
+    # `pushrod_linkages` in the detail module, same span, same place.
+    #
+    # Four of these used to be model-aircraft parts and are gone: a 2.4 GHz
+    # receiver, its pair of diversity aerials, a telemetry GPS puck, and an
+    # external pushrod linkage set. This is a full-size aeroplane now. What
+    # replaces them is already here and is checked instead: the flight-control
+    # computer, the loom that leaves it, and the servo on each surface --
+    # which is the whole point of the surfaces being driven from inside.
     "singletons": {
-        "control linkage set": (("pushrods", "pushrod_linkages"), 1),
-        "GPS aerial": (("telemetry_gps", "gps_puck", "gps_patch"), 1),
+        "flight control computer": (("fcs_fcc_envelope",), 1),
+        "FCS trunk per side": (("fcs_loom_trunk_upper_l",
+                                "fcs_loom_trunk_upper_r"), 2),
+        "stabilator servo per side": (("stab_servo_l", "stab_servo_r"), 2),
+        "rudder servo": (("rudder_servo",), 1),
         "UHF aerial": (("antennas",), 1),
-        "diversity aerials": (("antenna_a", "antenna_b"), 2),
-        "receiver": (("receiver",), 1),
         "fuel tank": (("fuel_tank",), 1),
         "engine": (("engine_casing_fan",), 1),
         "fin": (("vtail_fin",), 1),
@@ -55,5 +62,5 @@ CFG = {
 }
 
 if __name__ == "__main__":
-    n = S.report(os.path.join(ROOT, "build", "parts.csv"), CFG, "RC jet")
+    n = S.report(os.path.join(ROOT, "build", "parts.csv"), CFG, "VX-J1")
     sys.exit(0 if n == 0 else 1)

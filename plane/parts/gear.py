@@ -227,25 +227,36 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
              (xx, y + width / 2 - t, roof - t),
              (xx, y + width / 2 - t, floor)], t / 2, 8))
     out[f"gear_bay_lining_{name}"] = mesh.join(*ribs)
+    # The run crosses the bay by a quarter of its width, and that crossing
+    # has to go the same way relative to the aeroplane on both sides. It was
+    # `y + width * 0.25`, which for the left bay (negative y) moves inboard
+    # and for the right one moves outboard, so the two sets were 9 mm from
+    # being mirror images of each other.
     lines = []
+    m = -1.0 if y < 0.0 else 1.0
     for offset in (-t, t):
         lines.append(mesh.pipe(
             [(x - length / 2 + t * 2, y + offset, floor + t),
              (x - length / 2 + t * 2, y + offset, roof - t * 2),
              (x + length * 0.3, y + offset, roof - t * 2),
-             (x + length * 0.3, y + width * 0.25 + offset, roof - t * 2),
-             (x, y + width * 0.25 + offset, floor + t)], t * 0.18, 10))
+             (x + length * 0.3, y + m * width * 0.25 + offset, roof - t * 2),
+             (x, y + m * width * 0.25 + offset, floor + t)], t * 0.18, 10))
     out[f"gear_bay_hydraulic_lines_{name}"] = mesh.join(*lines)
+    # A bay with one door names it after the bay. The main bays are already
+    # sided -- "main_l" and "main_r" -- so appending the door's own side gave
+    # `gear_door_main_l_l`, and the structure audit then looked for a mirror
+    # called `gear_door_main_l_r` and could not find one. Four parts per side
+    # failed that way: the door, its hinge, its latches and its actuator.
     for sign in ((-1.0, 1.0) if sgn is None else (sgn,)):
         yy = y + sign * width / 2
-        suffix = "l" if sign < 0 else "r"
+        suffix = "" if sgn is not None else ("_l" if sign < 0 else "_r")
         depth = width / 2
-        out[f"gear_door_{name}_{suffix}"] = shapes.rounded_box(
+        out[f"gear_door_{name}{suffix}"] = shapes.rounded_box(
             x, yy, floor - depth / 2, length, B["door"], depth, r=t / 3, seg=3)
-        out[f"gear_door_actuator_{name}_{suffix}"] = _actuator(
+        out[f"gear_door_actuator_{name}{suffix}"] = _actuator(
             (x, yy - sign * depth / 2, roof - t),
             (x, yy, floor - depth / 2), t * 0.65)
-        out[f"gear_door_hinge_{name}_{suffix}"] = mesh.pipe(
+        out[f"gear_door_hinge_{name}{suffix}"] = mesh.pipe(
             [(x - length / 2, yy, floor), (x + length / 2, yy, floor)], t, 12)
         latches = []
         for end in (-1.0, 1.0):
@@ -258,7 +269,7 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
                  (xx - t / 2, yy - sign * t * 2, floor - depth + t),
                  (xx + t / 2, yy - sign * t * 2, floor - depth + t),
                  (xx + t / 2, yy - sign * t, floor - depth + t)], t / 4, 10))
-        out[f"gear_door_latches_{name}_{suffix}"] = mesh.join(*latches)
+        out[f"gear_door_latches_{name}{suffix}"] = mesh.join(*latches)
     if sgn is not None:
         out[f"gear_door_strut_{name}"] = shapes.rounded_box(
             G["main_x"], sgn * (G["main_y"] - G["strut_r"]),

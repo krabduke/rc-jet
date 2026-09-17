@@ -61,7 +61,12 @@ def _pivots_hw():
                 [(0.0, shank_r * 1.12), (0.0, shank_r * 1.85),
                  (shank_r * 1.55, shank_r * 1.85),
                  (shank_r * 1.55, shank_r * 1.12)], 20)
-            parts.append(([(pz_ + px, px_ + yb, py_ + pz)
+            # `px_ * sgn`, not `px_`. The ring's own axis runs 0 to 1.55
+            # shank radii, and unsigned it ran the same way in y on both
+            # sides -- outboard from the bore on one, inboard on the other.
+            # It was 2.8 mm from being a mirror, which is the whole width of
+            # a bearing race.
+            parts.append(([(pz_ + px, px_ * sgn + yb, py_ + pz)
                            for (px_, py_, pz_) in bv], bf))
         # the fuselage frame web the bearings sit in, spanning the tailpipe
         frv, frf = mesh.box(px + H["root_chord"] * 0.30, sgn * 8.0, pz,
@@ -230,10 +235,23 @@ def _fin_tip_fairing(ru):
     x_le = V["x_root_le"] + V["height"] * math.tan(
         math.radians(V["sweep_le"]))
     z_tip = V["z_root"] + V["height"]
-    path = [(x_le + tip_chord * 0.55, 0.0, z_tip + 0.6),
-            (x_le + tip_chord * 0.60, 0.0, z_tip + 1.1),
-            (x_le + tip_chord * 0.60, 0.0, z_tip + 1.5)]
-    v, f = shapes.fairing(path, tip_chord * 0.52, thickness=0.34, n_sec=12)
+    # Eight stations and a 26-point section, not three and twelve.
+    #
+    # `fairing` sweeps the section along the path, so the vertex count is the
+    # product of the two: at 3 x 12 this came out at 36 vertices against the
+    # geometry audit's floor of 180, and it sits on the very top of the fin
+    # where it is the highest thing on the aeroplane.
+    knots = [(x_le + tip_chord * 0.55, 0.0, z_tip + 0.6),
+             (x_le + tip_chord * 0.60, 0.0, z_tip + 1.1),
+             (x_le + tip_chord * 0.60, 0.0, z_tip + 1.5)]
+    path = []
+    for i in range(8):
+        t = i / 7.0 * (len(knots) - 1)
+        k = min(int(t), len(knots) - 2)
+        u = t - k
+        path.append(tuple(knots[k][j] + (knots[k + 1][j] - knots[k][j]) * u
+                          for j in range(3)))
+    v, f = shapes.fairing(path, tip_chord * 0.52, thickness=0.34, n_sec=26)
     # tuck it down onto the fin tip
     v = [(x, y, z - 0.4) for (x, y, z) in v]
     return {"fin_tip_ecm_fairing": (v, f)}
