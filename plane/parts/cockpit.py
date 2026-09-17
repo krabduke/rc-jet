@@ -14,7 +14,7 @@ import mesh
 import shapes
 
 # these full-size cockpit dimensions belong in spec.py.
-K = dict(spec.COCKPIT, z_floor=6.0, depth=17.8)
+K = dict(spec.COCKPIT, z_floor=6.0, depth=17.8, pedal_half_spacing=3.6)
 C = spec.CANOPY
 HUD = dict(half_width=4.6, half_height=2.3, thickness=0.35,
            spacing=1.8, cant=-26.0, frame_radius=0.32,
@@ -484,7 +484,7 @@ def _controls():
 
     pedals = []
     for sgn in (-1.0, 1.0):
-        y = sgn * 3.6
+        y = sgn * K["pedal_half_spacing"]
         pv, pf = shapes.rounded_box(0.0, 0.0, 0.0, 1.0, 3.2, 4.6, r=0.4, seg=3)
         pedals.append((_cant(mesh.translate(pv, K["x_pedals"], y,
                                             K["z_floor"] + 3.2), 28.0,
@@ -495,7 +495,7 @@ def _controls():
     out["rudder_pedals"] = mesh.join(*pedals)
     out["rudder_pedals_rail"] = mesh.join(*[
         shapes.rounded_box(
-            (K["x_pedals"] + K["x_seat"]) / 2, sgn * K["seat_half_width"] * 0.52,
+            (K["x_pedals"] + K["x_seat"]) / 2, sgn * K["pedal_half_spacing"],
             K["z_floor"] + K["wall"], K["x_seat"] - K["x_pedals"],
             K["wall"], K["wall"], r=K["wall"] / 4, seg=3)
         for sgn in (-1.0, 1.0)])

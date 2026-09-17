@@ -275,6 +275,6 @@ def _doublers():
         (spec.BULKHEADS[2][1] - 20.0, spec.BULKHEADS[2][1] + 26.0, 236.0, 304.0, 3),
         (V["x_root_le"] - 4.0, V["x_root_le"] + 30.0, 66.0, 114.0, 3),
     ]
-    parts = [_ply_pad(x0, x1, a0, a1, spec.FUSELAGE_SKIN * 0.75, plies=n)
+    parts = [_ply_pad(x0, x1, a0, a1, DOUBLER_HEIGHT, plies=n)
              for (x0, x1, a0, a1, n) in pads]
     return {"doublers": mesh.join(*parts)}

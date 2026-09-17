@@ -47,7 +47,7 @@ def main():
     # 4. the structural limit must be enforced, not merely mentioned
     worst = 0.0
     for i in range(80):
-        v = 60.0 + (agility.MACH_LIMIT * agility.A0 - 60.0) * i / 79.0
+        v = 60.0 + (agility.MACH_LIMIT * agility.atmosphere(0.0)[1] - 60.0) * i / 79.0
         worst = max(worst, j.n_available(v, 0.0))
     if worst > agility.N_STRUCTURAL + 1e-6:
         fails.append("STRUCTURE: load factor reaches %.2f g against a stated "

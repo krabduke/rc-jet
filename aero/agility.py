@@ -17,9 +17,10 @@ gives up, and the right model is Polhamus's leading-edge-suction analogy:
 
 the first term the potential-flow lift the wing would make with full leading-
 edge suction, the second the lift recovered by the vortex when that suction is
-lost. NASA TN D-3767. Kp is taken from slender-wing theory at this aspect
-ratio and Kv from the same source's correlation; both are printed so a reader
-can check them rather than take them on trust.
+lost. The analogy is from E. C. Polhamus, NASA TN D-3767 (1966).
+Kp = pi*AR/2 is a slender-wing approximation; Kv = pi is an assumed
+slender-delta limiting value, not a fitted coefficient for this geometry.
+The 30-degree alpha ceiling is an assumption, not a measured breakdown angle.
 
 The drag polar's zero-lift term is an assumption and is labelled as one. This
 repo's viscous build-up is a panel-method chain that has not been re-run at
@@ -60,6 +61,8 @@ MACH_LIMIT = 0.70           # above this the incompressible panel chain, and
 
 def atmosphere(h):
     """(density, speed of sound) in the troposphere."""
+    if not math.isfinite(h) or not 0.0 <= h <= 11000.0:
+        raise ValueError("altitude must be within the ISA troposphere, 0..11000 m")
     t = 288.15 - 0.0065 * h
     rho = RHO0 * (t / 288.15) ** 4.2561
     return rho, 20.0468 * math.sqrt(t)
@@ -82,23 +85,23 @@ class Jet:
         self.S = spec.wing_area_m2()
         self.b = spec.SPAN * spec.SCALE_TO_FULL / 1000.0
         self.AR = self.b * self.b / self.S
-        # slender-wing potential lift slope, per radian
         self.Kp = math.pi * self.AR / 2.0
-        # Polhamus vortex term; for AR below about 2 it approaches pi
-        self.Kv = math.pi * (1.0 - 0.18 * self.AR / 2.0)
+        self.Kv = math.pi
+        self.alpha_limit = math.radians(30.0)
 
     def cl(self, alpha):
         s, c = math.sin(alpha), math.cos(alpha)
         return self.Kp * s * c * c + self.Kv * c * s * s
 
     def cl_max(self):
-        best = 0.0
-        for i in range(1, 900):
-            a = math.radians(i / 10.0)
-            best = max(best, self.cl(a))
-        return best
+        return max(self.cl(self.alpha_limit * i / 300.0) for i in range(301))
+
+    def validate_speed(self, v, h):
+        if not math.isfinite(v) or not 0.0 < v <= MACH_LIMIT * atmosphere(h)[1]:
+            raise ValueError("speed must be positive TAS within M <= 0.70")
 
     def n_lift(self, v, h):
+        self.validate_speed(v, h)
         rho, _ = atmosphere(h)
         q = 0.5 * rho * v * v
         return q * self.S * self.cl_max() / self.W
@@ -107,46 +110,55 @@ class Jet:
         return min(self.n_lift(v, h), N_STRUCTURAL)
 
     def drag(self, v, h, n, cd0=CD0):
+        self.validate_speed(v, h)
+        if not math.isfinite(n) or n < 0.0 or not math.isfinite(cd0) or cd0 <= 0.0:
+            raise ValueError("drag requires nonnegative finite load and positive CD0")
         rho, _ = atmosphere(h)
         q = 0.5 * rho * v * v
-        cl = n * self.W / max(q * self.S, 1e-6)
+        cl = n * self.W / (q * self.S)
         cdi = cl * cl / (math.pi * self.AR * OSWALD)
         return q * self.S * (cd0 + cdi)
 
+    def n_thrust(self, v, h, cd0=CD0):
+        d0 = self.drag(v, h, 0.0, cd0)
+        q_s = 0.5 * atmosphere(h)[0] * v * v * self.S
+        return math.sqrt(max(0.0, (thrust(h) - d0) * q_s
+                             * math.pi * self.AR * OSWALD / self.W**2))
+
     def n_sustained(self, v, h, cd0=CD0):
-        """The load factor the engine can hold: thrust equals drag."""
-        t = thrust(h)
-        lo, hi = 1.0, self.n_available(v, h)
-        if self.drag(v, h, lo, cd0) > t:
-            return 0.0
-        for _ in range(50):
-            mid = 0.5 * (lo + hi)
-            if self.drag(v, h, mid, cd0) > t:
-                hi = mid
-            else:
-                lo = mid
-        return lo
+        return min(self.n_available(v, h), self.n_thrust(v, h, cd0))
 
     def turn_rate(self, v, n):
-        if n <= 1.0:
-            return 0.0
+        if not math.isfinite(v) or v <= 0.0 or not math.isfinite(n):
+            raise ValueError("turn requires positive finite speed and finite load")
+        if n < 1.0:
+            return None
         return math.degrees(G * math.sqrt(n * n - 1.0) / v)
 
     def ps(self, v, h, n, cd0=CD0):
+        if not math.isfinite(n) or n < 1.0 or n > self.n_available(v, h) + 1e-9:
+            return None
         return v * (thrust(h) - self.drag(v, h, n, cd0)) / self.W
 
     def corner_speed(self, h=0.0):
-        """Where the lift limit meets the structural limit -- the speed at
-        which the aeroplane turns fastest, and the single most useful number
-        in a turning fight."""
-        lo, hi = 50.0, 400.0
-        for _ in range(60):
-            mid = 0.5 * (lo + hi)
-            if self.n_lift(mid, h) < N_STRUCTURAL:
-                lo = mid
-            else:
-                hi = mid
-        return 0.5 * (lo + hi)
+        rho, a = atmosphere(h)
+        speed = math.sqrt(2.0 * N_STRUCTURAL * self.W / (rho * self.S * self.cl_max()))
+        return speed if speed <= MACH_LIMIT * a else None
+
+    def best_turn(self, h, sustained=False, cd0=CD0):
+        vmax = MACH_LIMIT * atmosphere(h)[1]
+        vmin = math.sqrt(2.0 * self.W / (atmosphere(h)[0] * self.S * self.cl_max()))
+        speeds = [vmin + (vmax - vmin) * i / 2000.0 for i in range(2001)]
+        corner = self.corner_speed(h)
+        if corner is not None:
+            speeds.append(corner)
+        candidates = []
+        for v in speeds:
+            n = self.n_sustained(v, h, cd0) if sustained else self.n_available(v, h)
+            rate = self.turn_rate(v, n)
+            if rate is not None:
+                candidates.append((rate, v))
+        return max(candidates) if candidates else (0.0, None)
 
 
 def doghouse(j, h=0.0, width=64, height=20):
@@ -156,13 +168,20 @@ def doghouse(j, h=0.0, width=64, height=20):
     vs = [60.0 + (vmax - 60.0) * i / (width - 1) for i in range(width)]
     inst = [j.turn_rate(v, j.n_available(v, h)) for v in vs]
     sus = [j.turn_rate(v, j.n_sustained(v, h)) for v in vs]
-    top = max(max(inst), 1.0)
+    top = max((rate for rate in inst if rate is not None), default=1.0) * 1.15
     grid = [[" "] * width for _ in range(height)]
     for i, v in enumerate(vs):
-        for series, ch in ((inst, "#"), (sus, "o")):
-            row = height - 1 - int(round((height - 1) * series[i] / top))
-            row = min(max(row, 0), height - 1)
-            if grid[row][i] == " ":
+        curves = ((j.turn_rate(v, j.n_lift(v, h)), "L"),
+                  (j.turn_rate(v, N_STRUCTURAL), "S"),
+                  (j.turn_rate(v, j.n_thrust(v, h)), "T"),
+                  (inst[i], "#"), (sus[i], "o"))
+        for rate, ch in curves:
+            if rate is None or rate > top:
+                continue
+            row = height - 1 - int(round((height - 1) * rate / top))
+            if grid[row][i] != " ":
+                grid[row][i] = "*"
+            else:
                 grid[row][i] = ch
     out = []
     out.append("   deg/s")
@@ -175,8 +194,9 @@ def doghouse(j, h=0.0, width=64, height=20):
         i = int(frac * (width - 1))
         lab += " " * max(0, i + 1 - (len(lab) - 8)) + "%.0f" % vs[i]
     out.append(lab + "  m/s")
-    out.append("        # instantaneous (lift or structure limited)   "
-               "o sustained (thrust limited)")
+    out.append("        L lift limit; S structural limit (9 g); T thrust limit")
+    out.append("        # instantaneous; o sustained; * coincident curves")
+    out.append("        Individual limits are not all simultaneously achievable; above-axis curves clipped.")
     return "\n".join(out)
 
 

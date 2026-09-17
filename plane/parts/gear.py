@@ -55,11 +55,16 @@ def _strut(x, y, z_top, length, r, rake=0.0, slider=False):
 
     def place(verts):
         # built with +x down the leg from the trunnion; rake it and drop it in
-        return [(x + px * sa + pz, y + py, z_top - px * ca)
+        return [(x + px * sa + pz * ca, y + py, z_top - px * ca + pz * sa)
                 for (px, py, pz) in verts]
 
     parts = []
     split = length * 0.52
+    if slider:
+        v, f = mesh.revolve_closed(
+            [(split - r, 0.0), (length, 0.0), (length, r * 0.74),
+             (split - r, r * 0.74)], 30)
+        return place(v), f
     # outer cylinder with its wiper gland, then the sliding member
     parts.append((place(mesh.revolve_closed(
         [(0.0, 0.0), (split, 0.0), (split, r * 0.72), (split - 1.2, r * 1.06),
@@ -68,11 +73,6 @@ def _strut(x, y, z_top, length, r, rake=0.0, slider=False):
         [(0.0, 0.0), (split, 0.0), (split, r * 0.72), (split - 1.2, r * 1.06),
          (split - 3.0, r * 1.10), (4.0, r * 1.10), (1.5, r * 0.96),
          (0.0, r * 0.80)], 34)[1]))
-    parts.append((place(mesh.revolve_closed(
-        [(split - 4.0, 0.0), (length, 0.0), (length, r * 0.74),
-         (split - 4.0, r * 0.74)], 30)[0]), mesh.revolve_closed(
-        [(split - 4.0, 0.0), (length, 0.0), (length, r * 0.74),
-         (split - 4.0, r * 0.74)], 30)[1]))
     # trunnion: the pivot the whole leg swings on
     tv, tf = mesh.revolve_closed(
         [(-r * 1.6, r * 0.5), (r * 1.6, r * 0.5), (r * 1.6, r * 1.5),
@@ -107,6 +107,8 @@ def _nose():
     length = z_top - z_ax
     out = {"gear_nose_strut": _strut(
         x, 0.0, z_top, length - G["nose_wheel_r"] - r, r)}
+    out["gear_nose_chrome_slider"] = _strut(
+        x, 0.0, z_top, length - G["nose_wheel_r"] - r, r, slider=True)
     out["wheel_nose"] = _wheel(x, 0.0, z_ax, G["nose_wheel_r"], G["nose_wheel_w"])
     fork = []
     for sgn in (-1.0, 1.0):
@@ -147,6 +149,8 @@ def _mains():
         x_ax = x + r * 3
         wheel_y = y + sgn * (G["main_wheel_w"] / 2 + r)
         out[f"gear_main_{side}"] = _strut(x, y, z_top, z_top - z_ax - r * 2, r)
+        out[f"gear_main_chrome_slider_{side}"] = _strut(
+            x, y, z_top, z_top - z_ax - r * 2, r, slider=True)
         out[f"gear_main_trailing_link_{side}"] = mesh.pipe(
             [(x, y, z_ax + r * 2), (x_ax, y, z_ax),
              (x_ax, wheel_y, z_ax)], r * 0.65, 18)
@@ -212,6 +216,15 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
              (xx, y + width / 2 - t, roof - t),
              (xx, y + width / 2 - t, floor)], t / 2, 8))
     out[f"gear_bay_lining_{name}"] = mesh.join(*ribs)
+    lines = []
+    for offset in (-t, t):
+        lines.append(mesh.pipe(
+            [(x - length / 2 + t * 2, y + offset, floor + t),
+             (x - length / 2 + t * 2, y + offset, roof - t * 2),
+             (x + length * 0.3, y + offset, roof - t * 2),
+             (x + length * 0.3, y + width * 0.25 + offset, roof - t * 2),
+             (x, y + width * 0.25 + offset, floor + t)], t * 0.18, 10))
+    out[f"gear_bay_hydraulic_lines_{name}"] = mesh.join(*lines)
     for sign in ((-1.0, 1.0) if sgn is None else (sgn,)):
         yy = y + sign * width / 2
         suffix = "l" if sign < 0 else "r"
@@ -223,6 +236,18 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
             (x, yy, floor - depth / 2), t * 0.65)
         out[f"gear_door_hinge_{name}_{suffix}"] = mesh.pipe(
             [(x - length / 2, yy, floor), (x + length / 2, yy, floor)], t, 12)
+        latches = []
+        for end in (-1.0, 1.0):
+            xx = x + end * length * 0.35
+            latches.append(shapes.rounded_box(
+                xx, yy - sign * t, floor - depth + t,
+                t * 2, t, t * 2, r=t / 4, seg=3))
+            latches.append(mesh.pipe(
+                [(xx - t / 2, yy - sign * t, floor - depth + t),
+                 (xx - t / 2, yy - sign * t * 2, floor - depth + t),
+                 (xx + t / 2, yy - sign * t * 2, floor - depth + t),
+                 (xx + t / 2, yy - sign * t, floor - depth + t)], t / 4, 10))
+        out[f"gear_door_latches_{name}_{suffix}"] = mesh.join(*latches)
     if sgn is not None:
         out[f"gear_door_strut_{name}"] = shapes.rounded_box(
             G["main_x"], sgn * (G["main_y"] - G["strut_r"]),

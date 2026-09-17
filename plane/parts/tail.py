@@ -1,5 +1,7 @@
-"""Full-size jet tail: all-moving stabilators on trunnion bearings, swept fin
-with hydraulic rudder actuator in the root, ventral fins."""
+"""Full-size tail with symmetric sections, radiused tips and static wicks.
+
+The fin-tip ECM antenna housing is a dielectric fairing, not a metal cap.
+"""
 
 import math
 import sys, os
@@ -54,7 +56,7 @@ def _pivots_hw():
             [(px, sgn * 4.0, pz), (px, y_root + sgn * 7.0, pz)], shank_r, 16))
         # two spherical bearings, one either side of the tailpipe, pressed
         # into bores in a fuselage frame
-        for yb in (sgn * 5.0, sgn * 11.0):
+        for yb in (sgn * 4.6, sgn * 11.0):
             bv, bf = mesh.revolve_ring(
                 [(0.0, shank_r * 1.12), (0.0, shank_r * 1.85),
                  (shank_r * 1.55, shank_r * 1.85),
@@ -252,7 +254,7 @@ def _ventrals():
             semi_span=-d, sweep_le=-VN["sweep"],
             thickness=VN["thickness"] / c * 1.9,
             thickness_tip=VN["thickness"] / c * 1.2,
-            camber=0.03 * sgn, tip_cap=5,
+            camber=0.0, tip_cap=10,
             n_span=12, n_chord=NC, vertical=True)
         ang = math.radians(VN["cant"]) * sgn
         ca, sa = math.cos(ang), math.sin(ang)

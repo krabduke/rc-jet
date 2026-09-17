@@ -126,7 +126,7 @@ def _frame():
             rail.append((xx, sgn * ww, C["z_base"] + zz * 0.15))
         parts.append(mesh.pipe(rail, C["frame"] * 0.55, 8, caps=True))
 
-    return {"frame_canopy": mesh.join(*parts)}
+    return {"canopy_frame": mesh.join(*parts)}
 
 
 def _sill(x, sgn):
