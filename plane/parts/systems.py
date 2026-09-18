@@ -241,10 +241,13 @@ def _fuel_system():
         mesh.pipe([(hx - 4.0, hy, hz + 2.0),
                    (210.0, hy + 2.0, 6.0),
                    (fil[0] - 14.0, fil[1], fil[2])], 1.8, 16, subdiv=3),
-        # filter -> pump, round the FRONT of the ECU rather than through it
+        # filter -> pump, aft of the cockpit rather than through it. The
+        # dogleg used to cross at x 149 and the tub's aft wall is at 152, so
+        # both legs of it passed through the cockpit floor between y -10 and
+        # +10 -- a fuel line inside the cockpit.
         mesh.pipe([(fil[0] - 14.0, fil[1], fil[2]),
-                   (149.0, fil[1] * 0.5, fil[2]),
-                   (149.0, pmp[1] * 0.5, pmp[2]),
+                   (160.0, fil[1] * 0.62, fil[2]),
+                   (160.0, pmp[1] * 0.62, pmp[2]),
                    (pmp[0] - 12.0, pmp[1], pmp[2])], 1.8, 16, subdiv=3),
         # pump -> the engine's fuel union, over the tank and under the skin.
         # At z 25 the line's own wall reached 26.8, which is 0.24 mm outside

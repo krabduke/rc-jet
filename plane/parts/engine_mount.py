@@ -239,23 +239,34 @@ def _bay_installation(espec):
                 0.45, 6))
     out["bay_fire_loop"] = mesh.join(*loops)
 
-    w, h, zc = half(x0 + 16.0)
-    bx, by, bz = x0 + 16.0, w * 0.55, zc + h * 0.34
-    # a sphere-ended bottle with its discharge head, gauge and mounting
-    # straps. The head was a flat six-sided block and the strap did not
-    # exist, so a pressurised extinguisher was floating in the bay.
-    fb = [mesh.pipe([(bx - 9.0, by, bz), (bx + 9.0, by, bz)], 4.0, 24),
-          mesh.pipe([(bx + 9.0, by, bz), (bx + 26.0, by * 0.8, bz - 4.0),
-                     (bx + 44.0, by * 0.5, bz - 6.0)], 0.9, 14),
-          shapes.rounded_box(bx + 10.5, by, bz, 5.0, 5.0, 5.0,
-                             r=1.2, seg=4),
-          mesh.pipe([(bx + 10.5, by, bz + 2.4), (bx + 10.5, by, bz + 5.4)],
-                    1.5, 14)]
+    # In the annulus between the engine and the skin, which is all the bay
+    # there is. At 0.55 of the section's half width the bottle sat at y 15
+    # on an engine whose inlet case is 18.6 across at that station, so a
+    # pressurised extinguisher was inside the compressor: 22 of its own
+    # vertices in the casing, and the fan containment, the inlet case and
+    # the engine's oil lines all inside it. The gap between the casing at
+    # 19 and the skin's inner surface at 26 is seven millimetres, and the
+    # bottle is sized to sit in it -- which is a 200 mm bottle full size,
+    # about what an engine bay carries.
+    w, h, zc = half(x0 + 48.0)
+    bx, by, bz = x0 + 48.0, w * 0.80, zc + h * 0.18
+    r_b = 2.6
+    fb = [mesh.pipe([(bx - 9.0, by, bz), (bx + 9.0, by, bz)], r_b, 24),
+          # the discharge line stays in the annulus. Diving inboard to half
+          # the bottle's own radius took it into the fan case, the bypass
+          # wall, the combustor dome and the diffuser -- a fire line routed
+          # through the engine it is there to put out.
+          mesh.pipe([(bx + 9.0, by, bz), (bx + 22.0, by * 0.99, bz - 2.0),
+                     (bx + 36.0, by * 0.97, bz - 3.5)], 0.9, 14),
+          shapes.rounded_box(bx + 10.5, by, bz, 4.0, 3.8, 3.8,
+                             r=0.9, seg=4),
+          mesh.pipe([(bx + 10.5, by, bz + 1.8), (bx + 10.5, by, bz + 4.2)],
+                    1.1, 14)]
     for dx in (-4.5, 4.5):
-        tv, tf = mesh.ring_torus(0.0, 4.5, 0.7, 20, 8)
+        tv, tf = mesh.ring_torus(0.0, r_b + 0.5, 0.6, 20, 8)
         fb.append((mesh.translate(tv, bx + dx, by, bz), tf))
-        fb.append(shapes.rounded_box(bx + dx, by + 5.2, bz, 1.8, 2.0, 9.0,
-                                     r=0.4, seg=3))
+        fb.append(shapes.rounded_box(bx + dx, by - r_b - 1.0, bz,
+                                     1.6, 1.8, 6.0, r=0.35, seg=3))
     out["bay_fire_bottle"] = mesh.join(*fb)
 
     # ---- bleed air --------------------------------------------------------
@@ -264,7 +275,11 @@ def _bay_installation(espec):
     # cooling inlet, because two ducts on one shoulder do not fit.
     w, h, zc = half(x0 + 52.0)
     out["bay_bleed_offtake"] = mesh.join(
-        mesh.pipe([(x0 + 52.0, w * 0.36, zc + h * 0.30),
+        # It taps the engine's bleed pipes, which are ON the casing. At 0.36
+        # of the section's half width the offtake's aft end sat at radius 11
+        # on a casing that is 18.7 across, so the customer bleed was being
+        # drawn from inside the compressor drum.
+        mesh.pipe([(x0 + 52.0, w * 0.70, zc + h * 0.50),
                    (x0 + 44.0, w * 0.58, zc + h * 0.52),
                    (x0 + 20.0, w * 0.62, zc + h * 0.58),
                    # stops ON the firewall. Forward of x0 is the intake duct,

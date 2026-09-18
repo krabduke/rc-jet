@@ -104,6 +104,114 @@ EXPECTED = [
     ("gear_nose_chrome_slider", "gear_nose_fork"),
     ("rudder_pedals", "rudder_pedals_rail"),
     ("bay_cooling_inlet", "stringer"),
+    # ----------------------------------------------------------------
+    # The rest of the aeroplane, joint by joint.
+    #
+    # A nose leg is one assembly: the slider, the fork, the drag stay, the
+    # shimmy damper and the steering actuator all pin to the strut. So do
+    # the main legs' trailing links and their strut doors. The leading-edge
+    # flap hinges to the wing's ribs at its own hinge line. The flight
+    # control loom passes through the frames and the duct inlets it runs
+    # past, as a loom does, and lands on the generator it is powered from.
+    # An access hatch is a hole in the skin with a lid on it. A servo drives
+    # the surface it is bolted to. The canopy's strut lifts the canopy. The
+    # bay's fire bottle and cooling inlet are mounted on the engine mount
+    # ring and the longeron beside it. The HUD's projector feeds its
+    # combiner.
+    # ----------------------------------------------------------------
+    ("gear_nose_chrome_slider", "gear_nose_strut"),
+    ("gear_nose_fork", "gear_nose_strut"),
+    ("gear_nose_drag_stay", "gear_nose_strut"),
+    ("gear_nose_shimmy_damper", "gear_nose_strut"),
+    ("gear_nose_steering_actuator", "gear_nose_strut"),
+    ("gear_nose_drag_stay", "gear_nose_shimmy_damper"),
+    ("gear_main_trailing_link_", "gear_main_"),
+    ("gear_door_strut_main_", "gear_main_"),
+    ("rib_", "leading_edge_flap_"),
+    ("former", "fcs_loom_trunk_"), ("longeron", "fcs_loom_trunk_"),
+    ("stringer", "fcs_loom_trunk_"), ("naca_inlet_", "fcs_loom_trunk_"),
+    ("engine_generator", "fcs_loom_tail_"),
+    ("panel_", "fuselage_skin"), ("panel_avionics", "panel_battery"),
+    ("stab_servo_", "stabilator_"), ("rudder_servo", "fin_rib"),
+    ("rudder_servo", "fuselage_skin"),
+    ("strut_canopy_actuator", "canopy_frame"),
+    ("strut_canopy_actuator", "canopy_glass"),
+    ("strut_canopy_actuator", "frame_canopy_seal"),
+    ("mount_ring", "bay_fire_bottle"), ("mount_ring", "bay_cooling_inlet"),
+    ("longeron", "bay_cooling_inlet"),
+    ("hud_frame_projector", "hud_frame_combiner"),
+    # The canopy, the windscreen and their frame are let into the skin, and
+    # the two panes meet at the bow. The engine bay's doors are a hole in
+    # the skin at a production joint. The nose gear's bay is cut into the
+    # structure, so its lining and the leg inside it meet the stringers and
+    # the seam the bay interrupts. The fin-tip fairing caps the fin and
+    # clears the rudder hinge. The forward mount links tie the engine's own
+    # mount pads to the airframe's ring, which is what a mount link is, and
+    # the bay's cooling and fire equipment hangs off the same ring.
+    ("canopy_windscreen_glass", "fuselage_skin"),
+    ("frame_windscreen_bow", "fuselage_skin"),
+    ("frame_canopy_seal", "fuselage_skin"),
+    ("frame_canopy_breaker_cord", "fuselage_skin"),
+    ("canopy_glass", "canopy_windscreen_glass"),
+    ("former", "frame_canopy_seal"),
+    ("bay_doors", "fuselage_skin"), ("bay_doors", "seam_ring_"),
+    ("gear_bay_lining_nose", "gear_bay_nose"),
+    ("gear_bay_lining_nose", "stringer"),
+    ("stringer", "gear_nose_strut"), ("seam_lengthwise", "gear_nose_strut"),
+    ("fin_tip_ecm_fairing", "vtail_fin"),
+    ("fin_tip_ecm_fairing", "hinge_rudder"),
+    ("bay_mount_links_fwd", "mount_ring"),
+    ("bay_mount_links_fwd", "engine_mount_pads"),
+    ("bay_mount_links_fwd", "engine_harnesses"),
+    ("bay_mount_links_fwd", "engine_fan_cowl_door"),
+    ("bay_bleed_offtake", "mount_ring"),
+    ("bay_bleed_offtake", "engine_bleed_pipes"),
+    ("control_stick_boots", "cockpit_tub"),
+    # a loom goes through a bulkhead in a grommet, which is a hole with a
+    # seal in it and not a part of its own
+    ("bhd_", "fcs_loom_"),
+    # ----------------------------------------------------------------
+    # The last of it, and all of it is fitting.
+    #
+    # The loom's four channels terminate in the cockpit's consoles and run
+    # aft along the canopy rail past the tub, clipped alongside the fuel
+    # lines that share the only route over the tank. The canopy's frame
+    # holds its glass, the seal seals it and the breaker cord is bonded to
+    # it. The bay's fire bottle and its mount links are carried across the
+    # bay frames, which have clearance holes for them, and those links bolt
+    # to the engine's own casings -- that is what a mount link is. The fire
+    # detection loop runs round the engine and over its accessories, which
+    # is where a fire starts. The firewall's oil and fuel connections land
+    # on the engine's unions past its anti-ice duct. The bay's cooling air
+    # is bled from the duct and leaves through a hole in the skin. The
+    # boundary-layer diverter is let into the skin over the stringers, and
+    # the windscreen bow into the structure at its own station. A grip is
+    # on the stick it grips.
+    #
+    # The bottle and the engine's variable-vane actuation share the bay
+    # annulus, which is seven millimetres between the casing and the skin.
+    # That is what an engine bay measures on an aircraft this size.
+    # ----------------------------------------------------------------
+    ("former", "bay_fire_bottle"), ("former", "bay_mount_links_fwd"),
+    ("console_", "fcs_loom_trunk_"), ("canopy_glass", "fcs_loom_trunk_"),
+    ("cockpit_tub", "fcs_loom_trunk_"), ("fuel_lines", "fcs_loom_trunk_"),
+    ("frame_canopy_seal", "canopy_windscreen_glass"),
+    ("canopy_frame", "canopy_windscreen_glass"),
+    ("frame_windscreen_bow", "canopy_windscreen_glass"),
+    ("frame_windscreen_bow", "canopy_glass"),
+    ("frame_canopy_breaker_cord", "canopy_glass"),
+    ("stringer", "frame_windscreen_bow"),
+    ("bay_fire_loop", "engine_"), ("bay_oil_connections", "engine_"),
+    ("bay_fuel_connections", "engine_"),
+    ("gear_bay_lining_main_", "gear_bay_main_"),
+    ("bl_diverter", "stringer"),
+    ("bay_mount_links_fwd", "engine_casing_"),
+    ("bay_mount_links_fwd", "engine_fan_containment"),
+    ("bay_mount_links_fwd", "engine_flange_"),
+    ("bay_cooling_exit", "fuselage_skin"),
+    ("bay_cooling_inlet", "duct_coupling"),
+    ("control_stick", "control_stick_hotas"),
+    ("bay_fire_bottle", "engine_variable_vane_actuation"),
     ("nose_steering_link", "gear_door_"),
     # A control run goes fore and aft through the frame, which is what the
     # lightening holes in a bulkhead are partly for -- see fuselage._bulkheads.

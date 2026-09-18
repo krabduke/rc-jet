@@ -982,15 +982,22 @@ FCS = {
     # Looms run along the fuselage sides in the pocket over the duct's
     # shoulder, two a side, high and low, so a single failure cannot take a
     # pair. These are the waypoints between the bay and the wing root.
+    # Clock angle and aft station for each trunk, not a list of points.
+    #
+    # The four trunks used to be coordinates typed in here, and they ran the
+    # length of the fuselage at a height that put every one of them through
+    # the saddle tank -- and through the hopper, the filter and the fuel
+    # lines with it. There is nowhere else for them to go: the tank fills the
+    # section from y -27 to 27 and z -13 to 14, wrapped round an intake duct
+    # that reaches z 19.6, so the only way aft is under the skin over the top
+    # of it. Given a clock angle the fuselage's own section draws that route,
+    # the same way it draws the longerons and the stringers, and it stays
+    # right when the tank moves.
     "routes": {
-        "upper_l": [(140.0, -18.0, 6.0), (200.0, -22.0, 10.0),
-                    (250.0, -24.0, 12.0), (300.0, -22.0, 14.0)],
-        "upper_r": [(140.0, 18.0, 6.0), (200.0, 22.0, 10.0),
-                    (250.0, 24.0, 12.0), (300.0, 22.0, 14.0)],
-        "lower_l": [(140.0, -20.0, -6.0), (200.0, -25.0, -4.0),
-                    (250.0, -27.0, -2.0), (300.0, -24.0, 0.0)],
-        "lower_r": [(140.0, 20.0, -6.0), (200.0, 25.0, -4.0),
-                    (250.0, 27.0, -2.0), (300.0, 24.0, 0.0)],
+        "upper_l": (105.0, 300.0),
+        "upper_r": (75.0, 300.0),
+        "lower_l": (128.0, 300.0),
+        "lower_r": (52.0, 300.0),
     },
     # Aft of the firewall, to the tail.
     #

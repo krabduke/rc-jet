@@ -38,9 +38,10 @@ def _default_build():
               for k in range(fcc["channels"])])
     }
     for name, port in zip(route_names, fcs["ports"]):
-        points = [port, *fcs["routes"][name]]
+        clock, x_end = fcs["routes"][name]
         out[f"fcs_loom_trunk_{name}"] = mesh.pipe(
-            points, fcs["loom_r"], 32, subdiv=100
+            _trunk_path(port, clock, x_end, fcs["loom_r"]),
+            fcs["loom_r"], 32, subdiv=60
         )
     for name, points in fcs.get("tail_runs", {}).items():
         out[f"fcs_loom_{name}"] = mesh.pipe(
@@ -50,6 +51,31 @@ def _default_build():
         if any(intake.in_duct(point) for point in verts):
             raise ValueError(f"Specified geometry for {name} enters the intake duct")
     return out
+
+
+def _trunk_path(port, clock_deg, x_end, r, n=24):
+    """From the computer's channel port, aft along the inside of the skin.
+
+    A loom is clipped to the airframe, so its route is the airframe's own
+    section at a clock angle -- which is how the longerons and stringers are
+    drawn too. The standoff is the loom's own radius, so the trunk lies
+    against the skin rather than floating beside it or through it.
+    """
+    from parts import fuselage as fus
+    a = math.radians(clock_deg)
+    ca, sa = math.cos(a), math.sin(a)
+    x0 = port[0] + 8.0
+    pts = [tuple(port)]
+    for i in range(n):
+        x = x0 + (x_end - x0) * i / (n - 1)
+        w, h, zc, expn = fus.station_at(x)
+        p = 2.0 / expn
+        w_in = max(w - spec.FUSELAGE_SKIN - r, 0.6)
+        h_in = max(h - spec.FUSELAGE_SKIN - r, 0.6)
+        pts.append((x,
+                    w_in * math.copysign(abs(ca) ** p, ca),
+                    zc + h_in * math.copysign(abs(sa) ** p, sa)))
+    return pts
 
 
 def build(channels=None):

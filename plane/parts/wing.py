@@ -100,6 +100,26 @@ def _panels():
     return out
 
 
+def _le_span0():
+    """Span fraction at which the leading-edge flap starts.
+
+    Not the wing's. The flap is a chord AHEAD of the wing, where the body is
+    wider, and the strake fills the root leading edge as a fillet on it --
+    `_strakes` runs its outboard edge to the section's own half width plus
+    13 mm. Started at the wing's root station the flap's root end was inside
+    the fuselage: the lengthwise seam, two stringers and the first rib were
+    all within it.
+    """
+    from parts import fuselage as fus
+    x0 = W["x_root_le"] - W["le_root_ext"]
+    x1 = W["x_root_le"] + W["root_chord"] * LE_HINGE_U
+    out = 0.0
+    for i in range(17):
+        w, _h, _zc, _n = fus.station_at(x0 + (x1 - x0) * i / 16.0)
+        out = max(out, w * 0.96 + 14.0)
+    return min(0.45, max(_root_span0(), out / W["semi_span"]))
+
+
 def _leading_edge_flaps():
     out = {}
     for side, mir in (("l", True), ("r", False)):
@@ -113,7 +133,7 @@ def _leading_edge_flaps():
             camber=W["camber"], twist_root=W["incidence"],
             twist_tip=W["incidence"] - W["washout"],
             u0=0.0, u1=LE_HINGE_U, n_span=NS, n_chord=NC, mirror=mir,
-            span0=_root_span0())
+            span0=_le_span0())
         out[f"leading_edge_flap_{side}"] = (v, f)
     return out
 

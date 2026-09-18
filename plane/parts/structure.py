@@ -369,7 +369,7 @@ def _wing_section(f, u0, u1, n_pts=48):
     return sect, place
 
 
-def _rib(y, f, t, u1):
+def _rib(y, f, t, u0, u1):
     """One wing rib: cap strips top and bottom, webs between them, and a
     doubler where each spar passes through.
 
@@ -385,8 +385,11 @@ def _rib(y, f, t, u1):
     strictly under the skin even where washout tips the section.
     """
     chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
-    sect, place = _wing_section(f, 0.0, u1)
-    sect = _inset(sect, chord, ST["rib_inset"], 0.0, u1)
+    sect, place = _wing_section(f, u0, u1)
+    # inset against the rib's OWN chord range. Told the section ran from
+    # zero it pulled the nose in from a leading edge the rib does not have,
+    # and left the real nose sitting on the flap's hinge line.
+    sect = _inset(sect, chord, ST["rib_inset"], u0, u1)
 
     # the cap strips: the section, and the same section drawn inwards by the
     # strip width, clamped so the two never cross near the trailing edge
@@ -395,7 +398,7 @@ def _rib(y, f, t, u1):
     for (u, v) in sect:
         keep = 0.22 * abs(v)
         dv = min(cap, max(abs(v) - keep, 0.0))
-        uu = u + (cap * 0.8 if u < 0.06 else (-cap * 0.8 if u > u1 - 0.06
+        uu = u + (cap * 0.8 if u < u0 + 0.06 else (-cap * 0.8 if u > u1 - 0.06
                                               else 0.0))
         inner.append((uu, v - math.copysign(dv, v or 1.0)))
 
@@ -434,9 +437,14 @@ def _rib(y, f, t, u1):
 def _wing_ribs():
     """Ribs at even span stations.
 
-    Every rib stops at the same chord fraction as the wing skin does. The wing
+    Every rib spans the same chord fractions as the wing skin does. The wing
     is trimmed at the flaperon hinge line for its whole span, so a full-chord
-    rib inboard of the flaperon would hang out behind the trailing edge.
+    rib inboard of the flaperon would hang out behind the trailing edge -- and
+    it starts at the leading-edge flap's hinge for the same reason. Built from
+    zero the ribs ran forward into the flap: 141 of one rib's 904 vertices
+    were inside it, and none of the flap's were inside the rib, because the
+    flap simply contained the rib's nose. A leading-edge flap is a separate
+    structure with its own ribs; the wing's stop where the wing's skin does.
     """
     out = {}
     n = ST["n_wing_ribs"]
@@ -449,7 +457,10 @@ def _wing_ribs():
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         for i, f in enumerate(_wing._rib_stations(*range(1, n + 1))):
             y = sgn * W["semi_span"] * f
-            out[f"rib_{side}_{i + 1:02d}"] = _rib(y, f, t, u1)
+            # a chord behind the hinge line, not on it: the flap's aft face
+            # and the rib's nose are the same station otherwise
+            out[f"rib_{side}_{i + 1:02d}"] = _rib(
+                y, f, t, _wing.LE_HINGE_U + 0.075, u1)
     return out
 
 
