@@ -242,17 +242,70 @@ def _accessory_drives():
             axis = (0.0, 0.0, -1.0)
         def point(t):
             return tuple(base[k] + axis[k] * t for k in range(3))
-        pieces = [_fitting(point(0.0), point(14.0), radius + 12.0),
-                  mesh.pipe([point(10.0), point(length)], radius, segments=24),
-                  _fitting(point(length - 4.0), point(length + 12.0), radius * 0.55)]
-        for t in (24.0, 42.0, 60.0, 78.0):
-            pieces.append(_fitting(point(t), point(t + 5.0), radius + 4.0))
+        # body, drive-pad flange, and the hardware that says what it is:
+        # cooling fins on a generator, inlet and outlet unions on a pump
+        pieces = _bolted_pad(base, axis, radius + 12.0)
+        pieces.append(mesh.pipe([point(10.0), point(length)], radius,
+                                segments=28))
+        pieces.append(_fitting(point(length - 4.0), point(length + 12.0),
+                               radius * 0.55))
+        u, v = _frame(axis)
+        if name.startswith("generator"):
+            # a fin stack, and the terminal box the feeders land on
+            for k in range(7):
+                t = 26.0 + k * 9.5
+                pieces.append(_fitting(point(t), point(t + 4.0), radius + 5.0,
+                                       28))
+            box = tuple(point(length * 0.62)[j] + u[j] * (radius + 2.0)
+                        for j in range(3))
+            end = tuple(box[j] + u[j] * 22.0 for j in range(3))
+            pieces.append(_fitting(box, end, 15.0, 16))
+            pieces.append(_fitting(end, tuple(end[j] + u[j] * 5.0
+                                              for j in range(3)), 18.0, 16))
+        else:
+            # suction and pressure unions, one each side, with their caps
+            for side, t in ((u, 0.34), (v, 0.62)):
+                at = point(length * t)
+                p0 = tuple(at[j] + side[j] * (radius - 2.0) for j in range(3))
+                p1 = tuple(at[j] + side[j] * (radius + 26.0) for j in range(3))
+                pieces.append(_fitting(p0, p1, 9.5, 16))
+                p2 = tuple(at[j] + side[j] * (radius + 32.0) for j in range(3))
+                pieces.append(_fitting(p1, p2, 12.5, 16))
         out[name] = mesh.join(*pieces)
     return out
 
 
-def _fitting(p0, p1, radius):
-    return mesh.pipe([p0, p1], radius, segments=6)
+def _fitting(p0, p1, radius, segments=20):
+    """A short cylindrical boss between two points.
+
+    20 sides, not 6. Every boss, flange, fin and case pad on this engine
+    goes through here, and at 6 they were hexagons -- which is why seven of
+    the accessories sat at 96 to 120 vertices against a floor of 200.
+    """
+    return mesh.pipe([p0, p1], radius, segments=segments)
+
+
+def _frame(axis):
+    """Two unit vectors across `axis`, for putting bolts round a flange."""
+    up = (0.0, 0.0, 1.0) if abs(axis[2]) < 0.9 else (1.0, 0.0, 0.0)
+    u = mesh._normalise(mesh._cross(axis, up))
+    return u, mesh._normalise(mesh._cross(axis, u))
+
+
+def _bolted_pad(base, axis, r_flange, n_bolt=8):
+    """The flange an accessory is clamped to its drive pad by."""
+    def point(t):
+        return tuple(base[k] + axis[k] * t for k in range(3))
+    u, v = _frame(axis)
+    pieces = [_fitting(point(0.0), point(14.0), r_flange, 24)]
+    for k in range(n_bolt):
+        a = 2.0 * math.pi * k / n_bolt
+        off = tuple((u[j] * math.cos(a) + v[j] * math.sin(a)) * (r_flange - 6.0)
+                    for j in range(3))
+        p0 = tuple(point(12.0)[j] + off[j] for j in range(3))
+        p1 = tuple(point(20.0)[j] + off[j] for j in range(3))
+        pieces.append(_fitting(p0, p1, 3.4, 8))
+    return pieces
 
 
 def _case_boss(x, clock, height=14.0, radius=15.0):

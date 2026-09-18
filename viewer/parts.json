@@ -266,7 +266,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 116,
-   "faces": 178738,
+   "faces": 192660,
    "x0": 0.0,
    "x1": 443.4
   },
@@ -302,7 +302,7 @@
    "label": "Cockpit",
    "color": "#79A6B4",
    "parts": 37,
-   "faces": 16132,
+   "faces": 21122,
    "x0": 77.4,
    "x1": 178.0
   },
@@ -311,7 +311,7 @@
    "label": "Gear",
    "color": "#6F6F72",
    "parts": 58,
-   "faces": 25812,
+   "faces": 33344,
    "x0": 26.0,
    "x1": 284.1
   },
@@ -320,8 +320,8 @@
    "label": "Engine",
    "color": "#A8763E",
    "parts": 125,
-   "faces": 1307454,
-   "x0": 283.5,
+   "faces": 1313616,
+   "x0": 283.2,
    "x1": 438.3
   },
   {
@@ -694,9 +694,9 @@
   "frame_canopy_rear_hinge": {
    "g": "01 Fuselage",
    "mat": "glass",
-   "x0": 163.2,
+   "x0": 161.4,
    "x1": 164.8,
-   "f": 68
+   "f": 908
   },
   "frame_canopy_seal": {
    "g": "01 Fuselage",
@@ -785,9 +785,9 @@
   "hud_frame_projector": {
    "g": "05 Cockpit",
    "mat": "plastic",
-   "x0": 102.0,
+   "x0": 101.3,
    "x1": 108.0,
-   "f": 82
+   "f": 1112
   },
   "hud_glass_combiner_1": {
    "g": "05 Cockpit",
@@ -878,7 +878,7 @@
    "mat": "alu",
    "x0": 106.0,
    "x1": 126.0,
-   "f": 132
+   "f": 528
   },
   "seat_back": {
    "g": "05 Cockpit",
@@ -892,14 +892,14 @@
    "mat": "airframe",
    "x0": 126.0,
    "x1": 140.0,
-   "f": 132
+   "f": 324
   },
   "seat_drogue_container": {
    "g": "05 Cockpit",
    "mat": "airframe",
    "x0": 144.3,
    "x1": 149.2,
-   "f": 98
+   "f": 3170
   },
   "seat_harness": {
    "g": "05 Cockpit",
@@ -946,9 +946,9 @@
   "throttle_lever_hotas": {
    "g": "05 Cockpit",
    "mat": "plastic",
-   "x0": 111.9,
-   "x1": 112.9,
-   "f": 66
+   "x0": 111.2,
+   "x1": 113.6,
+   "f": 366
   },
   "brake_l": {
    "g": "06 Landing Gear",
@@ -1030,58 +1030,58 @@
   "gear_door_actuator_main_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.6,
-   "x1": 252.4,
-   "f": 60
+   "x0": 251.4,
+   "x1": 252.6,
+   "f": 314
   },
   "gear_door_actuator_main_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.6,
-   "x1": 252.4,
-   "f": 60
+   "x0": 251.4,
+   "x1": 252.6,
+   "f": 314
   },
   "gear_door_actuator_nose_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 35.6,
-   "x1": 36.4,
-   "f": 60
+   "x0": 35.5,
+   "x1": 36.5,
+   "f": 314
   },
   "gear_door_actuator_nose_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 35.6,
-   "x1": 36.4,
-   "f": 60
+   "x0": 35.5,
+   "x1": 36.5,
+   "f": 314
   },
   "gear_door_hinge_main_l": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 237.0,
    "x1": 267.0,
-   "f": 26
+   "f": 204
   },
   "gear_door_hinge_main_r": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 237.0,
    "x1": 267.0,
-   "f": 26
+   "f": 204
   },
   "gear_door_hinge_nose_l": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 26.0,
    "x1": 46.0,
-   "f": 26
+   "f": 204
   },
   "gear_door_hinge_nose_r": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 26.0,
    "x1": 46.0,
-   "f": 26
+   "f": 204
   },
   "gear_door_latches_main_l": {
    "g": "06 Landing Gear",
@@ -1116,42 +1116,42 @@
    "mat": "airframe",
    "x0": 237.0,
    "x1": 267.0,
-   "f": 66
+   "f": 528
   },
   "gear_door_main_r": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 237.0,
    "x1": 267.0,
-   "f": 66
+   "f": 528
   },
   "gear_door_nose_l": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 26.0,
    "x1": 46.0,
-   "f": 66
+   "f": 528
   },
   "gear_door_nose_r": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 26.0,
    "x1": 46.0,
-   "f": 66
+   "f": 528
   },
   "gear_door_strut_main_l": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 248.7,
    "x1": 255.3,
-   "f": 66
+   "f": 528
   },
   "gear_door_strut_main_r": {
    "g": "06 Landing Gear",
    "mat": "airframe",
    "x0": 248.7,
    "x1": 255.3,
-   "f": 66
+   "f": 528
   },
   "gear_main_chrome_slider_l": {
    "g": "06 Landing Gear",
@@ -1170,30 +1170,30 @@
   "gear_main_downlock_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.3,
-   "x1": 254.6,
-   "f": 60
+   "x0": 250.9,
+   "x1": 254.9,
+   "f": 314
   },
   "gear_main_downlock_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.3,
-   "x1": 254.6,
-   "f": 60
+   "x0": 250.9,
+   "x1": 254.9,
+   "f": 314
   },
   "gear_main_drag_stay_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 238.4,
-   "x1": 252.9,
-   "f": 58
+   "x0": 237.9,
+   "x1": 253.3,
+   "f": 270
   },
   "gear_main_drag_stay_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 238.4,
-   "x1": 252.9,
-   "f": 58
+   "x0": 237.9,
+   "x1": 253.3,
+   "f": 270
   },
   "gear_main_l": {
    "g": "06 Landing Gear",
@@ -1212,44 +1212,44 @@
   "gear_main_retract_actuator_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.6,
-   "x1": 259.4,
-   "f": 96
+   "x0": 251.4,
+   "x1": 259.5,
+   "f": 350
   },
   "gear_main_retract_actuator_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.6,
-   "x1": 259.4,
-   "f": 96
+   "x0": 251.4,
+   "x1": 259.5,
+   "f": 350
   },
   "gear_main_side_stay_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.0,
+   "x0": 250.1,
    "x1": 255.2,
-   "f": 58
+   "f": 270
   },
   "gear_main_side_stay_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.0,
+   "x0": 250.1,
    "x1": 255.2,
-   "f": 58
+   "f": 270
   },
   "gear_main_trailing_link_l": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.2,
-   "x1": 260.0,
-   "f": 74
+   "x0": 250.1,
+   "x1": 261.3,
+   "f": 270
   },
   "gear_main_trailing_link_r": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 251.2,
-   "x1": 260.0,
-   "f": 74
+   "x0": 250.1,
+   "x1": 261.3,
+   "f": 270
   },
   "gear_nose_chrome_slider": {
    "g": "06 Landing Gear",
@@ -1261,30 +1261,30 @@
   "gear_nose_drag_stay": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 27.4,
-   "x1": 40.7,
-   "f": 50
+   "x0": 27.1,
+   "x1": 41.1,
+   "f": 270
   },
   "gear_nose_fork": {
    "g": "06 Landing Gear",
    "mat": "steel",
    "x0": 38.9,
    "x1": 41.1,
-   "f": 116
+   "f": 164
   },
   "gear_nose_shimmy_damper": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 37.4,
-   "x1": 44.6,
-   "f": 60
+   "x0": 36.9,
+   "x1": 45.0,
+   "f": 314
   },
   "gear_nose_steering_actuator": {
    "g": "06 Landing Gear",
    "mat": "steel",
-   "x0": 35.1,
-   "x1": 44.7,
-   "f": 60
+   "x0": 34.4,
+   "x1": 45.2,
+   "f": 314
   },
   "gear_nose_strut": {
    "g": "06 Landing Gear",
@@ -1338,9 +1338,9 @@
   "fcs_fcc_envelope": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 105.0,
+   "x0": 102.4,
    "x1": 131.0,
-   "f": 6
+   "f": 5120
   },
   "fcs_loom_tail_l": {
    "g": "01 Fuselage",
@@ -1415,9 +1415,9 @@
   "engine_bay_cooling_inlet": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 283.5,
+   "x0": 283.2,
    "x1": 310.3,
-   "f": 64
+   "f": 1704
   },
   "engine_bay_doors": {
    "g": "07 Engine",
@@ -1774,7 +1774,7 @@
    "mat": "engine",
    "x0": 307.9,
    "x1": 353.6,
-   "f": 92
+   "f": 140
   },
   "engine_bleed_pipes": {
    "g": "07 Engine",
@@ -1949,7 +1949,7 @@
    "mat": "engine",
    "x0": 309.1,
    "x1": 331.3,
-   "f": 21152,
+   "f": 21408,
    "pivot": {
     "p": [
      320.2,
@@ -1998,7 +1998,7 @@
    "mat": "engine",
    "x0": 307.0,
    "x1": 360.2,
-   "f": 90
+   "f": 2912
   },
   "engine_fire_loop": {
    "g": "07 Engine",
@@ -2096,21 +2096,21 @@
    "mat": "engine",
    "x0": 322.8,
    "x1": 334.2,
-   "f": 64
+   "f": 176
   },
   "engine_generator_1": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 322.6,
-   "x1": 326.5,
-   "f": 74
+   "x1": 327.0,
+   "f": 404
   },
   "engine_generator_2": {
    "g": "07 Engine",
    "mat": "engine",
    "x0": 330.0,
-   "x1": 333.9,
-   "f": 74
+   "x1": 334.4,
+   "f": 404
   },
   "engine_harnesses": {
    "g": "07 Engine",
@@ -2213,16 +2213,16 @@
   "engine_hydraulic_pump_1": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 323.6,
+   "x0": 323.0,
    "x1": 326.4,
-   "f": 74
+   "f": 230
   },
   "engine_hydraulic_pump_2": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 330.6,
+   "x0": 330.0,
    "x1": 333.4,
-   "f": 74
+   "f": 230
   },
   "engine_igniters": {
    "g": "07 Engine",
@@ -2325,16 +2325,16 @@
   "engine_oil_pressure_pump": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 325.6,
+   "x0": 325.0,
    "x1": 328.1,
-   "f": 74
+   "f": 230
   },
   "engine_oil_scavenge_pump": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 329.6,
+   "x0": 329.0,
    "x1": 332.4,
-   "f": 74
+   "f": 230
   },
   "engine_panel_bolts": {
    "g": "07 Engine",
@@ -3431,44 +3431,44 @@
   "nozzle_actuator_00": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_actuator_01": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_actuator_02": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_actuator_03": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_actuator_04": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_actuator_05": {
    "g": "01 Fuselage",
    "mat": "airframe",
-   "x0": 414.2,
-   "x1": 421.5,
-   "f": 68
+   "x0": 413.8,
+   "x1": 422.5,
+   "f": 1396
   },
   "nozzle_external_flap_00": {
    "g": "01 Fuselage",

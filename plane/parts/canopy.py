@@ -157,9 +157,20 @@ def _hardware():
                 H["lock_length"], H["lock_width"], H["lock_height"],
                 r=H["seal"], seg=3))
         x, y, z = _sill(H["hinge_x"], sgn)
-        hinges.append(mesh.pipe([(x, y - H["hinge_span"] / 2, z),
-                                 (x, y + H["hinge_span"] / 2, z)],
-                                H["hinge_radius"], 16))
+        # pin and knuckles, not a bare pin: a hinge is a pin through lugs
+        hs = H["hinge_span"]
+        hinges.append(mesh.pipe([(x, y - hs / 2, z), (x, y + hs / 2, z)],
+                                H["hinge_radius"] * 0.5, 18))
+        for k in range(4):
+            yk = y - hs / 2 + hs * (k + 0.5) / 4
+            hinges.append(mesh.pipe(
+                [(x, yk - hs * 0.07, z), (x, yk + hs * 0.07, z)],
+                H["hinge_radius"], 18))
+            hinges.append(shapes.rounded_box(
+                x - H["hinge_radius"] * 1.6, yk, z,
+                H["hinge_radius"] * 3.2, hs * 0.13,
+                H["hinge_radius"] * 1.1,
+                r=H["hinge_radius"] * 0.3, seg=3))
         p0 = (x - H["hinge_span"] * 2, y, z - H["hinge_span"])
         p1 = _sill(x - H["hinge_span"], sgn)
         pm = tuple(p0[k] + (p1[k] - p0[k]) * 0.6 for k in range(3))

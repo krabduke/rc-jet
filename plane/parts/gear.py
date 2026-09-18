@@ -115,7 +115,7 @@ def _nose():
         y = sgn * (G["nose_wheel_w"] / 2 + B["clearance"])
         fork.append(mesh.pipe([(x, 0.0, z_ax + G["nose_wheel_r"] + r),
                                (x, y, z_ax + G["nose_wheel_r"]),
-                               (x, y, z_ax)], r * 0.5, 14))
+                               (x, y, z_ax)], r * 0.5, 20))
     out["gear_nose_fork"] = mesh.join(*fork)
     out["wheel_hub_nose"] = _hub(x, 0.0, z_ax, G["nose_wheel_r"], G["nose_wheel_w"])
     out["gear_nose_steering_actuator"] = _actuator(
@@ -124,10 +124,10 @@ def _nose():
     out["gear_nose_shimmy_damper"] = _actuator(
         (x - r, -r * 2, z_top - length * 0.4),
         (x + r * 2, r * 1.5, z_top - length * 0.4), r * 0.25)
-    out["gear_nose_drag_stay"] = mesh.pipe(
+    out["gear_nose_drag_stay"] = _stay(
         [(B["nose_bay_x"] - B["nose_bay_length"] / 2 + r, 0.0, z_top),
          (x - r * 3, 0.0, z_top - length * 0.2),
-         (x, 0.0, z_top - length * 0.4)], r * 0.4, 12)
+         (x, 0.0, z_top - length * 0.4)], r * 0.4)
     out.update(_bay("nose", B["nose_bay_x"], 0.0, B["nose_bay_length"],
                     B["nose_bay_width"], B["nose_bay_floor"], B["nose_roof"]))
     return out
@@ -151,9 +151,9 @@ def _mains():
         out[f"gear_main_{side}"] = _strut(x, y, z_top, z_top - z_ax - r * 2, r)
         out[f"gear_main_chrome_slider_{side}"] = _strut(
             x, y, z_top, z_top - z_ax - r * 2, r, slider=True)
-        out[f"gear_main_trailing_link_{side}"] = mesh.pipe(
+        out[f"gear_main_trailing_link_{side}"] = _stay(
             [(x, y, z_ax + r * 2), (x_ax, y, z_ax),
-             (x_ax, wheel_y, z_ax)], r * 0.65, 18)
+             (x_ax, wheel_y, z_ax)], r * 0.65)
         out[f"wheel_main_{side}"] = _wheel(
             x_ax, wheel_y, z_ax, G["main_wheel_r"], G["main_wheel_w"])
         out[f"wheel_hub_main_{side}"] = _hub(
@@ -162,11 +162,11 @@ def _mains():
         knee = (x + r, y + sgn * r * 3, z_top - G["main_leg"] * 0.3)
         lower = (x, y, z_top - G["main_leg"] * 0.65)
         anchor = (x, sgn * (B["main_bay_y"] + B["main_bay_width"] / 2 - r), z_top)
-        out[f"gear_main_side_stay_{side}"] = mesh.pipe([anchor, knee, lower], r * 0.45, 14)
+        out[f"gear_main_side_stay_{side}"] = _stay([anchor, knee, lower], r * 0.45)
         out[f"gear_main_downlock_{side}"] = _actuator(anchor, knee, r * 0.3)
-        out[f"gear_main_drag_stay_{side}"] = mesh.pipe(
+        out[f"gear_main_drag_stay_{side}"] = _stay(
             [(x - B["main_bay_length"] / 2 + r, y, z_top),
-             (x - r * 3, y, z_top - G["main_leg"] * 0.25), lower], r * 0.45, 14)
+             (x - r * 3, y, z_top - G["main_leg"] * 0.25), lower], r * 0.45)
         # the jack, and the two hoses that feed it.
         #
         # Without them the bay's hydraulic lines ran along the roof and the
@@ -186,11 +186,88 @@ def _mains():
     return out
 
 
+def _door_panel(cx, cy, cz, length, thick, depth, t, inboard):
+    """A gear door: a skin with an edge lip and stiffeners behind it.
+
+    A door is a stressed panel that has to take airloads at 500 knots and
+    stay flat. This was a rounded box -- 80 vertices, no lip, no ribs, and
+    nothing on the back for the actuator or the latches to pick up.
+    `inboard` is the direction the bay is in, which is the side the
+    structure goes on.
+    """
+    parts = [shapes.rounded_box(cx, cy, cz, length, thick, depth,
+                                r=t / 3, seg=3)]
+    inner = cy + inboard * thick * 0.72
+    for e in (-1.0, 1.0):
+        parts.append(shapes.rounded_box(
+            cx + e * (length / 2 - t * 0.6), inner, cz,
+            t * 1.1, thick * 0.66, depth * 0.90, r=t / 4, seg=3))
+        parts.append(shapes.rounded_box(
+            cx, inner, cz + e * (depth / 2 - t * 0.6),
+            length * 0.90, thick * 0.66, t * 1.1, r=t / 4, seg=3))
+    for k in (-1, 0, 1):
+        parts.append(shapes.rounded_box(
+            cx + k * length * 0.26, inner, cz,
+            t * 0.8, thick * 0.80, depth * 0.80, r=t / 5, seg=3))
+    return mesh.join(*parts)
+
+
+def _rod_end(at, along, r):
+    """A clevis and its pin.
+
+    Nothing on a landing gear is welded to anything. A ram, a stay and a link
+    all end in a fork with a pin through it, and every one of them ended in a
+    flat disc instead -- which is most of why two dozen gear parts sat under
+    the vertex floor with nothing to add but sides.
+    """
+    u = mesh._normalise(along)
+    up = (0.0, 0.0, 1.0) if abs(u[2]) < 0.9 else (1.0, 0.0, 0.0)
+    n1 = mesh._normalise(mesh._cross(u, up))
+    parts = []
+    for s in (-1.0, 1.0):
+        c = tuple(at[k] + n1[k] * s * r * 0.85 for k in range(3))
+        e = tuple(c[k] + n1[k] * s * r * 0.55 for k in range(3))
+        parts.append(mesh.pipe([c, e], r * 1.30, 16))
+    parts.append(mesh.pipe(
+        [tuple(at[k] - n1[k] * r * 1.9 for k in range(3)),
+         tuple(at[k] + n1[k] * r * 1.9 for k in range(3))], r * 0.42, 12))
+    return parts
+
+
+def _stay(path, radius, segments=20):
+    """A stay or a link: the member, with a rod end on each end."""
+    parts = [mesh.pipe(path, radius, segments)]
+    parts += _rod_end(path[0], [path[1][k] - path[0][k] for k in range(3)],
+                      radius)
+    parts += _rod_end(path[-1], [path[-1][k] - path[-2][k] for k in range(3)],
+                      radius)
+    return mesh.join(*parts)
+
+
+def _hinge_line(p0, p1, r, n=5):
+    """A hinge line: the pin, and the knuckles it runs through."""
+    parts = [mesh.pipe([p0, p1], r * 0.45, 16)]
+    for k in range(n):
+        f = (k + 0.5) / n
+        parts.append(mesh.pipe(
+            [tuple(p0[j] + (p1[j] - p0[j]) * (f - 0.055) for j in range(3)),
+             tuple(p0[j] + (p1[j] - p0[j]) * (f + 0.055) for j in range(3))],
+            r, 16))
+    return mesh.join(*parts)
+
+
 def _actuator(p0, p1, radius):
-    """Expose the smaller piston rather than disguising a hydraulic ram as a rod."""
-    mid = tuple(p0[k] + (p1[k] - p0[k]) * 0.6 for k in range(3))
-    return mesh.join(mesh.pipe([p0, mid], radius, 14),
-                     mesh.pipe([mid, p1], radius * 0.55, 14))
+    """A hydraulic ram: barrel, gland nut, exposed rod, and a rod end at each
+    end -- rather than two cylinders butted together."""
+    def at(f):
+        return tuple(p0[k] + (p1[k] - p0[k]) * f for k in range(3))
+    along = [p1[k] - p0[k] for k in range(3)]
+    parts = [mesh.pipe([p0, at(0.60)], radius, 20),
+             mesh.pipe([at(0.58), at(0.66)], radius * 1.22, 20),
+             mesh.pipe([at(0.64), p1], radius * 0.55, 20)]
+    parts += _rod_end(p0, along, radius * 0.85)
+    parts += _rod_end(p1, along, radius * 0.55)
+    return mesh.join(*parts)
 
 
 def _hub(x, y, z, radius, width):
@@ -251,13 +328,13 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
         yy = y + sign * width / 2
         suffix = "" if sgn is not None else ("_l" if sign < 0 else "_r")
         depth = width / 2
-        out[f"gear_door_{name}{suffix}"] = shapes.rounded_box(
-            x, yy, floor - depth / 2, length, B["door"], depth, r=t / 3, seg=3)
+        out[f"gear_door_{name}{suffix}"] = _door_panel(
+            x, yy, floor - depth / 2, length, B["door"], depth, t, -sign)
         out[f"gear_door_actuator_{name}{suffix}"] = _actuator(
             (x, yy - sign * depth / 2, roof - t),
             (x, yy, floor - depth / 2), t * 0.65)
-        out[f"gear_door_hinge_{name}{suffix}"] = mesh.pipe(
-            [(x - length / 2, yy, floor), (x + length / 2, yy, floor)], t, 12)
+        out[f"gear_door_hinge_{name}{suffix}"] = _hinge_line(
+            (x - length / 2, yy, floor), (x + length / 2, yy, floor), t)
         latches = []
         for end in (-1.0, 1.0):
             xx = x + end * length * 0.35
@@ -271,10 +348,10 @@ def _bay(name, x, y, length, width, floor, roof, sgn=None):
                  (xx + t / 2, yy - sign * t, floor - depth + t)], t / 4, 10))
         out[f"gear_door_latches_{name}{suffix}"] = mesh.join(*latches)
     if sgn is not None:
-        out[f"gear_door_strut_{name}"] = shapes.rounded_box(
+        out[f"gear_door_strut_{name}"] = _door_panel(
             G["main_x"], sgn * (G["main_y"] - G["strut_r"]),
             floor - G["main_leg"] / 4, G["strut_r"] * 3, B["door"],
-            G["main_leg"] / 2, r=t / 3, seg=3)
+            G["main_leg"] / 2, t, -sgn)
     return out
 
 

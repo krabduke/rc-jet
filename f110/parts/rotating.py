@@ -148,120 +148,88 @@ def _slotted_disc(x_centre, r_bore, r_rim, width_rim, n_blades, row, platform_h,
     ]
     core_v, core_f = mesh.revolve_closed(core_prof, segments)
 
-    # each angular segment is one blade's share of the rim, with its dovetail
+    # Each angular segment is one blade's share of the rim, built as a
+    # closed prism: a sector from the web out to the rim face, with the
+    # dovetail slot cut into that face.
+    #
+    # Two things were wrong with it. The slot profile was taken as (w, -d)
+    # where `_fir_tree_one` takes the same profile as (w, d), so the disc's
+    # dovetail stood PROUD of the rim by 1.75 platform heights while the
+    # blade root it is meant to hold went the other way by the same amount:
+    # a tang where the slot should be, and no slot at all. And the segment
+    # was three overlapping shells -- a closed dovetail post, an inner
+    # ribbon with a lid over it, and abutment quads stitching the two --
+    # which left 20 loose edges per blade, 2560 across the three stages.
     dphi = 2.0 * math.pi / n_blades
     slot_h = platform_h * 2.5
     half_angle = dphi * 0.21
     n_ax = 6
 
-    rim_x = [x - hr, x - hr + 0.1, x + hr - 0.1, x + hr]
-
     half_raw = _fir_tree_half()
-    slot_faces = [(w, -d) for (w, d) in half_raw]
-    slot_faces += [(-w, -d) for (w, d) in reversed(half_raw[:-1])]
+    # the slot mouth, as an open path across the rim face: down the + side,
+    # round the tip and back up the - side. `_fir_tree_half` is a closed
+    # loop pinched at the centre of the face, so both centre points go.
+    slot_path = [(w, d) for (w, d) in half_raw[1:]]
+    slot_path += [(-w, d) for (w, d) in reversed(half_raw[1:-1])]
+
+    # the closed cross-section of one segment, in (angle, radius)
+    sect = [(-dphi / 2, r_web1), (dphi / 2, r_web1), (dphi / 2, r_rim)]
+    sect += [(fw * half_angle, r_rim + fd * slot_h) for (fw, fd) in slot_path]
+    sect.append((-dphi / 2, r_rim))
 
     rim_verts, rim_faces = [], []
-    n_sf = len(slot_faces)
-
-    # build each blade's rim segment
+    n_s = len(sect)
     for k in range(n_blades):
         phi0 = -dphi / 2 + dphi * k
-        # inner wall of the rim (constant radius r_web1)
+        base = k * n_s * n_ax
         for ii in range(n_ax):
-            f = ii / (n_ax - 1)
-            xp = x - hr + (2.0 * hr) * f
-            ang = -half_angle
-            ca, sa = math.cos(phi0 + ang), math.sin(phi0 + ang)
-            rim_verts.append((xp, r_web1 * ca, r_web1 * sa))
-            ang = half_angle
-            ca, sa = math.cos(phi0 + ang), math.sin(phi0 + ang)
-            rim_verts.append((xp, r_web1 * ca, r_web1 * sa))
-        # outer wall with dovetail slot
-        for ii in range(n_ax):
-            f = ii / (n_ax - 1)
-            xp = x - hr + (2.0 * hr) * f
-            for (fw, fd) in slot_faces:
-                ang = fw * half_angle
-                r = r_rim + fd * slot_h
+            xp = x - hr + (2.0 * hr) * (ii / (n_ax - 1))
+            for (ang, r) in sect:
                 ca, sa = math.cos(phi0 + ang), math.sin(phi0 + ang)
                 rim_verts.append((xp, r * ca, r * sa))
-
-    # indices
-    stride = 2          # inner wall: 2 verts per axial station
-    outer_stride = n_sf  # outer wall: n_sf verts per axial station
-    tot_inner = n_blades * stride * n_ax
-    tot_seg = stride * n_ax + outer_stride * n_ax
-
-    for k in range(n_blades):
-        base = k * tot_seg
-        inner0 = base
-        outer0 = base + stride * n_ax
-        # inner wall faces
         for ii in range(n_ax - 1):
-            i0 = inner0 + ii * stride
-            i1 = inner0 + (ii + 1) * stride
-            rim_faces.append((i0, i0 + 1, i1 + 1, i1))
-        # close inner wall ends
-        rim_faces.append((inner0,
-                          inner0 + stride * (n_ax - 1),
-                          inner0 + stride * (n_ax - 1) + 1,
-                          inner0 + 1))
-        # outer dovetail wall faces
-        for ii in range(n_ax - 1):
-            o0 = outer0 + ii * outer_stride
-            o1 = outer0 + (ii + 1) * outer_stride
-            for jj in range(n_sf):
-                j2 = (jj + 1) % n_sf
-                rim_faces.append((o0 + jj, o0 + j2, o1 + j2, o1 + jj))
-        # close outer wall ends
-        rim_faces.append(tuple(outer0 + jj for jj in range(n_sf - 1, -1, -1)))
-        rim_faces.append(tuple(outer0 + (n_ax - 1) * outer_stride + jj
-                               for jj in range(n_sf)))
-        # connect inner to outer: two abutment quads per axial station
-        for ii in range(n_ax):
-            i_base = inner0 + ii * stride
-            o_base = outer0 + ii * outer_stride
-            # left abutment: inner[0] -> outer[0]
-            rim_faces.append((i_base, o_base,
-                              o_base + outer_stride * (1 if ii < n_ax - 1 else 1 - n_ax),
-                              i_base + stride * (1 if ii < n_ax - 1 else -stride * (n_ax - 1))))
-            # right abutment: inner[1] -> outer[-1]
-            nxt = (ii + 1) if ii < n_ax - 1 else 0
-            rim_faces.append((i_base + 1,
-                              o_base + outer_stride * (1 if ii < n_ax - 1 else 1 - n_ax) + n_sf - 1,
-                              o_base + n_sf - 1,
-                              i_base + stride * (1 if ii < n_ax - 1 else -stride * (n_ax - 1)) + 1))
+            a, b = base + ii * n_s, base + (ii + 1) * n_s
+            for j in range(n_s):
+                j2 = (j + 1) % n_s
+                rim_faces.append((a + j, a + j2, b + j2, b + j))
+        rim_faces.append(tuple(base + j for j in range(n_s - 1, -1, -1)))
+        rim_faces.append(tuple(base + (n_ax - 1) * n_s + j
+                               for j in range(n_s)))
 
-    # balance lands: raised rings on the rim face between dovetail slots
+    # Balance lands: raised pads on the rim face, BETWEEN the slots.
+    #
+    # They were a ribbon of quads at one radius -- a curved sheet with no
+    # thickness, 1024 loose edges across the three stages -- and they were
+    # centred on the blade, spanning 90% of the pitch, so each one lay over
+    # the mouth of the slot it is named for sitting between.
     land_h = platform_h * 0.45
     land_w = width_rim * 0.30
-    land_lx = x - land_w / 2
-    land_rx = x + land_w / 2
-    land_verts, land_faces = [], []
-    for k in range(n_blades):
-        phi0 = -dphi / 2 + dphi * k
-        ang = 0.9 * (dphi / 2)  # land angular half-width, slot fraction
-        for ii in range(n_ax // 2 + 1):
-            f = ii / (n_ax // 2)
-            xp = land_lx + (land_rx - land_lx) * f
-            ca, sa = math.cos(phi0 + ang), math.sin(phi0 + ang)
-            land_verts.append((xp, (r_rim + land_h) * ca, (r_rim + land_h) * sa))
-            ca, sa = math.cos(phi0 - ang), math.sin(phi0 - ang)
-            land_verts.append((xp, (r_rim + land_h) * ca, (r_rim + land_h) * sa))
+    land_lx, land_rx = x - land_w / 2, x + land_w / 2
+    land_ang = dphi * 0.30
     n_land_ax = n_ax // 2 + 1
-    land_per = 2 * n_land_ax
+    land_sect = [(land_ang, r_rim + land_h), (-land_ang, r_rim + land_h),
+                 (-land_ang, r_rim), (land_ang, r_rim)]
+    land_verts, land_faces = [], []
+    n_l = len(land_sect)
     for k in range(n_blades):
-        b = k * land_per
+        phi0 = dphi * k                     # midway between two slots
+        base = k * n_l * n_land_ax
+        for ii in range(n_land_ax):
+            xp = land_lx + (land_rx - land_lx) * (ii / (n_land_ax - 1))
+            for (ang, r) in land_sect:
+                ca, sa = math.cos(phi0 + ang), math.sin(phi0 + ang)
+                land_verts.append((xp, r * ca, r * sa))
         for ii in range(n_land_ax - 1):
-            i0 = b + ii * 2
-            i1 = b + (ii + 1) * 2
-            land_faces.append((i0, i0 + 1, i1 + 1, i1))
-        land_faces.append((b, b + 2 * (n_land_ax - 1),
-                           b + 2 * (n_land_ax - 1) + 1, b + 1))
+            a, b = base + ii * n_l, base + (ii + 1) * n_l
+            for j in range(n_l):
+                j2 = (j + 1) % n_l
+                land_faces.append((a + j, a + j2, b + j2, b + j))
+        land_faces.append(tuple(base + j for j in range(n_l - 1, -1, -1)))
+        land_faces.append(tuple(base + (n_land_ax - 1) * n_l + j
+                                for j in range(n_l)))
 
     return mesh.join((core_v, core_f), (rim_verts, rim_faces),
                      (land_verts, land_faces))
-
 
 def _fan_rotors():
     """Three fan stages: blades, discs, and the conical arms tying them to the

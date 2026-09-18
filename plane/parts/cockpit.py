@@ -296,9 +296,20 @@ def _hud():
             posts.append(mesh.pipe(
                 [(x, sgn * hw, z0 - HUD["projector_depth"] / 2), bottom], fr, 10))
     out["hud_frame_combiner"] = mesh.join(*posts)
-    out["hud_frame_projector"] = shapes.rounded_box(
-        x0, 0.0, z0 - HUD["projector_depth"] / 2,
-        HUD["projector_length"], hw * 2, HUD["projector_depth"], r=fr, seg=4)
+    # the projector, with the barrel the image leaves through, the fins that
+    # get the lamp's heat out of the coaming and the signal connector
+    pl, pd = HUD["projector_length"], HUD["projector_depth"]
+    proj = [shapes.rounded_box(x0, 0.0, z0 - pd / 2, pl, hw * 2, pd,
+                               r=fr, seg=4),
+            mesh.pipe([(x0, 0.0, z0 - pd * 0.15), (x0, 0.0, z0)],
+                      hw * 0.44, 24)]
+    for k in range(5):
+        proj.append(shapes.rounded_box(
+            x0 - pl / 2 + pl * (k + 0.5) / 5, 0.0, z0 - pd * 1.06,
+            pl * 0.06, hw * 1.7, pd * 0.20, r=fr * 0.35, seg=3))
+    proj.append(shapes.connector(x0 - pl * 0.56, 0.0, z0 - pd / 2,
+                                 pl * 0.10, hw * 0.8, pd * 0.42, pins=4))
+    out["hud_frame_projector"] = mesh.join(*proj)
     lv, lf = mesh.cylinder(0.0, HUD["thickness"], hw * 0.42, 28)
     out["hud_glass_projector_lens"] = (
         [(x0 + pz, py, z0 + px) for px, py, pz in lv], lf)
@@ -428,14 +439,40 @@ def _seat():
     tv = mesh.translate(mesh.rot_z(tv, math.pi / 2),
                         xs + 1.8, 0.0, z_pan + 2.9)
     out["ejection_handle"] = (tv, tf)
-    out["seat_bucket"] = mesh.join(*[
-        shapes.rounded_box(xs + hw, sgn * hw, (z_pan + K["z_floor"]) / 2,
-                           hw * 2, K["wall"], z_pan - K["z_floor"],
-                           r=K["wall"] / 3, seg=3)
-        for sgn in (-1.0, 1.0)])
+    # A bucket, not two side panels. It was the two cheeks and nothing
+    # between them: no seat pan to sit on, no back pan to sit against, and
+    # no rolled edge on the top of either cheek.
+    bucket = [shapes.rounded_box(xs + hw, sgn * hw, (z_pan + K["z_floor"]) / 2,
+                                 hw * 2, K["wall"], z_pan - K["z_floor"],
+                                 r=K["wall"] / 3, seg=3)
+              for sgn in (-1.0, 1.0)]
+    bucket.append(shapes.rounded_box(
+        xs + hw, 0.0, K["z_floor"] + K["wall"] / 2,
+        hw * 2, hw * 2 - K["wall"], K["wall"], r=K["wall"] / 3, seg=3))
+    bucket.append(shapes.rounded_box(
+        xs + hw * 2 - K["wall"] / 2, 0.0, (z_pan + K["z_floor"]) / 2,
+        K["wall"], hw * 2 - K["wall"], z_pan - K["z_floor"],
+        r=K["wall"] / 3, seg=3))
+    for sgn in (-1.0, 1.0):
+        bucket.append(mesh.pipe(
+            [(xs + K["wall"], sgn * hw, z_pan - K["wall"] * 0.5),
+             (xs + hw * 2 - K["wall"], sgn * hw, z_pan - K["wall"] * 0.5)],
+            K["wall"] * 0.38, 14))
+    out["seat_bucket"] = mesh.join(*bucket)
     dv = _cant(mesh.translate(drogue[0], x_hinge + 2.0, 0.0, z_pan + 9.2),
                K["seat_recline"], x_hinge, z_pan)
-    out["seat_drogue_container"] = (dv, drogue[1])
+    # the two bands that hold the container shut until the gun fires
+    dxs = [v[0] for v in dv]
+    dys = [v[1] for v in dv]
+    dzs = [v[2] for v in dv]
+    span = max(dxs) - min(dxs)
+    bands = [(dv, drogue[1])]
+    for f in (0.28, 0.72):
+        bv, bf = mesh.ring_torus(0.0, span * 0.34, span * 0.045, 24, 8)
+        bands.append((mesh.translate(bv, min(dxs) + span * f,
+                                     (min(dys) + max(dys)) / 2,
+                                     (min(dzs) + max(dzs)) / 2), bf))
+    out["seat_drogue_container"] = mesh.join(*bands)
     restraints = []
     for sgn in (-1.0, 1.0):
         y = sgn * hw * 0.52
@@ -493,20 +530,45 @@ def _controls():
             [(K["x_pedals"] + 1.0, y, K["z_floor"] + 1.0),
              (K["x_pedals"] + 9.0, y, K["z_floor"] + 0.8)], 0.5, 10))
     out["rudder_pedals"] = mesh.join(*pedals)
-    out["rudder_pedals_rail"] = mesh.join(*[
-        shapes.rounded_box(
+    # rails, the feet that carry them and the stop at each end of the
+    # adjustment: a pedal rail that is only a rail adjusts to nothing
+    rails = []
+    for sgn in (-1.0, 1.0):
+        rails.append(shapes.rounded_box(
             (K["x_pedals"] + K["x_seat"]) / 2, sgn * K["pedal_half_spacing"],
             K["z_floor"] + K["wall"], K["x_seat"] - K["x_pedals"],
-            K["wall"], K["wall"], r=K["wall"] / 4, seg=3)
-        for sgn in (-1.0, 1.0)])
+            K["wall"], K["wall"], r=K["wall"] / 4, seg=3))
+        for f in (0.08, 0.5, 0.92):
+            rails.append(shapes.rounded_box(
+                K["x_pedals"] + (K["x_seat"] - K["x_pedals"]) * f,
+                sgn * K["pedal_half_spacing"], K["z_floor"] + K["wall"] * 0.45,
+                K["wall"] * 0.55, K["wall"] * 1.7, K["wall"] * 0.9,
+                r=K["wall"] / 5, seg=3))
+    out["rudder_pedals_rail"] = mesh.join(*rails)
     out["control_stick_hotas"] = mesh.join(*[
         shapes.rounded_box(K["x_seat"] - 3.0 + dx, y_c + dy, z_top + dz,
                            K["wall"], K["wall"], K["wall"],
                            r=K["wall"] / 4, seg=3)
         for dx, dy, dz in ((0.0, 0.0, 5.6), (-1.1, 0.0, 4.5), (0.0, -0.9, 4.9))])
-    out["throttle_lever_hotas"] = shapes.rounded_box(
-        K["x_seat"] - 13.6, -y_c + K["wall"], z_top + 3.8,
-        K["wall"], K["wall"], K["wall"], r=K["wall"] / 4, seg=3)
+    # A twin-lever throttle quadrant, which is what the left hand of a HOTAS
+    # aircraft holds: a quadrant box, a lever per engine with a grip on top,
+    # and the finger lifts that unlatch reheat. It was a single cube.
+    tw = K["wall"]
+    tx, ty, tz = K["x_seat"] - 13.6, -y_c + tw, z_top + 3.8
+    quad = [shapes.rounded_box(tx, ty, tz - tw * 0.55, tw * 2.4, tw * 1.4,
+                               tw * 0.7, r=tw / 5, seg=4)]
+    for dy in (-0.34, 0.34):
+        base = (tx - tw * 0.45, ty + dy * tw, tz - tw * 0.25)
+        top = (tx + tw * 0.35, ty + dy * tw, tz + tw * 0.70)
+        quad.append(mesh.pipe([base, top], tw * 0.17, 16))
+        quad.append(shapes.rounded_box(top[0], top[1], top[2] + tw * 0.26,
+                                       tw * 0.85, tw * 0.52, tw * 0.62,
+                                       r=tw / 6, seg=4))
+        quad.append(mesh.pipe(
+            [(top[0] - tw * 0.42, top[1], top[2] + tw * 0.08),
+             (top[0] - tw * 0.58, top[1], top[2] + tw * 0.50)],
+            tw * 0.09, 12))
+    out["throttle_lever_hotas"] = mesh.join(*quad)
     return out
 
 

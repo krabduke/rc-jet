@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 import spec
 import mesh
+import shapes
 from parts import engine_mount
 
 
@@ -138,13 +139,18 @@ def _nozzle():
         angle = i * 2 * math.pi / 6
         y = 478 * scale * math.sin(angle)
         az = z + 478 * scale * math.cos(angle)
-        out["nozzle_actuator_%02d" % i] = mesh.join(
-            mesh.pipe([(x + 3770 * scale, y, az),
-                       (x + 3928.4 * scale, y, az)],
-                      34 * scale, segments=18),
-            mesh.pipe([(x + 3914 * scale, y, az),
-                       (x + 4010 * scale, y, az)],
-                      14.28 * scale, segments=14))
+        # `shapes.linear_actuator` -- a barrel, a rod, a clevis on the rod,
+        # an eye on the closed end and an air port at each end. It has been
+        # in the shapes library all along; these six were two butted tubes.
+        # The span is the BARREL's, not the whole unit's. A real ram has an
+        # eye behind its closed end and a clevis out past the rod, so
+        # `linear_actuator` reaches from -0.5 r behind p0 to about 2.7 r
+        # past p1; handed 3770 to 4010 it stood in the augmentor flange at
+        # one end and through the external flaps, the links and the tailpipe
+        # shroud at the other. Given 3785 to 3929 at r = 30, the eye lands on
+        # 3770 and the clevis on the unison ring at 4010, which is the joint.
+        out["nozzle_actuator_%02d" % i] = shapes.linear_actuator(
+            (x + 3785 * scale, y, az), (x + 3929 * scale, y, az), 30 * scale)
     return out
 
 

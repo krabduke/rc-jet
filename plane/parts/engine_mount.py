@@ -15,6 +15,7 @@ import importlib
 import spec                                    # the aircraft spec
 import math
 import mesh
+import shapes
 from parts import fuselage
 
 try:
@@ -177,11 +178,20 @@ def _bay_installation(espec):
     # through the gap round the jet pipe. The inlet is on the upper left
     # shoulder because the right shoulder carries the bleed duct.
     w, h, zc = half(x0 - 6.0)
-    out["engine_bay_cooling_inlet"] = mesh.join(
-        mesh.pipe([(x0 - 14.0, -w * 0.52, zc + h * 0.62),
-                   (x0 - 4.0, -w * 0.58, zc + h * 0.66),
-                   (x0 + 10.0, -w * 0.60, zc + h * 0.60)], 2.6, 14),
-        mesh.box(x0 - 13.0, -w * 0.52, zc + h * 0.66, 7.0, 6.4, 2.2))
+    # a scoop with a lip and a splitter, not a pipe with an eight-vertex
+    # block on the end of it
+    ci = [mesh.pipe([(x0 - 14.0, -w * 0.52, zc + h * 0.62),
+                     (x0 - 4.0, -w * 0.58, zc + h * 0.66),
+                     (x0 + 10.0, -w * 0.60, zc + h * 0.60)], 2.6, 20),
+          shapes.rounded_box(x0 - 13.0, -w * 0.52, zc + h * 0.66,
+                             7.0, 6.4, 2.2, r=0.7, seg=4)]
+    lv, lf = mesh.ring_torus(0.0, 3.1, 0.62, 22, 8)
+    ci.append((mesh.translate(lv, x0 - 16.2, -w * 0.52, zc + h * 0.62), lf))
+    for dy in (-1.0, 1.0):
+        ci.append(shapes.rounded_box(x0 - 13.0, -w * 0.52 + dy * 1.6,
+                                     zc + h * 0.655, 6.0, 0.6, 1.8,
+                                     r=0.2, seg=3))
+    out["engine_bay_cooling_inlet"] = mesh.join(*ci)
 
     # ---- the tailpipe shroud, and the exit it makes -----------------------
     # The visible feature on every real installation: the annular gap between
@@ -221,11 +231,22 @@ def _bay_installation(espec):
 
     w, h, zc = half(x0 + 16.0)
     bx, by, bz = x0 + 16.0, w * 0.55, zc + h * 0.34
-    out["engine_fire_bottle"] = mesh.join(
-        mesh.pipe([(bx - 9.0, by, bz), (bx + 9.0, by, bz)], 4.0, 20),
-        mesh.pipe([(bx + 9.0, by, bz), (bx + 26.0, by * 0.8, bz - 4.0),
-                   (bx + 44.0, by * 0.5, bz - 6.0)], 0.9, 10),
-        mesh.box(bx, by + 4.4, bz, 14.0, 1.6, 7.0))
+    # a sphere-ended bottle with its discharge head, gauge and mounting
+    # straps. The head was a flat six-sided block and the strap did not
+    # exist, so a pressurised extinguisher was floating in the bay.
+    fb = [mesh.pipe([(bx - 9.0, by, bz), (bx + 9.0, by, bz)], 4.0, 24),
+          mesh.pipe([(bx + 9.0, by, bz), (bx + 26.0, by * 0.8, bz - 4.0),
+                     (bx + 44.0, by * 0.5, bz - 6.0)], 0.9, 14),
+          shapes.rounded_box(bx + 10.5, by, bz, 5.0, 5.0, 5.0,
+                             r=1.2, seg=4),
+          mesh.pipe([(bx + 10.5, by, bz + 2.4), (bx + 10.5, by, bz + 5.4)],
+                    1.5, 14)]
+    for dx in (-4.5, 4.5):
+        tv, tf = mesh.ring_torus(0.0, 4.5, 0.7, 20, 8)
+        fb.append((mesh.translate(tv, bx + dx, by, bz), tf))
+        fb.append(shapes.rounded_box(bx + dx, by + 5.2, bz, 1.8, 2.0, 9.0,
+                                     r=0.4, seg=3))
+    out["engine_fire_bottle"] = mesh.join(*fb)
 
     # ---- bleed air --------------------------------------------------------
     # Customer bleed off the high compressor, through a precooler, and forward
@@ -243,7 +264,7 @@ def _bay_installation(espec):
                    # x0 + 8, not x0 + 2: with a 2.2 radius the pipe's own
                    # wall grazed the duct's at the firewall and audit_duct
                    # caught one vertex of it.
-                   (x0 + 8.0, w * 0.60, zc + h * 0.60)], 2.2, 14),
+                   (x0 + 8.0, w * 0.60, zc + h * 0.60)], 2.2, 22),
         # The precooler sits ENTIRELY aft of the firewall. Centred at x0 + 8
         # with an 18-unit length its forward face landed at x 299, one unit
         # inside the duct -- a box in the air the engine breathes, found by

@@ -73,6 +73,37 @@ EXPECTED = [
     # an actuator is pinned to the door it opens, and a steering link runs
     # down into the well past the door hinged beside it
     ("gear_door_actuator_", "gear_door_"),
+    # ----------------------------------------------------------------
+    # The landing gear, joint by joint. Nothing on a gear is welded to
+    # anything: a door hangs on a hinge line, its latches are bolted to it,
+    # and every stay, link and ram ends in a clevis with a pin through it.
+    # Each of these overlaps is that pin. They only showed up once the rod
+    # ends were built -- before, each member ended in a flat disc that
+    # stopped short of the thing it is attached to.
+    # ----------------------------------------------------------------
+    ("gear_door_hinge_", "gear_door_"), ("gear_door_hinge_", "gear_bay_"),
+    ("gear_door_latches_", "gear_door_"),
+    ("gear_main_side_stay_", "gear_main_"),
+    ("gear_main_drag_stay_", "gear_main_"),
+    ("gear_main_chrome_slider_", "gear_main_"),
+    ("gear_main_drag_stay_", "wing_"), ("gear_main_drag_stay_", "rib_"),
+    ("gear_main_downlock_", "wing_"),
+    ("gear_nose_chrome_slider", "gear_nose_drag_stay"),
+    # Six actuators on the unison ring and twelve links off it, so every
+    # actuator shares its clock angle with an even-numbered link and they
+    # meet at the ring. That is the joint: the ram drives the ring, the ring
+    # drives the links, the links drive the flaps.
+    ("nozzle_link_", "nozzle_actuator_"),
+    # The hinge knuckles bolt to the canopy frame, the nose fork is on the
+    # bottom of the slider, the pedals slide on their rail, and the bay
+    # cooling scoop is let into the skin and lands on the stringer behind
+    # it -- the same statement as the naca_inlet block at the top of this
+    # list. Each of these appeared the moment the part stopped being a
+    # cylinder or a cube and grew the fitting it attaches by.
+    ("canopy_frame", "frame_canopy_rear_hinge"),
+    ("gear_nose_chrome_slider", "gear_nose_fork"),
+    ("rudder_pedals", "rudder_pedals_rail"),
+    ("engine_bay_cooling_inlet", "stringer"),
     ("nose_steering_link", "gear_door_"),
     # A control run goes fore and aft through the frame, which is what the
     # lightening holes in a bulkhead are partly for -- see fuselage._bulkheads.

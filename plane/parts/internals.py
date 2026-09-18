@@ -5,6 +5,7 @@ import math
 from collections.abc import Mapping
 
 import mesh
+import shapes
 import spec
 from parts import intake
 
@@ -16,10 +17,25 @@ def _default_build():
     if fcc["channels"] != len(route_names) or len(fcs["ports"]) != len(route_names):
         raise ValueError("The FCC requires four channel ports and four routes")
     out = {
-        "fcs_fcc_envelope": mesh.box(
-            fcc["x"], fcc["y"], fcc["z"],
-            fcc["length"], fcc["width"], fcc["height"],
-        )
+        # A quadruplex flight control computer, not a rectangular prism.
+        # It was eight vertices: the crudest part in the aircraft, and the
+        # one thing on board that nothing flies without. It is a chassis
+        # with a fin stack, and a channel connector per channel, which is
+        # what `fcc["channels"]` has been counting all along.
+        "fcs_fcc_envelope": mesh.join(
+            shapes.finned_case(fcc["x"], fcc["y"], fcc["z"],
+                               fcc["length"], fcc["width"], fcc["height"],
+                               n_fins=11, fin_h=fcc["height"] * 0.16,
+                               fin_t=fcc["length"] * 0.02,
+                               r=fcc["height"] * 0.10),
+            *[shapes.connector(
+                fcc["x"] - fcc["length"] / 2 - fcc["length"] * 0.05,
+                fcc["y"] + (k - (fcc["channels"] - 1) / 2)
+                * fcc["width"] / (fcc["channels"] + 0.6),
+                fcc["z"],
+                fcc["length"] * 0.10, fcc["width"] * 0.16,
+                fcc["height"] * 0.34, pins=5)
+              for k in range(fcc["channels"])])
     }
     for name, port in zip(route_names, fcs["ports"]):
         points = [port, *fcs["routes"][name]]
