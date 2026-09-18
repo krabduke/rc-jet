@@ -266,7 +266,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 116,
-   "faces": 171255,
+   "faces": 178671,
    "x0": 0.0,
    "x1": 457.5
   },
@@ -3482,168 +3482,168 @@
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_01": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_02": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_03": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_04": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_05": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_06": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_07": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_08": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_09": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_10": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_external_flap_11": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 422.7,
    "x1": 440.0,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_00": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_01": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_02": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_03": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_04": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_05": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_06": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_07": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_08": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_09": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_10": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_flap_11": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_link_00": {
    "g": "01 Fuselage",
@@ -3734,84 +3734,84 @@
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_01": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_02": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_03": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_04": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_05": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_06": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_07": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_08": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_09": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_10": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_seal_11": {
    "g": "01 Fuselage",
    "mat": "airframe",
    "x0": 423.0,
    "x1": 440.3,
-   "f": 26
+   "f": 232
   },
   "nozzle_unison_ring": {
    "g": "01 Fuselage",

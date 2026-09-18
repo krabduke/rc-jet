@@ -32,7 +32,6 @@ EXEMPT = {
     "panel_": "an access panel, which is a surface and not a solid",
     "decal": "printed film",
     "navlight": "a moulded lens",
-    "nozzle_seal_": "a sealing strip between two flaps: a surface, not a solid",
 }
 
 FLOOR = 180          # vertices, for anything not exempt

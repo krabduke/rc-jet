@@ -42,21 +42,59 @@ engine_mount.NOT_INSTALLED = tuple(dict.fromkeys(
     engine_mount.NOT_INSTALLED + _NOZZLE_PARTS))
 
 
-def _nozzle_panel(x0, x1, r0, r1, z, angle, width, thickness):
-    """Curved overlapping sectors keep the throat open without polygonal gaps."""
-    verts, faces = [], []
-    segments = 6
-    for j in range(segments + 1):
-        a = angle - width / 2 + width * j / segments
-        for x, r in ((x0, r0), (x1, r1),
-                     (x1, r1 - thickness), (x0, r0 - thickness)):
-            verts.append((x, r * math.sin(a), z + r * math.cos(a)))
-    for j in range(segments):
-        for k in range(4):
-            k2 = (k + 1) % 4
-            faces.append((j * 4 + k, j * 4 + k2,
-                          (j + 1) * 4 + k2, (j + 1) * 4 + k))
-    faces.extend([(3, 2, 1, 0), tuple(segments * 4 + k for k in range(4))])
+def _nozzle_panel(x0, x1, r0, r1, z, angle, width, thickness,
+                  n_arc=12, n_x=8):
+    """Curved overlapping sectors keep the throat open without polygonal gaps.
+
+    Six arc segments and two axial stations gave every flap 28 vertices, on a
+    panel 570 mm long that is curved in both directions -- so it read as one
+    flat facet, twelve times round, on the part of the aeroplane a viewer
+    looks at first.
+
+    The flap also bows. A convergent flap is not a straight cone: it is a
+    shallow arc, which is what lets twelve of them close on the throat
+    without binding on each other at the edges.
+    """
+    def radius(u):
+        return (r0 + (r1 - r0) * u
+                + abs(r1 - r0) * 0.06 * math.sin(math.pi * u))
+
+    rows = []
+    for i in range(n_x + 1):
+        u = i / n_x
+        x = x0 + (x1 - x0) * u
+        r = radius(u)
+        row = []
+        for j in range(n_arc + 1):
+            a = angle - width / 2 + width * j / n_arc
+            sa, ca = math.sin(a), math.cos(a)
+            row.append(((x, r * sa, z + r * ca),
+                        (x, (r - thickness) * sa, z + (r - thickness) * ca)))
+        rows.append(row)
+
+    verts = [v for row in rows for pair in row for v in pair]
+    nj = n_arc + 1
+
+    def idx(i, j, inner):
+        return (i * nj + j) * 2 + (1 if inner else 0)
+
+    faces = []
+    for i in range(n_x):
+        for j in range(n_arc):
+            faces.append((idx(i, j, False), idx(i, j + 1, False),
+                          idx(i + 1, j + 1, False), idx(i + 1, j, False)))
+            faces.append((idx(i, j, True), idx(i + 1, j, True),
+                          idx(i + 1, j + 1, True), idx(i, j + 1, True)))
+    for j in range(n_arc):                       # fore and aft edges
+        faces.append((idx(0, j, False), idx(0, j, True),
+                      idx(0, j + 1, True), idx(0, j + 1, False)))
+        faces.append((idx(n_x, j, False), idx(n_x, j + 1, False),
+                      idx(n_x, j + 1, True), idx(n_x, j, True)))
+    for i in range(n_x):                          # the two side edges
+        faces.append((idx(i, 0, False), idx(i + 1, 0, False),
+                      idx(i + 1, 0, True), idx(i, 0, True)))
+        faces.append((idx(i, n_arc, False), idx(i, n_arc, True),
+                      idx(i + 1, n_arc, True), idx(i + 1, n_arc, False)))
     return verts, faces
 
 
