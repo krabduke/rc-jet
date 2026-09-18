@@ -111,6 +111,16 @@ NOT_INSTALLED = ("oil_tank", "heat_exchanger", "engine_control",
                  "nozzle_flaps_divergent", "nozzle_links", "nozzle_seals")
 
 
+# The nine parts this module adds around the engine are named `bay_`, not
+# `engine_`. They are the engine BAY -- its cooling inlet and exit, its
+# doors, the fire loop and bottle, the fuel and oil connections at the
+# firewall and the forward mount links -- and `plane/verify.py` measures the
+# installed engine by taking every part called `engine_*`. With the bay in
+# that set it measured the bay: 122 objects where the vendored turbofan is
+# 113, an installed length of 155 mm against a turbofan that is 140, and an
+# inlet 17 mm forward of the firewall it is supposed to sit on.
+
+
 def build():
     built, arrays, espec = _load_engine()
 
@@ -191,7 +201,7 @@ def _bay_installation(espec):
         ci.append(shapes.rounded_box(x0 - 13.0, -w * 0.52 + dy * 1.6,
                                      zc + h * 0.655, 6.0, 0.6, 1.8,
                                      r=0.2, seg=3))
-    out["engine_bay_cooling_inlet"] = mesh.join(*ci)
+    out["bay_cooling_inlet"] = mesh.join(*ci)
 
     # ---- the tailpipe shroud, and the exit it makes -----------------------
     # The visible feature on every real installation: the annular gap between
@@ -209,7 +219,7 @@ def _bay_installation(espec):
     # Outside hardware.py's shroud, which the built model puts at 16.4, not
     # outside the bare jet pipe -- starting at r_pipe + 2.6 = 13.6 put this
     # annulus inside the shroud rather than around it.
-    out["engine_bay_cooling_exit"] = mesh.tube(x1 - 8.0, x1 - 2.0,
+    out["bay_cooling_exit"] = mesh.tube(x1 - 8.0, x1 - 2.0,
                                                17.0, max(r_skin, 17.8), 48)
 
     # ---- fire detection and suppression -----------------------------------
@@ -227,7 +237,7 @@ def _bay_installation(espec):
                 [(xs, (r - 1.6) * math.cos(a), zc + (r - 1.6) * math.sin(a)),
                  (xs, (r + 0.9) * math.cos(a), zc + (r + 0.9) * math.sin(a))],
                 0.45, 6))
-    out["engine_fire_loop"] = mesh.join(*loops)
+    out["bay_fire_loop"] = mesh.join(*loops)
 
     w, h, zc = half(x0 + 16.0)
     bx, by, bz = x0 + 16.0, w * 0.55, zc + h * 0.34
@@ -246,14 +256,14 @@ def _bay_installation(espec):
         fb.append((mesh.translate(tv, bx + dx, by, bz), tf))
         fb.append(shapes.rounded_box(bx + dx, by + 5.2, bz, 1.8, 2.0, 9.0,
                                      r=0.4, seg=3))
-    out["engine_fire_bottle"] = mesh.join(*fb)
+    out["bay_fire_bottle"] = mesh.join(*fb)
 
     # ---- bleed air --------------------------------------------------------
     # Customer bleed off the high compressor, through a precooler, and forward
     # to the environmental pack. It runs on the right shoulder, opposite the
     # cooling inlet, because two ducts on one shoulder do not fit.
     w, h, zc = half(x0 + 52.0)
-    out["engine_bleed_offtake"] = mesh.join(
+    out["bay_bleed_offtake"] = mesh.join(
         mesh.pipe([(x0 + 52.0, w * 0.36, zc + h * 0.30),
                    (x0 + 44.0, w * 0.58, zc + h * 0.52),
                    (x0 + 20.0, w * 0.62, zc + h * 0.58),
@@ -275,8 +285,8 @@ def _bay_installation(espec):
     # Fuel one side, oil the other, on bosses at the pylon face, with the
     # lines running forward. Separated left and right so a leak in one is not
     # a leak in both.
-    for tag, sgn, key in (("fuel", -1.0, "engine_fuel_connections"),
-                          ("oil", 1.0, "engine_oil_connections")):
+    for tag, sgn, key in (("fuel", -1.0, "bay_fuel_connections"),
+                          ("oil", 1.0, "bay_oil_connections")):
         w, h, zc = half(x0 + 20.0)
         y = sgn * w * 0.60
         parts = []
@@ -311,7 +321,7 @@ def _bay_installation(espec):
             doors.append(mesh.pipe(
                 [(xs - 3.0, sgn * 2.0, zc - h + 1.0),
                  (xs + 3.0, sgn * 2.0, zc - h + 1.0)], 0.7, 8))
-    out["engine_bay_doors"] = mesh.join(*doors)
+    out["bay_doors"] = mesh.join(*doors)
 
     # The forward mount links.
     #
@@ -330,7 +340,7 @@ def _bay_installation(espec):
                 [(0.0, 1.6), (0.0, 3.2), (2.4, 3.2), (2.4, 1.6)], 14)
             links.append(([(pz + at[0], py + at[1], px + at[2])
                            for (px, py, pz) in ev], ef))
-    out["engine_mount_links_fwd"] = mesh.join(*links)
+    out["bay_mount_links_fwd"] = mesh.join(*links)
     return out
 
 

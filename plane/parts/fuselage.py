@@ -166,6 +166,76 @@ def section_ring(x, inset=0.0, segments=SEG):
     return ring
 
 
+_OUTSIDE_CACHE = {}
+
+
+def outside_by(x, y, z, inset=0.0):
+    """How far a point lies outside the skin's section at its own station.
+
+    Zero or less is inside. Positive is the radial distance out, measured
+    from the section's own centre.
+
+    `audit_fit` used to test against the bare superellipse from
+    `station_at`, and the forward skin is not that shape: under the forebody
+    the section is UNIONED with the intake duct, which is what `section_ring`
+    draws and what the skin is lofted from. Formers cut to the skin's own
+    inner surface therefore read as up to 21 mm outside it, and seven of them
+    did -- so the check that exists to find parts poking through the skin was
+    failing on parts that were exactly on it, and had been for long enough
+    that nobody could see the real faults underneath.
+
+    Testing against the ring itself rather than against a formula means the
+    two cannot disagree again: this is the same polygon, at the same station,
+    with the same inset.
+    """
+    # keyed on the exact station: the formers are cut at x +/- half their
+    # own thickness, so rounding the key to half a millimetre tested them
+    # against a section a millimetre away from the one they were cut to
+    key = (x, inset)
+    ring = _OUTSIDE_CACHE.get(key)
+    if ring is None:
+        _, _, zc = station_at(key[0])[:3]
+        ring = [(p[1], p[2] - zc) for p in section_ring(key[0], inset)]
+        ring = (ring, zc)
+        if len(_OUTSIDE_CACHE) > 4000:
+            _OUTSIDE_CACHE.clear()
+        _OUTSIDE_CACHE[key] = ring
+    pts, zc = ring
+    dy, dz = y, z - zc
+    r = math.hypot(dy, dz)
+    if r < 1e-9:
+        return -min(abs(q[0]) + abs(q[1]) for q in pts)
+    uy, uz = dy / r, dz / r
+    # The FARTHEST crossing, not the nearest. The chin union makes the
+    # forward sections non-convex, so a ray from the section centre can cross
+    # the outline more than once -- the same subtlety `_ray_to_section`
+    # records. What bounds the part is where the ray LEAVES the section.
+    best = None
+    n = len(pts)
+    for i in range(n):
+        ay, az = pts[i]
+        by, bz = pts[(i + 1) % n]
+        # solve a + t (b - a) = s (uy, uz), 0 <= t <= 1, s > 0
+        ey, ez = by - ay, bz - az
+        den = uy * ez - uz * ey
+        if abs(den) < 1e-12:
+            continue
+        t = (uz * ay - uy * az) / den
+        if not (-1e-9 <= t <= 1.0 + 1e-9):
+            continue
+        sy, sz = ay + t * ey, az + t * ez
+        sdist = sy * uy + sz * uz
+        if sdist > 0.0 and (best is None or sdist > best):
+            best = sdist
+    if best is None:
+        # every ray from a point inside a closed section crosses it, so this
+        # cannot happen -- and returning 0.0 for it would read as "exactly on
+        # the skin", which is the one answer that hides a fault
+        raise RuntimeError(f"no section crossing at x={x:.2f} for "
+                           f"({y:.2f}, {z:.2f})")
+    return r - best
+
+
 def _chin_envelope(x, inset=0.0):
     """The duct's outer wall plus clearance at station x, or None.
 

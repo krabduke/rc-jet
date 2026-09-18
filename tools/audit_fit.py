@@ -121,17 +121,14 @@ def check():
         for (x, y, z) in verts:
             if not (spec.FUSELAGE[0][0] <= x <= spec.FUSELAGE[-1][0]):
                 continue
-            w, h, zc, n = fus.station_at(x)
-            w -= spec.FUSELAGE_SKIN
-            h -= spec.FUSELAGE_SKIN
-            p = 2.0 / n
-            # superellipse test: |y/w|^n + |z/h|^n <= 1 inside
-            t = (abs(y / max(w, 1e-6)) ** n + abs((z - zc) / max(h, 1e-6)) ** n)
-            if t <= 1.0:
+            # Against the section the skin is actually lofted from, which
+            # under the forebody is the body superellipse UNIONED with the
+            # intake duct beneath it. Tested against the bare superellipse
+            # this found seven formers up to 21 mm "outside" a skin they are
+            # cut to fit exactly.
+            d = fus.outside_by(x, y, z, spec.FUSELAGE_SKIN)
+            if d <= 0.0:
                 continue
-            # how far out, measured radially
-            scale = t ** (1.0 / n)
-            d = (scale - 1.0) * max(w, h)
             if allow_canopy:
                 ct = canopy_top(x)
                 if ct is not None and z <= ct and abs(y) <= spec.CANOPY["half_width"]:

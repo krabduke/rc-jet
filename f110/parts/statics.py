@@ -160,7 +160,24 @@ def _frames():
          (xf + 30.0, 138.0), (xf + 30.0, 170.0), (xf - 40.0, 170.0),
          (xf - 40.0, 140.0), (xf - 74.0, 140.0), (xf - 74.0, 166.0),
          (xf - 90.0, 166.0)], segments=72)
-    fv, ff = radial_strut(xf, 150.0, 24.0, 168.0, spec.BYPASS["inner_radius_fwd"] - 6.0)
+    # A 90 mm chord at x 664, not 150 at 700.
+    #
+    # `radial_strut` lays its chord from -0.4 to +0.6 of x, so at 150 the
+    # struts ran 640 to 790 -- and the HP compressor drum's forward face is
+    # at 728. Every one of the eight passed through it: at that station the
+    # drum is a shell between r 307 and 333 and the struts sweep r 168 to
+    # 480, so a static frame member ran through the wall of the rotor and
+    # out the other side. The room is tighter than the stations suggest:
+    # the third fan rotor's blades reach x 619 and the drum's face is at
+    # 728, so the whole window is 109 mm. At -0.4/+0.6 of chord that allows
+    # 97 mm of chord, and a frame strut is thick because it is structural
+    # and carries the service lines through the bypass.
+    # ...out to the bypass duct's inner wall, not 6 mm short of it. A frame
+    # strut ends ON the casing it carries the load into; stopping short left
+    # a 1.8 mm gap, and the core gas path had no continuous structure from
+    # the splitter to the compressor case.
+    fv, ff = radial_strut(664.0, 90.0, 20.0, 168.0,
+                          spec.BYPASS["inner_radius_fwd"] + 2.0)
     out["fan_frame_struts"] = mesh.replicate(fv, ff, 8)
 
     # turbine rear frame: carries No.5 bearing, takes the aft mount load
@@ -227,9 +244,7 @@ def _variable_geometry():
 
 def _borescope_bosses():
     pieces = []
-    for (bx, ang) in ((900.0, 42.0), (1080.0, -42.0), (1260.0, 42.0),
-                      (1440.0, -42.0), (2060.0, 34.0), (2240.0, -34.0),
-                      (2380.0, 34.0)):
+    for (bx, ang) in spec.BORESCOPE:
         cr = _casing_outer(bx)
         bv, bf = mesh.revolve_closed(
             [(-5.0, 6.0), (8.0, 6.0), (8.0, 18.0), (14.0, 18.0),

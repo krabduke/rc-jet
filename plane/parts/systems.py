@@ -246,10 +246,11 @@ def _fuel_system():
                    (149.0, fil[1] * 0.5, fil[2]),
                    (149.0, pmp[1] * 0.5, pmp[2]),
                    (pmp[0] - 12.0, pmp[1], pmp[2])], 1.8, 16, subdiv=3),
-        # pump -> the engine's fuel union, over the tank and inboard of the
-        # receiver pack
+        # pump -> the engine's fuel union, over the tank and under the skin.
+        # At z 25 the line's own wall reached 26.8, which is 0.24 mm outside
+        # the skin's inner surface at that station.
         mesh.pipe([(pmp[0] + 12.0, pmp[1], pmp[2]),
-                   (205.0, 19.0, 23.0), (250.0, 13.5, 25.0),
+                   (205.0, 19.0, 22.0), (250.0, 13.5, 22.0),
                    (292.0, 2.0, 24.0), inlet], 1.8, 16, subdiv=3))
     return out
 

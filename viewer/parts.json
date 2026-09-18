@@ -265,8 +265,8 @@
    "key": "01 Fuselage",
    "label": "Fuselage",
    "color": "#8A9299",
-   "parts": 116,
-   "faces": 192660,
+   "parts": 125,
+   "faces": 204912,
    "x0": 0.0,
    "x1": 443.4
   },
@@ -319,10 +319,10 @@
    "key": "07 Engine",
    "label": "Engine",
    "color": "#A8763E",
-   "parts": 125,
-   "faces": 1313616,
-   "x0": 283.2,
-   "x1": 438.3
+   "parts": 116,
+   "faces": 1301178,
+   "x0": 300.0,
+   "x1": 428.5
   },
   {
    "key": "08 RC Systems",
@@ -1384,6 +1384,69 @@
    "x1": 300.1,
    "f": 25602
   },
+  "bay_bleed_offtake": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 307.9,
+   "x1": 353.6,
+   "f": 140
+  },
+  "bay_cooling_exit": {
+   "g": "01 Fuselage",
+   "mat": "duct",
+   "x0": 432.3,
+   "x1": 438.3,
+   "f": 768
+  },
+  "bay_cooling_inlet": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 283.2,
+   "x1": 310.3,
+   "f": 1704
+  },
+  "bay_doors": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 308.0,
+   "x1": 406.3,
+   "f": 416
+  },
+  "bay_fire_bottle": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 307.0,
+   "x1": 360.2,
+   "f": 2912
+  },
+  "bay_fire_loop": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 331.4,
+   "x1": 386.6,
+   "f": 5288
+  },
+  "bay_fuel_connections": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 301.9,
+   "x1": 322.5,
+   "f": 142
+  },
+  "bay_mount_links_fwd": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 309.8,
+   "x1": 337.2,
+   "f": 740
+  },
+  "bay_oil_connections": {
+   "g": "01 Fuselage",
+   "mat": "airframe",
+   "x0": 301.9,
+   "x1": 322.5,
+   "f": 142
+  },
   "engine_access_panels": {
    "g": "07 Engine",
    "mat": "engine",
@@ -1404,27 +1467,6 @@
    "x0": 395.8,
    "x1": 423.0,
    "f": 13592
-  },
-  "engine_bay_cooling_exit": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 432.3,
-   "x1": 438.3,
-   "f": 768
-  },
-  "engine_bay_cooling_inlet": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 283.2,
-   "x1": 310.3,
-   "f": 1704
-  },
-  "engine_bay_doors": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 308.0,
-   "x1": 406.3,
-   "f": 416
   },
   "engine_bearing_sumps": {
    "g": "07 Engine",
@@ -1769,13 +1811,6 @@
    "x1": 382.3,
    "f": 36400
   },
-  "engine_bleed_offtake": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 307.9,
-   "x1": 353.6,
-   "f": 140
-  },
   "engine_bleed_pipes": {
    "g": "07 Engine",
    "mat": "engine",
@@ -1877,7 +1912,7 @@
   "engine_casing_hpc": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 335.8,
+   "x0": 334.4,
    "x1": 361.2,
    "f": 7560
   },
@@ -1982,8 +2017,8 @@
   "engine_fan_frame_struts": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 332.1,
-   "x1": 336.7,
+   "x0": 331.8,
+   "x1": 334.5,
    "f": 656
   },
   "engine_fan_interstage_seals": {
@@ -1992,20 +2027,6 @@
    "x0": 319.1,
    "x1": 328.1,
    "f": 5600
-  },
-  "engine_fire_bottle": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 307.0,
-   "x1": 360.2,
-   "f": 2912
-  },
-  "engine_fire_loop": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 331.4,
-   "x1": 386.6,
-   "f": 5288
   },
   "engine_flange_aug_aft": {
    "g": "07 Engine",
@@ -2055,13 +2076,6 @@
    "x0": 388.7,
    "x1": 389.9,
    "f": 4224
-  },
-  "engine_fuel_connections": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 301.9,
-   "x1": 322.5,
-   "f": 142
   },
   "engine_fuel_lines": {
    "g": "07 Engine",
@@ -2280,13 +2294,6 @@
    "x1": 396.4,
    "f": 5040
   },
-  "engine_mount_links_fwd": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 309.8,
-   "x1": 337.2,
-   "f": 740
-  },
   "engine_mount_links_rear": {
    "g": "07 Engine",
    "mat": "engine",
@@ -2307,13 +2314,6 @@
    "x0": 332.5,
    "x1": 390.5,
    "f": 400
-  },
-  "engine_oil_connections": {
-   "g": "07 Engine",
-   "mat": "engine",
-   "x0": 301.9,
-   "x1": 322.5,
-   "f": 142
   },
   "engine_oil_lines": {
    "g": "07 Engine",
@@ -2572,7 +2572,7 @@
    "mat": "engine",
    "x0": 332.3,
    "x1": 336.0,
-   "f": 1152
+   "f": 966
   },
   "antennas": {
    "g": "10 Detail",

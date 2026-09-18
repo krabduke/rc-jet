@@ -81,29 +81,54 @@ def main():
     c.true("engine objects present", len(eng) == 113, f"{len(eng)} objects")
     ex0 = min(f(r, "x_min_mm") for r in eng)
     ex1 = max(f(r, "x_max_mm") for r in eng)
-    c.band("engine installed length", ex1 - ex0,
-           4630 * spec.ENGINE_SCALE - 1, 4630 * spec.ENGINE_SCALE + 1, " mm",
-           f"1:{1/spec.ENGINE_SCALE:.0f} scale")
+    # The INSTALLED length, which is not the whole turbofan. `engine_mount`
+    # leaves eleven parts out -- the entire variable nozzle, which the
+    # airframe builds itself, plus the oil tank, the heat exchanger, the
+    # engine control and the ignition exciters, which are airframe-mounted.
+    # So the band runs from the inlet lip to the augmentor exit, not to the
+    # tail, and it comes off the engine's own station table rather than a
+    # number typed here: at 4630 it was asking for 140 mm of a turbofan that
+    # installs 123.
+    # loaded by path, under its own module name: `f110/spec.py` is called
+    # `spec` and so is the aircraft's, and it imports nothing but dataclasses
+    import importlib.util
+    _s = importlib.util.spec_from_file_location(
+        "f110_spec", os.path.join(ROOT, "f110", "spec.py"))
+    espec = importlib.util.module_from_spec(_s)
+    _s.loader.exec_module(espec)
+    inst = (espec.STATION["augmentor_exit"]
+            - espec.STATION["inlet_lip"]) * spec.ENGINE_SCALE
+    c.band("engine installed length", ex1 - ex0, inst - 2.0, inst + 2.0, " mm",
+           f"1:{1/spec.ENGINE_SCALE:.0f} scale, nozzle not installed")
     c.band("engine inlet on firewall", ex0, spec.ENGINE_X - 1, spec.ENGINE_X + 1, " mm")
 
-    # the engine has to physically fit the fuselage at every station it occupies
+    # The engine has to physically fit the fuselage at every station it
+    # occupies -- and that is a per-vertex question, the same one
+    # `audit_fit` answers for everything else in the aeroplane.
+    #
+    # It used to compare each part's whole BOUNDING BOX against the section
+    # at each station, which for a long part is the width of its widest
+    # point wherever that is. The electrical loom runs from the fan face to
+    # the augmentor and is widest at the accessory gearbox, so every station
+    # it crossed was told the loom was 16.9 mm out. The answer never moved
+    # when the loom moved, because it was never measuring the loom here.
+    #
+    # `fus.outside_by` is the section the skin is actually lofted from,
+    # including the intake chin under the forebody.
     sys.path.insert(0, os.path.join(HERE, "parts"))
     from parts import fuselage as fus
+    from parts import engine_mount as em
     worst, worst_x = 1e9, 0
-    for i in range(24):
-        x = ex0 + (ex1 - ex0) * i / 23
-        if x > spec.FUSELAGE[-1][0]:
+    x0f, x1f = spec.FUSELAGE[0][0], spec.FUSELAGE[-1][0]
+    for name, (verts, _faces) in em.build().items():
+        if name.startswith("cut:") or not name.startswith("engine_"):
             continue
-        w, h, zc, _ = fus.station_at(x)
-        inner = min(w, h) - spec.FUSELAGE_SKIN
-        # both sides: the accessory gearbox hangs off one flank, so testing
-        # only the positive extreme would miss a part leaving the fuselage on
-        # the other one
-        at = [r for r in eng if f(r, "x_min_mm") <= x <= f(r, "x_max_mm")]
-        need = max(max(abs(f(r, "y_max_mm")), abs(f(r, "y_min_mm")))
-                   for r in at) if at else 0
-        if need and inner - need < worst:
-            worst, worst_x = inner - need, x
+        for (x, y, z) in verts:
+            if not (x0f <= x <= x1f):
+                continue
+            clear = -fus.outside_by(x, y, z, spec.FUSELAGE_SKIN)
+            if clear < worst:
+                worst, worst_x = clear, x
     c.true("engine clears fuselage internals", worst > 0.5,
            f"{worst:.1f} mm min clearance at x={worst_x:.0f}")
 
@@ -242,25 +267,36 @@ def main():
            else f"{len(through)} parts, worst {through[0][1]}")
 
     print("\nCOMPLETENESS")
+    # One name per subsystem, and the names the aeroplane actually has.
+    #
+    # This list was still the radio-controlled model's: a 3-cell lipo, a
+    # receiver and its battery, a turbine ECU, control horns and clevises,
+    # wing fences, static dischargers. None of those are on a 14.5 m
+    # aircraft and none of them have been built for a long time, so twelve
+    # of the nineteen failures in this file were a list describing a
+    # different aeroplane -- which is also why the two real ones underneath,
+    # the engine's clearance to the fuselage and seven parts through the
+    # skin, went unread.
     want = ["fuselage_skin", "wing_l", "wing_r", "flaperon_l", "flaperon_r",
             "stabilator_l", "stabilator_r", "vtail_fin", "rudder",
             "intake_lip", "duct_inlet", "canopy_glass", "canopy_frame",
-            "wheel_nose", "wheel_main_l", "wheel_main_r",
+            "wheel_nose", "wheel_main_l", "wheel_main_r", "wheel_hub_nose",
             "gear_main_l", "gear_main_r", "brake_l", "brake_r",
-            "spar_carbon", "lipo_3s_900",
-            "turbine_ecu", "receiver", "wiring", "bhd_firewall",
-            "spar_rear", "stringer_01", "longeron_1", "former_01", "rib_r_01",
-            "fin_rib_1", "hinge_flaperon_l", "hinge_rudder", "panel_screws",
-            "panel_screws", "seam_lengthwise", "horn_fl", "pitot",
-            "wheel_hub_n", "gear_door_n", "gear_door_l", "gear_door_r",
-            "navlight_port", "tailpipe_shroud",
-            "panel_battery", "panel_gearbay", "antennas",
-            "static_dischargers", "flaperon_l", "rudder",
-            "stringer_01", "horn_fl", "clevis_rud", "wheel_hub_n",
-            "vg_l1", "wing_fence_r1", "fuel_tank", "fuel_pump",
-            "retract_nose", "turbine_ecu", "naca_inlet_l",
-            "access_tray", "rx_battery", "mount_ring",
-            "bypass_slots", "antenna_a"]
+            "gear_door_nose_l", "gear_door_main_l", "gear_main_side_stay_l",
+            "gear_nose_steering_actuator",
+            "spar_carbon", "spar_rear", "stringer_01", "longeron_1",
+            "former_01", "rib_r_01", "fin_rib_1", "bhd_firewall",
+            "hinge_flaperon_l", "hinge_rudder", "rudder_servo",
+            "stab_servo_l", "panel_screws", "seam_lengthwise",
+            "fcs_fcc_envelope", "fcs_loom_trunk_upper_l", "fcs_loom_tail_l",
+            "pitot", "navlight_port", "navlight_tail", "antennas",
+            "panel_battery", "panel_avionics", "panel_gearbay",
+            "vg_l1", "wing_strake_r", "nose_strakes",
+            "fuel_tank", "fuel_pump", "naca_inlet_l", "mount_ring",
+            "bypass_slots", "tailpipe_shroud",
+            "bay_fire_bottle", "bay_cooling_inlet", "bay_doors",
+            "engine_fan_disc_assembly", "engine_combustor_liner_outer",
+            "engine_gearbox", "engine_hpc_drum", "nozzle_actuator_00"]
     missing = [w for w in want if w not in by]
     c.true("key parts present", not missing, f"{len(want)} checked")
     for m in missing:

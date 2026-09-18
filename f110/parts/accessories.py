@@ -204,7 +204,10 @@ def _case_detail():
             r_out = _casing_radius(xb) + 18.0
             bleed.append(mesh.pipe(
                 [_at(r_out, clock, xb),
-                 _at(spec.casing_inner("casing_hpc", xb) + 26.0, clock, xb)],
+                 # into the casing's wall, not 26 mm proud of its bore. The
+                 # wall is 14 mm thick, so +26 put the end of the offtake
+                 # 12 mm outside the case it is supposed to be tapping.
+                 _at(spec.casing_inner("casing_hpc", xb) + 6.0, clock, xb)],
                 rr * 0.9, 12))
     out["bleed_pipes"] = mesh.join(*bleed)
     return out
@@ -557,9 +560,17 @@ def _plumbing():
 
     # ---- electrical ------------------------------------------------------
     harness = []
-    for i, clock in enumerate((84.0, 96.0, 70.0)):
+    # Three trunks side by side at one standoff, not stacked on top of each
+    # other at 26, 38 and 50. A loom is clipped round the casing, not piled
+    # up off it: at 50 plus a clamp box the outer trunk stood 66 mm proud of
+    # the augmentor case, and in the airframe that vendors this engine it was
+    # the widest thing on the installation -- 0.1 mm from the fuselage's
+    # inner surface, where the aircraft asks for half a millimetre. They are
+    # 12 to 14 degrees apart in clock, which is 120 mm of separation at this
+    # radius.
+    for i, clock in enumerate((70.0, 84.0, 96.0)):
         path = _route(clock, spec.STATION["fan_face"] + 60.0,
-                      spec.STATION["augmentor_exit"] - 120.0, 26.0 + i * 12.0)
+                      spec.STATION["augmentor_exit"] - 120.0, 26.0)
         harness.append(mesh.pipe(path, A["harness_r"], 10))
         for j in range(0, len(path), 4):
             bv, bf = mesh.box(path[j][0], path[j][1], path[j][2], 16.0, 20.0, 20.0)
@@ -732,29 +743,67 @@ def _systems():
     # The VBVs dump fan air overboard to keep the HP compressor out of surge
     # at low speed. Twelve hinged doors round the bypass wall, each with its
     # own bellcrank onto a unison ring.
+    # Ten doors, not twelve, and the unison ring is an arc.
+    #
+    # The accessory gearbox hangs at clock -90 and is 280 mm wide on a 560 mm
+    # radius, so it subtends about 28 degrees at the bottom of the fan case
+    # and reaches out to r 765. The two doors at 255 and 285 were inside it,
+    # and so was the unison ring, which was a full torus at r 656 -- right
+    # through the casing the whole accessory drive bolts to. A VBV ring is
+    # interrupted where the gearbox is on every engine that has one there.
     pieces = []
     xv = 690.0
     rv = _casing_outer(xv)
+    half_door = 11.0
+
+    # What is already bolted to this part of the case, as (clock, half
+    # angle). The accessory gearbox hangs straight down and is 280 mm wide
+    # on a 660 mm radius; the two forward engine mount pads stand 96 mm off
+    # the casing at 55 and 125 and are 76 mm across, which is only about
+    # four degrees each. A door ring and a unison ring both have to go round
+    # them -- the ring was a full torus at r 656 straight through the
+    # gearbox the whole accessory drive bolts to, and two doors were inside
+    # it with two more inside the mount pads.
+    blocked = [(A["gearbox_angle"] % 360.0,
+                math.degrees(math.atan2(A["gearbox_width"] / 2.0,
+                                        A["gearbox_r"]))),
+               (55.0, 4.0), (125.0, 4.0)]
+
+    def clear(a, extra):
+        return all(abs(((a - c + 180.0) % 360.0) - 180.0) >= hw + extra
+                   for (c, hw) in blocked)
+
     for i in range(12):
         a = 360.0 * i / 12.0 + 15.0
+        if not clear(a, half_door):
+            continue
         dv, df = mesh.revolve_closed(
             [(xv - 44.0, rv - 3.0), (xv + 44.0, rv - 3.0),
              (xv + 40.0, rv + 11.0), (xv - 40.0, rv + 9.0)],
-            segments=6, phase=math.radians(a - 11.0), sweep=math.radians(22.0))
+            segments=6, phase=math.radians(a - half_door),
+            sweep=math.radians(2.0 * half_door))
         pieces.append((dv, df))
         # bellcrank from the door up to the unison ring
         p0 = _at(rv + 10.0, a, xv + 36.0)
         p1 = _at(rv + 34.0, a + 3.0, xv + 66.0)
         pieces.append(mesh.pipe([p0, p1], 5.0, segments=8))
-    uv, uf = mesh.ring_torus(xv + 70.0, rv + 34.0, 7.0, 72, 10)
-    pieces.append((uv, uf))
+
+    # the unison ring, as the arcs between those obstructions
+    ring = [(xv + 70.0 + 7.0 * math.cos(t), rv + 34.0 + 7.0 * math.sin(t))
+            for t in [2.0 * math.pi * k / 12 for k in range(12)]]
+    cuts = sorted((c - hw - 6.0, c + hw + 6.0) for (c, hw) in blocked)
+    for (_, end), (start, _) in zip(cuts, cuts[1:] + [(cuts[0][0] + 360.0, 0)]):
+        span = start - end
+        if span <= 2.0:
+            continue
+        pieces.append(mesh.revolve_closed(
+            ring, segments=max(8, int(span / 5.0)),
+            phase=math.radians(end), sweep=math.radians(span)))
     out["vbv_doors"] = mesh.join(*pieces)
 
     # ---- borescope ports: how the compressor is inspected on wing ----------
     pieces = []
-    for (bx, ang) in ((900.0, 42.0), (1080.0, -42.0), (1260.0, 42.0),
-                      (1440.0, -42.0), (2060.0, 34.0), (2240.0, -34.0),
-                      (2380.0, 34.0)):
+    for (bx, ang) in spec.BORESCOPE:
         r = _casing_outer(bx)
         # a raised boss with a captive threaded plug in it
         bv, bf = mesh.revolve_closed(

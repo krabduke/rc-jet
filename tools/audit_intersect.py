@@ -103,7 +103,7 @@ EXPECTED = [
     ("canopy_frame", "frame_canopy_rear_hinge"),
     ("gear_nose_chrome_slider", "gear_nose_fork"),
     ("rudder_pedals", "rudder_pedals_rail"),
-    ("engine_bay_cooling_inlet", "stringer"),
+    ("bay_cooling_inlet", "stringer"),
     ("nose_steering_link", "gear_door_"),
     # A control run goes fore and aft through the frame, which is what the
     # lightening holes in a bulkhead are partly for -- see fuselage._bulkheads.
@@ -523,7 +523,7 @@ EXPECTED = [
     # cooling slots in that tailcone and the mount rails bolted to the frames
     # pass through it -- which is what a frame is for.
     ("bhd_tail", "bypass_slots"), ("bhd_tail", "mount_rails"),
-    ("bhd_tail", "engine_bay_doors"), ("bhd_tail", "engine_mount_links_rear"),
+    ("bhd_tail", "bay_doors"), ("bhd_tail", "engine_mount_links_rear"),
     ("bhd_tail", "ventral_"),   # the ventral fins bolt to this frame
     # the stabilator servo drives the pivot it is built on
     ("stab_servo_", "stab_pivot_"),

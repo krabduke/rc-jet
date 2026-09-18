@@ -345,7 +345,11 @@ CASINGS = [
     ("casing_inlet",     -420.0,    0.0, 596.0, 596.0, 10.0),
     ("casing_fan",          0.0,  580.0, 596.0, 580.0, 12.0),
     ("casing_bypass",     580.0, 2520.0, 580.0, 476.0,  9.0),
-    ("casing_hpc",        760.0, 1600.0, 466.0, 372.0, 14.0),
+    # 714, not 760: the HP compressor case's forward flange bolts to the fan
+    # frame, and the frame's struts now end at 718 rather than running 62 mm
+    # into the compressor drum. At 760 there was a 42 mm gap between the two
+    # and the core gas path had no wall over it.
+    ("casing_hpc",        714.0, 1600.0, 471.0, 372.0, 14.0),
     ("casing_combustor", 1600.0, 1990.0, 478.0, 420.0, 16.0),
     ("casing_turbine",   1990.0, 2520.0, 420.0, 462.0, 15.0),
     ("casing_augmentor", 2520.0, 3640.0, 470.0, 434.0, 11.0),
@@ -537,6 +541,20 @@ FLANGES = [
 # --------------------------------------------------------------------------
 # ACCESSORIES (DERIVED)
 # --------------------------------------------------------------------------
+
+# Where the compressor and turbine are inspected on wing, as
+# (station, clock). One table: `statics._borescope_bosses` builds the boss
+# that is let into the case and `accessories` builds the port that threads
+# into the boss, and each carried its own copy of these seven numbers. Move
+# a port off the bleed line in one file and the boss it screws into stays
+# under the pipe in the other, which is exactly what happened.
+#
+# The four HP compressor ports are at +/-75 because the customer bleed
+# pipes run down the case at clock 40 and -40 over that whole span. The
+# turbine ports at +/-34 are aft of where those pipes end at x 1560.
+BORESCOPE = ((900.0, 75.0), (1080.0, -75.0), (1260.0, 75.0),
+             (1440.0, -75.0), (2060.0, 34.0), (2240.0, -34.0),
+             (2380.0, 34.0))
 
 ACCESSORIES = {
     "gearbox_x":          860.0,
