@@ -70,14 +70,14 @@
    "metal": 0.2,
    "rough": 0.12
   },
-  "ply": {
+  "frame_alu": {
    "rgb": [
-    0.47,
-    0.372,
-    0.226
+    0.478,
+    0.492,
+    0.512
    ],
-   "metal": 0.0,
-   "rough": 0.76
+   "metal": 0.85,
+   "rough": 0.34
   },
   "carbon": {
    "rgb": [
@@ -88,14 +88,14 @@
    "metal": 0.35,
    "rough": 0.34
   },
-  "lipo": {
+  "tankage": {
    "rgb": [
-    0.14,
-    0.17,
-    0.31
+    0.196,
+    0.212,
+    0.206
    ],
-   "metal": 0.1,
-   "rough": 0.52
+   "metal": 0.2,
+   "rough": 0.62
   },
   "board": {
    "rgb": [
@@ -205,14 +205,14 @@
    "metal": 0.0,
    "rough": 0.18
   },
-  "spruce": {
+  "extrusion": {
    "rgb": [
-    0.545,
-    0.452,
-    0.288
+    0.432,
+    0.448,
+    0.472
    ],
-   "metal": 0.0,
-   "rough": 0.7
+   "metal": 0.85,
+   "rough": 0.38
   },
   "ordnance": {
    "rgb": [
@@ -266,7 +266,7 @@
    "label": "Fuselage",
    "color": "#8A9299",
    "parts": 116,
-   "faces": 178671,
+   "faces": 178738,
    "x0": 0.0,
    "x1": 443.4
   },
@@ -346,8 +346,8 @@
    "key": "10 Detail",
    "label": "Detail",
    "color": "#A1A8AF",
-   "parts": 12,
-   "faces": 5407,
+   "parts": 11,
+   "faces": 5155,
    "x0": -28.0,
    "x1": 433.0
   },
@@ -364,21 +364,21 @@
  "parts": {
   "bhd_cockpit": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 149.0,
    "x1": 151.0,
    "f": 286
   },
   "bhd_firewall": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 296.5,
    "x1": 302.9,
    "f": 1192
   },
   "bhd_nose": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 65.0,
    "x1": 70.4,
    "f": 1530
@@ -392,7 +392,7 @@
   },
   "bhd_tail": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 382.0,
    "x1": 387.4,
    "f": 1530
@@ -402,7 +402,7 @@
    "mat": "airframe",
    "x0": 0.0,
    "x1": 438.0,
-   "f": 11703
+   "f": 11770
   },
   "flaperon_l": {
    "g": "02 Wing",
@@ -651,7 +651,7 @@
   },
   "intake_lip": {
    "g": "04 Intake and Duct",
-   "mat": "duct",
+   "mat": "airframe",
    "x0": 52.0,
    "x1": 60.3,
    "f": 288
@@ -2609,13 +2609,6 @@
    "x1": 284.1,
    "f": 864
   },
-  "intake_lip_ring": {
-   "g": "10 Detail",
-   "mat": "duct",
-   "x0": 48.8,
-   "x1": 57.2,
-   "f": 252
-  },
   "navlight_port": {
    "g": "10 Detail",
    "mat": "lens_red",
@@ -2856,126 +2849,126 @@
   },
   "fin_rib_1": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 337.9,
    "x1": 408.1,
    "f": 364
   },
   "fin_rib_2": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 355.2,
    "x1": 414.8,
    "f": 364
   },
   "fin_rib_3": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 372.6,
    "x1": 421.5,
    "f": 364
   },
   "fin_rib_4": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 389.9,
    "x1": 428.1,
    "f": 364
   },
   "former_01": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 29.2,
    "x1": 30.8,
    "f": 428
   },
   "former_02": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 47.2,
    "x1": 48.7,
    "f": 428
   },
   "former_03": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 87.3,
    "x1": 88.7,
    "f": 385
   },
   "former_04": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 109.3,
    "x1": 110.7,
    "f": 370
   },
   "former_05": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 129.3,
    "x1": 130.8,
    "f": 392
   },
   "former_06": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 169.2,
    "x1": 170.8,
    "f": 356
   },
   "former_07": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 189.3,
    "x1": 190.8,
    "f": 354
   },
   "former_08": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 209.3,
    "x1": 210.7,
    "f": 377
   },
   "former_09": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 249.2,
    "x1": 250.8,
    "f": 405
   },
   "former_10": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 267.3,
    "x1": 268.8,
    "f": 399
   },
   "former_11": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 315.3,
    "x1": 316.7,
    "f": 428
   },
   "former_12": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 343.3,
    "x1": 344.7,
    "f": 428
   },
   "former_13": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 371.3,
    "x1": 372.8,
    "f": 428
   },
   "former_14": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 399.3,
    "x1": 400.8,
    "f": 314
@@ -3003,154 +2996,154 @@
   },
   "longeron_1": {
    "g": "09 Structure",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 26.7,
    "x1": 304.3,
    "f": 1250
   },
   "longeron_2": {
    "g": "09 Structure",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 26.7,
    "x1": 304.3,
    "f": 1250
   },
   "longeron_3": {
    "g": "09 Structure",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 26.7,
    "x1": 304.3,
    "f": 1250
   },
   "longeron_4": {
    "g": "09 Structure",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 26.7,
    "x1": 304.3,
    "f": 1250
   },
   "rib_l_01": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 158.3,
    "x1": 314.9,
    "f": 772
   },
   "rib_l_02": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 172.4,
    "x1": 319.4,
    "f": 772
   },
   "rib_l_03": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 187.9,
    "x1": 323.4,
    "f": 772
   },
   "rib_l_04": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 203.6,
    "x1": 327.5,
    "f": 772
   },
   "rib_l_05": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 220.1,
    "x1": 331.9,
    "f": 772
   },
   "rib_l_06": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 236.6,
    "x1": 336.2,
    "f": 772
   },
   "rib_l_07": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 252.9,
    "x1": 340.5,
    "f": 772
   },
   "rib_l_08": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 269.5,
    "x1": 344.8,
    "f": 772
   },
   "rib_l_09": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 286.0,
    "x1": 348.6,
    "f": 772
   },
   "rib_r_01": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 158.3,
    "x1": 314.9,
    "f": 772
   },
   "rib_r_02": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 172.4,
    "x1": 319.4,
    "f": 772
   },
   "rib_r_03": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 187.9,
    "x1": 323.4,
    "f": 772
   },
   "rib_r_04": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 203.6,
    "x1": 327.5,
    "f": 772
   },
   "rib_r_05": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 220.1,
    "x1": 331.9,
    "f": 772
   },
   "rib_r_06": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 236.6,
    "x1": 336.2,
    "f": 772
   },
   "rib_r_07": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 252.9,
    "x1": 340.5,
    "f": 772
   },
   "rib_r_08": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 269.5,
    "x1": 344.8,
    "f": 772
   },
   "rib_r_09": {
    "g": "09 Structure",
-   "mat": "ply",
+   "mat": "frame_alu",
    "x0": 286.0,
    "x1": 348.6,
    "f": 772
@@ -3164,84 +3157,84 @@
   },
   "stringer_01": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.5,
    "x1": 304.1,
    "f": 866
   },
   "stringer_02": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
   },
   "stringer_03": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.7,
    "x1": 304.1,
    "f": 857
   },
   "stringer_04": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.7,
    "x1": 304.1,
    "f": 857
   },
   "stringer_05": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
   },
   "stringer_06": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.5,
    "x1": 304.1,
    "f": 866
   },
   "stringer_07": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
   },
   "stringer_08": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
   },
   "stringer_09": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.7,
    "x1": 120.3,
    "f": 290
   },
   "stringer_10": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.7,
    "x1": 120.3,
    "f": 290
   },
   "stringer_11": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
   },
   "stringer_12": {
    "g": "01 Fuselage",
-   "mat": "spruce",
+   "mat": "extrusion",
    "x0": 27.6,
    "x1": 304.1,
    "f": 866
@@ -3374,7 +3367,7 @@
   },
   "fuel_hopper": {
    "g": "08 RC Systems",
-   "mat": "lipo",
+   "mat": "tankage",
    "x0": 216.0,
    "x1": 242.0,
    "f": 928
@@ -3395,7 +3388,7 @@
   },
   "fuel_tank": {
    "g": "08 RC Systems",
-   "mat": "lipo",
+   "mat": "tankage",
    "x0": 196.0,
    "x1": 282.0,
    "f": 2104

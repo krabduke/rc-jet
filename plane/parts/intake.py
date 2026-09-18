@@ -169,14 +169,36 @@ def _oval(x, w, h, zc, segments=SEG, squash=2.4):
     return ring
 
 
+def mouth_section(x):
+    """Inner section of the inlet forward of the throat: (w, h, zc).
+
+    The lip and the duct both have to be cut from this. They were not: the
+    lip's inner line was `lip_width/2 - 0.4 * lip_radius` and the duct's was
+    `lip_width/2`, so the rim stood one unit inside the wall behind it and
+    the air met a ledge on its way in. On a subsonic inlet that is the one
+    step that actually costs you -- it separates at the throat -- and it is
+    also the first thing you see looking at the aeroplane head on.
+    """
+    x0 = I["x_throat"]
+    w1, h1 = I["lip_width"] / 2 - 1.0, I["lip_height"] / 2 - 1.0
+    w0, h0 = I["lip_width"] / 2, I["lip_height"] / 2
+    u = min(1.0, max(0.0, (x - I["x_lip"]) / (x0 - I["x_lip"])))
+    return w0 + (w1 - w0) * u, h0 + (h1 - h0) * u, I["z_lip"]
+
+
 def _lip():
     """Rolled inlet lip -- a closed torus-like rim, so the inlet reads as a
     real cowl rather than a hole cut in the skin."""
-    x, w, h, zc = I["x_lip"], I["lip_width"] / 2, I["lip_height"] / 2, I["z_lip"]
+    x = I["x_lip"]
+    w, h, zc = I["lip_width"] / 2, I["lip_height"] / 2, I["z_lip"]
     r = I["lip_radius"]
-    inner = _oval(x + r, w - r * 0.4, h - r * 0.4, zc)
+    # the inner rings come off `mouth_section`, so the rim's throat and the
+    # duct wall behind it are the same line
+    wi, hi, _ = mouth_section(x + r)
+    wb, hb, _ = mouth_section(x + r * 3.2)
+    inner = _oval(x + r, wi, hi, zc)
     outer = _oval(x, w + r, h + r, zc)
-    back_i = _oval(x + r * 3.2, w - r * 0.4, h - r * 0.4, zc)
+    back_i = _oval(x + r * 3.2, wb, hb, zc)
     back_o = _oval(x + r * 3.2, w + r, h + r, zc)
     verts = inner + outer + back_i + back_o
     n = SEG
@@ -232,6 +254,15 @@ def duct_bore(x):
     wall is duct_section(); the difference between them is the duct's own
     material.
     """
+    if x < I["x_throat"]:
+        # forward of the throat the air path is the mouth, and it has to be
+        # the SAME mouth the lip and the duct are cut from. This used to
+        # return the throat section all the way forward, so the aperture was
+        # cut 0.9 narrower than the duct actually is there -- the skin's cut
+        # edge stood inside the duct's outer wall and you could see the step
+        # as a band round the inside of the inlet.
+        w, h, zc = mouth_section(x)
+        return w, h, zc, 2.4
     s = _duct_schedule(x)
     w0 = I["lip_width"] / 2 - 1.0
     h0 = I["lip_height"] / 2 - 1.0
@@ -326,10 +357,8 @@ def _duct():
             # the mouth, contracting gently from the lip section to the
             # throat. It stays on the lip's own centreline: the climb only
             # starts where the diffuser does.
-            u = (x - x_lip) / (x0 - x_lip)
-            w = I["lip_width"] / 2 + (w0 - I["lip_width"] / 2) * u
-            h = I["lip_height"] / 2 + (h0 - I["lip_height"] / 2) * u
-            zc, squash = z0, 2.4
+            w, h, zc = mouth_section(x)
+            squash = 2.4
             outer_rings.append(_oval(x, w + I["wall"], h + I["wall"], zc,
                                      SEG, squash))
             inner_rings.append(_oval(x, w, h, zc, SEG, squash))

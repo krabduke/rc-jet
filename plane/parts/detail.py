@@ -418,17 +418,11 @@ def _speed_kit():
         prof, zl, 2.6, rim_seg=5, axis="z",
         bow=lambda fx, fz: -1.1 * (1.0 - fx))
 
-    # Intake lip: a sharp, slightly drooped lip pays at speed and a rounded
-    # one pays at low speed. This one is closer to sharp, because the brief
-    # was maximum speed.
-    lip = []
-    for k in range(18):
-        a = 2 * math.pi * k / 18
-        cy = math.cos(a) * I["lip_width"] / 2
-        cz = math.sin(a) * I["lip_height"] / 2 + I["z_lip"]
-        lip.append(mesh.pipe([(I["x_lip"] - 3.0, cy * 0.97, cz * 0.97),
-                              (I["x_lip"] + 5.0, cy, cz)], 1.5, 6))
-    out["intake_lip_ring"] = mesh.join(*lip)
+    # No lip ring here. intake.py builds the inlet lip as a rolled rim --
+    # a closed section wrapping from the outer skin round to the duct wall,
+    # which is what a cowl lip is. This was eighteen 1.5-unit pipes laid
+    # round the same rim, and at full size they read as a ring of studs
+    # sticking out of the mouth. Two lips, one of them wrong.
 
     # Vortex generators are already on the wing; these are the strakes that
     # start the LERX vortex at the nose.

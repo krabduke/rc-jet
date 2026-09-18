@@ -119,6 +119,30 @@ def collect_corners():
     return cen
 
 
+def corners_of(prefixes):
+    """Same as `collect_corners`, over named parts only.
+
+    A whole-aeroplane frame is no use for looking at one thing. This is for
+    the inlet, which is the view that tells you whether the lip, the duct and
+    the skin are one surface or three -- and for a long time they were three.
+    """
+    from mathutils import Vector as V
+    sel = [o for o in meshes() if o.name.startswith(tuple(prefixes))]
+    if not sel:
+        return collect_corners()
+    xs, ys, zs = [], [], []
+    for o in sel:
+        for c in o.bound_box:
+            w = o.matrix_world @ V(c)
+            xs.append(w.x); ys.append(w.y); zs.append(w.z)
+    cen = V(((min(xs)+max(xs))/2, (min(ys)+max(ys))/2, (min(zs)+max(zs))/2))
+    CORNERS.clear()
+    for o in sel:
+        for c in o.bound_box:
+            CORNERS.append((o.matrix_world @ V(c)) - cen)
+    return cen
+
+
 def fit_distance(cam, dirv, margin=1.06):
     """Smallest standoff that keeps every bounding-box corner in frame.
 
@@ -284,8 +308,48 @@ def mode_exploded(s):
     shoot("04_exploded")
 
 
+def mode_intake(s):
+    """Head-on at the inlet, close.
+
+    Worth its own view: everything that has gone wrong with this intake has
+    been invisible from every other angle. Two concentric lips, a ring of
+    studs round the rim, a one-unit ledge where the lip met the duct, and a
+    plywood former showing through the mouth -- all of it only reads looking
+    straight down the throat.
+    """
+    import math
+    setup_render(s, res=(1600, 1100)); setup_world(0.35)
+    c = corners_of(("intake_lip",))
+    # placed by hand rather than by the fitter: the fitter frames a bounding
+    # box, and the thing worth seeing here is what is BEHIND the rim
+    cd = bpy.data.cameras.new("cam_intake"); cd.lens = 80
+    ob = bpy.data.objects.new("cam_intake", cd)
+    bpy.context.scene.collection.objects.link(ob)
+    bpy.context.scene.camera = ob
+    ob.location = (c.x - 0.190, c.y - 0.034, c.z - 0.012)
+    # Below the lip centre looking slightly up and aft, because the inlet is
+    # under the nose and drooped: from anywhere above it the fuselage is in
+    # the way and you photograph the canopy instead. Aimed with a track
+    # quaternion rather than typed Euler angles -- the sign of the pitch is
+    # not guessable and three renders went on finding that out.
+    look = Vector((c.x + 0.030, c.y, c.z + 0.002)) - Vector(ob.location)
+    ob.rotation_euler = look.to_track_quat("-Z", "Y").to_euler()
+    for (dx, dy, dz, e) in ((-0.10, -0.09, 0.07, 3.2), (-0.08, 0.08, 0.05, 1.8),
+                            (-0.05, 0.0, -0.10, 2.6), (-0.16, 0.0, 0.01, 4.0)):
+        ld = bpy.data.lights.new("l_intake", "AREA")
+        ld.energy, ld.size = e, 0.10
+        lo = bpy.data.objects.new("l_intake", ld)
+        lo.location = (c.x + dx, c.y + dy, c.z + dz)
+        bpy.context.scene.collection.objects.link(lo)
+        d = (-dx, -dy, -dz)
+        lo.rotation_euler = (math.atan2(math.hypot(d[0], d[1]), d[2]), 0.0,
+                             math.atan2(d[1], d[0]) + math.pi / 2)
+    shoot("06_intake")
+
+
 MODES = {"hero": mode_hero, "top": mode_top,
-         "cutaway": mode_cutaway, "exploded": mode_exploded}
+         "cutaway": mode_cutaway, "exploded": mode_exploded,
+         "intake": mode_intake}
 
 if __name__ == "__main__":
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else ["hero"]
