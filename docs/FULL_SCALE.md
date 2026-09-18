@@ -37,14 +37,28 @@ no radar, no weapons, no pylons, no countermeasures. Its whole reason to
 exist is to carry as much wing as an F110 can drag around, so it corners
 harder than anything with a cockpit in it.
 
-Design point, clean, half internal fuel:
+Design point, clean. Every figure here is computed from the `MASS_FULL` table
+in `plane/spec.py`, which is the one place mass is defined — nothing below is
+quoted independently of it:
 
-| | |
-|---|---|
-| mass | **11 000 kg** (empty 7 200, internal fuel 2 900, pilot + systems) |
-| wing loading | **204 kg/m²** — less than half an F-16's 431 |
-| thrust/weight | **1.20** on one F110-GE-129 at 129 kN with afterburner |
-| 4 g corner speed | **104 m/s** |
+| | full internal fuel | half internal fuel |
+|---|---|---|
+| mass | **11 006 kg** | **9 456 kg** |
+| wing loading | **204 kg/m²** | **175 kg/m²** |
+| thrust/weight | **1.20** | **1.39** |
+| 4 g corner speed | **104 m/s** | **97 m/s** |
+
+Empty 7 736 kg; pilot and unusable oil 170 kg; internal fuel 3 100 kg in three
+cells (forward 1 000, wing 1 300, aft 800). Thrust is one F110-GE-129 at 129 kN
+with afterburner. Even at full fuel the wing loading is less than half an
+F-16's 431 kg/m².
+
+The corner speeds assume CLmax 1.2 at sea level. That is an assumption about
+the wing, not a measurement of it: no tunnel or CFD result behind this model
+has resolved CLmax, and the panel method in `tools/` cannot — it is inviscid
+and says nothing about stall. At CLmax 1.1 the full-fuel corner speed is
+109 m/s and at 1.3 it is 100 m/s, so read it as 104 ±5 m/s and do not treat
+the wing's maximum lift as known.
 
 Low aspect ratio is deliberate. A cropped delta this slender carries a stable
 leading-edge vortex to high α, so it trades induced-drag efficiency in a
