@@ -78,14 +78,37 @@ def thrust(h, afterburner=True):
     return t0 * (rho / RHO0) ** 0.7
 
 
+def kp_slender(ar):
+    """Polhamus's slender-wing approximation to the potential-flow lift slope.
+
+    Defensible at this aeroplane's AR 1.81 and progressively too generous as
+    AR rises: at AR 3.5 it returns 5.50 per radian against lifting-surface
+    theory's 3.65. Anything comparing across aspect ratios has to say which of
+    these it used, because the choice moves the answer in a known direction.
+    """
+    return math.pi * ar / 2.0
+
+
+def kp_helmbold(ar):
+    """Lift slope from lifting-surface theory, valid over the whole AR range."""
+    return 2.0 * math.pi * ar / (2.0 + math.sqrt(ar * ar + 4.0))
+
+
 class Jet:
-    def __init__(self):
+    def __init__(self, S=None, b=None, kp=None, oswald=None):
+        """The aeroplane as drawn by default. S, b, kp and oswald exist so a
+        configuration study can run alternative planforms through this same
+        model instead of reimplementing it; nothing in the repo overrides
+        them, so the published numbers are the spec geometry's."""
         self.m = spec.total_mass_kg()
         self.W = self.m * G
-        self.S = spec.wing_area_m2()
-        self.b = spec.SPAN * spec.SCALE_TO_FULL / 1000.0
+        self.S = spec.wing_area_m2() if S is None else float(S)
+        self.b = (spec.SPAN * spec.SCALE_TO_FULL / 1000.0) if b is None else float(b)
+        if self.S <= 0.0 or self.b <= 0.0:
+            raise ValueError("wing area and span must be positive")
         self.AR = self.b * self.b / self.S
-        self.Kp = math.pi * self.AR / 2.0
+        self.Kp = kp_slender(self.AR) if kp is None else float(kp)
+        self.e = OSWALD if oswald is None else float(oswald)
         self.Kv = math.pi
         self.alpha_limit = math.radians(30.0)
 
@@ -94,7 +117,14 @@ class Jet:
         return self.Kp * s * c * c + self.Kv * c * s * s
 
     def cl_max(self):
-        return max(self.cl(self.alpha_limit * i / 300.0) for i in range(301))
+        return self.cl(self.alpha_cl_max())
+
+    def alpha_cl_max(self):
+        """Where CLmax occurs, in radians. With the suction analogy's peak out
+        at 46 deg this is the alpha ceiling itself, so it must be searched over
+        the permitted range and not over the bare curve."""
+        return max((self.alpha_limit * i / 300.0 for i in range(301)),
+                   key=self.cl)
 
     def validate_speed(self, v, h):
         if not math.isfinite(v) or not 0.0 < v <= MACH_LIMIT * atmosphere(h)[1]:
@@ -116,14 +146,14 @@ class Jet:
         rho, _ = atmosphere(h)
         q = 0.5 * rho * v * v
         cl = n * self.W / (q * self.S)
-        cdi = cl * cl / (math.pi * self.AR * OSWALD)
+        cdi = cl * cl / (math.pi * self.AR * self.e)
         return q * self.S * (cd0 + cdi)
 
     def n_thrust(self, v, h, cd0=CD0):
         d0 = self.drag(v, h, 0.0, cd0)
         q_s = 0.5 * atmosphere(h)[0] * v * v * self.S
         return math.sqrt(max(0.0, (thrust(h) - d0) * q_s
-                             * math.pi * self.AR * OSWALD / self.W**2))
+                             * math.pi * self.AR * self.e / self.W**2))
 
     def n_sustained(self, v, h, cd0=CD0):
         return min(self.n_available(v, h), self.n_thrust(v, h, cd0))
@@ -231,8 +261,7 @@ def main():
           % (spec.wing_loading_kg_m2(), spec.thrust_to_weight(),
              spec.ENGINE_FULL["designation"]))
     print("  Polhamus Kp %.2f, Kv %.2f, CLmax %.2f at %.0f deg alpha"
-          % (j.Kp, j.Kv, j.cl_max(),
-             max(range(1, 900), key=lambda i: j.cl(math.radians(i / 10.0))) / 10.0))
+          % (j.Kp, j.Kv, j.cl_max(), math.degrees(j.alpha_cl_max())))
     print("  CD0 %.3f assumed (band %.3f-%.3f), Oswald e %.2f"
           % (CD0, CD0_BAND[0], CD0_BAND[1], OSWALD))
     print()

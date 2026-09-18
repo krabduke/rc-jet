@@ -1,4 +1,4 @@
-"""Fail the build if docs/FULL_SCALE.md quotes a figure spec.py disagrees with.
+"""Fail the build if docs/FULL_SCALE.md quotes a figure the code disagrees with.
 
 The design-point table was wrong for exactly this reason: it was typed once and
 then spec.py moved under it. Every number below is computed from spec and then
@@ -16,16 +16,17 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "aero"))
+sys.path.insert(0, os.path.join(ROOT, "plane"))
 
 from plane import spec                                     # noqa: E402
+import agility                                             # noqa: E402
 
 DOC = os.path.join(ROOT, "docs", "FULL_SCALE.md")
 
 TANKS = ("fuel_forward", "fuel_wing", "fuel_aft")
 CREW = ("pilot", "oil_unusable")
-RHO = 1.225                 # sea level, ISA
 G = 9.80665
-CLMAX = 1.2                 # stated in the doc as an assumption, not a result
 
 
 def _kg(v):
@@ -43,11 +44,16 @@ def claims():
     half = full - fuel / 2.0
     thrust = spec.ENGINE_FULL["thrust_ab_n"]
 
-    def corner(m, cl=CLMAX):
-        return math.sqrt(4.0 * m * G / (0.5 * RHO * S * cl))
-
     def tw(m):
         return thrust / (m * G)
+
+    # Turn performance comes from the solver, never from arithmetic repeated
+    # here: a second implementation is a second thing to drift.
+    j = agility.Jet()
+    vc = j.corner_speed(0.0)
+    nc = j.n_available(vc, 0.0)
+    best_sus, v_sus = j.best_turn(0.0, sustained=True)
+    v4 = math.sqrt(2.0 * 4.0 * j.W / (agility.RHO0 * j.S * j.cl_max()))
 
     out = [
         ("span",                f"**{span:.2f} m**"),
@@ -60,19 +66,21 @@ def claims():
         ("wing loading, half",  f"**{half / S:.0f} kg/m²**"),
         ("thrust/weight, full", f"**{tw(full):.2f}**"),
         ("thrust/weight, half", f"**{tw(half):.2f}**"),
-        ("corner, full fuel",   f"**{corner(full):.0f} m/s**"),
-        ("corner, half fuel",   f"**{corner(half):.0f} m/s**"),
+        ("corner speed",        f"**{vc:.0f} m/s** ({vc * 1.944:.0f} kt)"),
+        ("structural limit",     f"{agility.N_STRUCTURAL:.0f} g structural"),
+        ("instantaneous rate",  f"**{j.turn_rate(vc, nc):.1f} \u00b0/s**"),
+        ("sustained rate",      f"**{best_sus:.1f} \u00b0/s** at {v_sus:.0f} m/s"),
+        ("g at best sustained", f"{j.n_sustained(v_sus, 0.0):.1f} g"),
+        ("4 g corner",          f"**{v4:.0f} m/s** ({v4 * 1.944:.0f} kt)"),
+        ("CLmax from Polhamus", f"**CLmax {j.cl_max():.2f}**"),
+        ("alpha ceiling",       f"{math.degrees(j.alpha_limit):.0f}\u00b0 \u03b1 ceiling"),
+        ("CD0",                 f"**{agility.CD0:.3f}**"),
         ("empty mass",          f"{_kg(spec.empty_mass_kg())} kg"),
         ("pilot and oil",       f"{_kg(crew)} kg"),
         ("internal fuel",       f"{_kg(fuel)} kg"),
         ("thrust",              f"{thrust / 1000.0:.0f} kN"),
         ("fan diameter",        f"{spec.ENGINE_FULL['fan_diameter_m']:.2f} m"),
-        ("CLmax assumed",       f"CLmax {CLMAX:.1f}"),
     ]
-    # The stated sensitivity either side of the assumed CLmax.
-    for cl in (1.1, 1.3):
-        out.append((f"corner at CLmax {cl:.1f}",
-                    f"{corner(full, cl):.0f} m/s"))
     # Each fuel cell, in the order the doc lists them.
     for name, label in (("fuel_forward", "forward"),
                         ("fuel_wing", "wing"),
@@ -91,7 +99,7 @@ for label, want in claims():
     if not ok:
         fails += 1
 
-print("\n" + ("PASS  every figure in FULL_SCALE.md matches spec.py"
+print("\n" + ("PASS  every figure in FULL_SCALE.md matches the model"
               if not fails else
-              f"FAIL  {fails} figures in FULL_SCALE.md disagree with spec.py"))
+              f"FAIL  {fails} figures in FULL_SCALE.md disagree with the model"))
 sys.exit(0 if not fails else 1)

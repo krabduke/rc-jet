@@ -46,19 +46,32 @@ quoted independently of it:
 | mass | **11 006 kg** | **9 456 kg** |
 | wing loading | **204 kg/m²** | **175 kg/m²** |
 | thrust/weight | **1.20** | **1.39** |
-| 4 g corner speed | **104 m/s** | **97 m/s** |
 
 Empty 7 736 kg; pilot and unusable oil 170 kg; internal fuel 3 100 kg in three
 cells (forward 1 000, wing 1 300, aft 800). Thrust is one F110-GE-129 at 129 kN
 with afterburner. Even at full fuel the wing loading is less than half an
 F-16's 431 kg/m².
 
-The corner speeds assume CLmax 1.2 at sea level. That is an assumption about
-the wing, not a measurement of it: no tunnel or CFD result behind this model
-has resolved CLmax, and the panel method in `tools/` cannot — it is inviscid
-and says nothing about stall. At CLmax 1.1 the full-fuel corner speed is
-109 m/s and at 1.3 it is 100 m/s, so read it as 104 ±5 m/s and do not treat
-the wing's maximum lift as known.
+Turn performance at the full-fuel design point, sea level, computed by
+`aero/agility.py` — the same model `make aero` plots and
+`tools/check_agility.py` gates, so no figure here is typed independently of it:
+
+| | |
+|---|---|
+| corner speed | **130 m/s** (252 kt), where the lift limit meets the 9 g structural limit |
+| instantaneous rate there | **38.8 °/s** |
+| best sustained rate | **20.1 °/s** at 105 m/s, holding 3.9 g |
+| 4 g corner | **86 m/s** (168 kt) |
+
+Those rates rest on an assumed lift curve, not a measured one. The lift limit
+is Polhamus's leading-edge-suction analogy with a slender-wing Kp, an assumed
+slender-delta Kv of π, and a 30° α ceiling; together they give
+**CLmax 1.75**, reached at that ceiling rather than at the curve's own peak
+further out. CD0 is stated flat at **0.022**. None of this is a trimmed
+whole-aircraft measurement — the repo's panel chain is inviscid and cannot
+produce a stall — and `docs/research/R3-configuration.md` sets out why low
+aspect ratio does not by itself establish a usable maximum lift coefficient.
+Read the rates as a screening calculation.
 
 Low aspect ratio is deliberate. A cropped delta this slender carries a stable
 leading-edge vortex to high α, so it trades induced-drag efficiency in a
