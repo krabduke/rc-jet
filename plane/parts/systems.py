@@ -397,7 +397,10 @@ def _engine_bay():
     rails = []
     for sgn in (-1.0, 1.0):
         p0 = inside(x + 6.0, sgn * 0.62, -0.52, 4.0)
-        p1 = inside(x + 120.0, sgn * 0.62, -0.52, 4.0)
+        # +104, not +120: at 120 the rails ran aft to station 420 and the
+        # nozzle actuators start at 414, so the rail the engine slides on
+        # ended inside the mechanism that moves the nozzle.
+        p1 = inside(x + 104.0, sgn * 0.62, -0.52, 4.0)
         # the rail the engine slides on, with a saddle clamp at each end and
         # two standoffs holding it off the skin
         rails.append(mesh.pipe([p0, p1], 2.6, 20, subdiv=4))

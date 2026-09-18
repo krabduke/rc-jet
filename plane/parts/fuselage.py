@@ -363,7 +363,9 @@ def _bulkheads():
         ring_f = section_ring(x - t / 2, inset=spec.FUSELAGE_SKIN, segments=seg)
         ring_a = section_ring(x + t / 2, inset=spec.FUSELAGE_SKIN, segments=seg)
         # the firewall keeps more material: it takes the engine's thrust
-        bore = 0.30 if "firewall" in name else 0.40
+        # the tail frame is a ring round the engine, so most of it is bore
+        bore = 0.86 if "tail" in name else (
+            0.30 if "firewall" in name else 0.40)
         hub = bore + (0.24 if "firewall" in name else 0.20)
         holes = 4 if "firewall" in name else 5
         parts = [pc.lightened_ring(ring_f, ring_a, zc, bore, hub, holes,

@@ -68,9 +68,17 @@ def _pivots_hw():
             # a bearing race.
             parts.append(([(pz_ + px, px_ * sgn + yb, py_ + pz)
                            for (px_, py_, pz_) in bv], bf))
-        # the fuselage frame web the bearings sit in, spanning the tailpipe
-        frv, frf = mesh.box(px + H["root_chord"] * 0.30, sgn * 8.0, pz,
-                            H["root_chord"] * 0.72, 2.4, H["root_chord"] * 0.34)
+        # The fuselage frame web the bearings sit in.
+        #
+        # It used to be centred 0.30 chord AFT of the pivot and run 0.72 of a
+        # chord, which put it at x 405-457 -- through the variable nozzle,
+        # whose flaps start at 423. Six of the twelve flaps, seals and
+        # external flaps came out inside it. A frame web carries the bearings
+        # and stops: forward of the pivot, and wide enough in y to bracket
+        # both races rather than passing between them.
+        frv, frf = mesh.box(px - H["root_chord"] * 0.24, sgn * 9.5, pz,
+                            H["root_chord"] * 0.44, 11.0,
+                            H["root_chord"] * 0.34)
         parts.append((frv, frf))
         out[f"stab_pivot_{side}"] = mesh.join(*parts)
         out.update(_stab_servo(side, sgn, px, pz))

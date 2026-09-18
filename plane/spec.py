@@ -349,7 +349,16 @@ BULKHEADS = [
     ("bhd_cockpit", 150.0, 2.0),
     ("bhd_spar",    230.0, 2.5),
     ("bhd_firewall",298.0, 3.0),
-    ("bhd_tail",    430.0, 2.0),
+    # 383, not 430.
+    #
+    # At 430 this frame sat in the middle of the variable nozzle -- the flaps
+    # span 423 to 440 -- and its web, a ring from r 6 to r 16, ran straight
+    # through them: a solid ring across the exhaust. Moving it to 396 only
+    # stacked it on former_14 at 399, which is already the tailcone's aft
+    # frame. 383 gives it the job it should have had, which is to carry the
+    # engine's rear mount links at 387-393, and it is bored for the casing
+    # rather than for a duct.
+    ("bhd_tail",    383.0, 2.0),
 ]
 
 # --------------------------------------------------------------------------

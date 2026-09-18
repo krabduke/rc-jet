@@ -466,6 +466,36 @@ EXPECTED = [
     # rudder ram's rod-end lands on the rudder's balance horn.
     ("gear_main_retract_actuator_", "gear_bay_hydraulic_lines_"),
     ("rudder_servo", "rudder"),
+    # The variable nozzle is one mechanism and its parts are assembled
+    # through each other: the unison ring rides on the augmentor case, the
+    # six actuators bolt to the case and drive the ring, the links run from
+    # the ring to the flaps, the convergent flaps hinge on the case's aft
+    # flange, and each seal bridges the gap between two flaps -- which is
+    # the only thing a nozzle seal is for.
+    #
+    # None of this showed until the flaps stopped being 28-vertex facets.
+    # A 0.3-unit hinge overlap has to have a vertex in it to be found.
+    ("nozzle_unison_ring", "engine_casing_augmentor"),
+    ("nozzle_actuator_", "engine_casing_augmentor"),
+    ("nozzle_actuator_", "nozzle_unison_ring"),
+    ("nozzle_link_", "engine_casing_augmentor"),
+    ("nozzle_link_", "nozzle_unison_ring"),
+    ("nozzle_external_flap_", "engine_casing_augmentor"),
+    ("nozzle_flap_", "engine_casing_augmentor"),
+    ("nozzle_seal_", "engine_casing_augmentor"),
+    ("nozzle_flap_", "nozzle_seal_"),
+    ("nozzle_flap_", "nozzle_external_flap_"),
+    ("nozzle_seal_", "nozzle_external_flap_"),
+    ("nozzle_link_", "nozzle_flap_"),
+    ("nozzle_link_", "engine_flange_aug_aft"),
+    # The tail frame is a ring round the engine in the tailcone, so the
+    # cooling slots in that tailcone and the mount rails bolted to the frames
+    # pass through it -- which is what a frame is for.
+    ("bhd_tail", "bypass_slots"), ("bhd_tail", "mount_rails"),
+    ("bhd_tail", "engine_bay_doors"), ("bhd_tail", "engine_mount_links_rear"),
+    ("bhd_tail", "ventral_"),   # the ventral fins bolt to this frame
+    # the stabilator servo drives the pivot it is built on
+    ("stab_servo_", "stab_pivot_"),
 ]
 
 if __name__ == "__main__":

@@ -56,8 +56,11 @@ def _nozzle_panel(x0, x1, r0, r1, z, angle, width, thickness,
     without binding on each other at the edges.
     """
     def radius(u):
+        # inward, not outward. A convergent flap bows towards the throat --
+        # that is the direction that lets it close -- and bowing it the other
+        # way pushed all twelve of each set out through the augmentor casing.
         return (r0 + (r1 - r0) * u
-                + abs(r1 - r0) * 0.06 * math.sin(math.pi * u))
+                - abs(r1 - r0) * 0.05 * math.sin(math.pi * u))
 
     rows = []
     for i in range(n_x + 1):
