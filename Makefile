@@ -17,6 +17,7 @@ verify:
 	python3 tools/audit_watertight.py
 	python3 tools/audit_intersect.py
 	python3 tools/audit_joints.py
+	python3 tools/audit_support.py
 	python3 tools/audit_duct.py
 	python3 tools/audit_fit.py
 	python3 tools/audit_manifest.py

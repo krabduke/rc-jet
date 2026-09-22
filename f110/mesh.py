@@ -16,6 +16,33 @@ import math
 # Surfaces of revolution
 # --------------------------------------------------------------------------
 
+def _area2(loop):
+    """Twice the signed area of a closed (x, r) loop: positive anticlockwise."""
+    a2 = 0.0
+    for i in range(len(loop)):
+        x0, r0 = loop[i]
+        x1, r1 = loop[(i + 1) % len(loop)]
+        a2 += x0 * r1 - x1 * r0
+    return a2
+
+
+def _outward(loop, faces):
+    """Wind every face so the normals point out of the solid.
+
+    The faces below are written for an anticlockwise meridional loop. A loop
+    written the other way round came out inside-out -- a solid whose normals
+    all point in. Blender repairs that at build time, so nothing on screen
+    showed it, but every audit that asks whether a point is inside a part
+    counts crossings by which way the face turns, and an inside-out piece
+    scores a point inside it as outside. Two in five closed pieces across
+    the four models were built that way, which made the intersection audit
+    blind inside them.
+    """
+    if _area2(loop) < 0:
+        return [tuple(reversed(f)) for f in faces]
+    return faces
+
+
 def revolve_closed(profile, segments=96, phase=0.0, sweep=None):
     """Revolve a CLOSED meridional loop [(x, r), ...] into a watertight solid.
 
@@ -46,7 +73,7 @@ def revolve_closed(profile, segments=96, phase=0.0, sweep=None):
         faces.append(tuple(range(n - 1, -1, -1)))
         base = (rings - 1) * n
         faces.append(tuple(range(base, base + n)))
-    return verts, faces
+    return verts, _outward(profile, faces)
 
 
 def revolve_open(profile, segments=96, cap_start=False, cap_end=False, phase=0.0):
@@ -72,14 +99,16 @@ def revolve_open(profile, segments=96, cap_start=False, cap_end=False, phase=0.0
         verts.append((profile[0][0], 0.0, 0.0))
         for k in range(segments):
             k2 = (k + 1) % segments
-            faces.append((c, k2 * n, k * n))
+            faces.append((c, k * n, k2 * n))
     if cap_end:
         c = len(verts)
         verts.append((profile[-1][0], 0.0, 0.0))
         for k in range(segments):
             k2 = (k + 1) % segments
-            faces.append((c, k * n + n - 1, k2 * n + n - 1))
-    return verts, faces
+            faces.append((c, k2 * n + n - 1, k * n + n - 1))
+    # closed along the axis, which is where the caps close it
+    loop = list(profile) + [(profile[-1][0], 0.0), (profile[0][0], 0.0)]
+    return verts, _outward(loop, faces)
 
 
 def revolve_ring(profile, segments=96, phase=0.0):
