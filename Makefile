@@ -19,6 +19,8 @@ verify:
 	python3 tools/audit_joints.py
 	python3 tools/audit_support.py
 	python3 tools/audit_duct.py
+	python3 tools/check_intake.py
+	python3 tools/check_agility.py
 	python3 tools/audit_fit.py
 	python3 tools/audit_manifest.py
 	python3 tools/check_vendor.py

@@ -70,7 +70,8 @@ def check_enclosure():
                 worst = (frac, x)
     if worst[1] is not None:
         fails.append("ENCLOSURE: the duct's outer wall leaves the body -- "
-                     "worst at station %.0f, %.0f %% of the wall outside it"
+                     "worst at drawing station %.0f, %.0f %% of the wall "
+                     "outside it"
                      % (worst[1], worst[0] * 100))
     else:
         print("PASS  the body encloses the duct from the throat to station %.0f"
@@ -130,6 +131,12 @@ def check_delivery():
         fails.append("DELIVERY: the duct is still %.1f x %.1f at the fan face "
                      "-- it has to be round there" % (w, h))
 
+    # Areas and lengths are reported full size, like the engine's mass flow
+    # they are compared with; stations stay in drawing units, which is what
+    # the spec is written in. The throat used to be quoted in drawing mm^2
+    # one line above a capture area in full-size m^2.
+    S = spec.SCALE_TO_FULL
+
     # a subsonic diffuser never narrows
     prev, worst = None, None
     for i in range(120):
@@ -142,12 +149,12 @@ def check_delivery():
                 worst = (x, drop)
         prev = a
     if worst:
-        fails.append("DELIVERY: the bore narrows by %.1f mm^2 at station %.0f. "
-                     "A subsonic inlet duct diffuses all the way to the fan; "
-                     "it never contracts." % (worst[1], worst[0]))
+        fails.append("DELIVERY: the bore narrows by %.4f m^2 full size at "
+                     "drawing station %.0f. A subsonic inlet duct diffuses "
+                     "all the way to the fan; it never contracts."
+                     % (worst[1] * S * S / 1e6, worst[0]))
 
     # and the mouth has to pass what the engine swallows
-    S = spec.SCALE_TO_FULL
     lw, lh = I["lip_width"] / 2, I["lip_height"] / 2
     capture_m2 = math.pi * lw * lh * S * S / 1e6
     mdot = spec.ENGINE_FULL["mass_flow_kgs"]
@@ -161,9 +168,9 @@ def check_delivery():
         thr = math.pi * intake.duct_bore(I["x_throat"])[0] * \
             intake.duct_bore(I["x_throat"])[1]
         fan = math.pi * I["duct_r_end"] ** 2
-        print("PASS  the bore diffuses from the throat (%.0f mm^2, %.0f %% of "
-              "the fan face) to %.1f mm radius on the engine centreline"
-              % (thr, 100 * thr / fan, w))
+        print("PASS  the bore diffuses from the throat (%.3f m^2, %.0f %% of "
+              "the fan face) to a %.2f m radius on the engine centreline"
+              % (thr * S * S / 1e6, 100 * thr / fan, w * S / 1000.0))
         print("PASS  the mouth captures %.3f m^2 against the %.3f m^2 the "
               "engine needs at cruise" % (capture_m2, need))
 

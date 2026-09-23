@@ -48,7 +48,7 @@ Requires Blender (`brew install --cask blender`). Nothing else.
 
 ```
 make build      # generate geometry, assemble build/rcjet.blend, write parts.csv
-make verify     # 32 dimensional and design checks   <- the definition of done
+make verify     # 34 design checks and 17 audits      <- the definition of done
 make render     # hero, plan, cutaway and exploded views
 make export     # build/rcjet.glb  (Draco, 3.4 MB)
 make stl        # one STL per part, in millimetres
@@ -105,7 +105,12 @@ internals at every station it occupies — the tightest point is 0.9 mm.
 
 ## Verification
 
-`make verify` runs 32 checks. Dimensions are measured out of
+`make verify` runs `plane/verify.py`, 34 checks, and then seventeen audits of
+the build -- structure, geometry, closed surfaces, interference, joints,
+supports, the intake duct and inlet, turn performance, fit inside the skin,
+the manifest, the vendored engine, the full-scale figures in the docs, the
+panel solver and the viewer.
+In `plane/verify.py`, dimensions are measured out of
 `build/parts.csv`, so the envelope and fit checks test what actually got built.
 The rest are design rules:
 
