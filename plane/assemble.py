@@ -135,9 +135,15 @@ def set_pivot(ob, pivot):
 
 def apply_cutters(obj, cv, cf):
     cutter = make_object(obj.name + "__cut", cv, cf, bpy.context.scene.collection)
+    # an exact boolean reads inside from outside off the normals, and a
+    # cutter is joined from pieces authored in whatever winding they came in
+    recalc_normals(cutter)
     m = obj.modifiers.new("cut", "BOOLEAN")
     m.operation = "DIFFERENCE"
     m.solver = "EXACT"
+    # a cutter is often several solids joined, overlapping one another --
+    # both sides' stabilator cut-outs, both tail looms' mouse-holes
+    m.use_self = True
     m.object = cutter
     bpy.context.view_layer.objects.active = obj
     ok = True
@@ -251,6 +257,10 @@ def main():
         for name, (v, f) in sorted(objects.items()):
             cname = collection_for(name)
             ob = make_object(name, v, f, cols[cname])
+            # outward before cutting, not only after: the boolean takes the
+            # part's inside from its normals too
+            if name in cutters and not name.startswith("engine_"):
+                recalc_normals(ob)
             for cut in cutters.get(name, ()):
                 n_bool += 1
                 if apply_cutters(ob, *cut):
@@ -303,6 +313,10 @@ def main():
     tf = sum(r["faces"] for r in rows)
     print(f"\n{len(rows)} objects | {tv:,} verts | {tf:,} faces")
     print(f"booleans: {n_ok}/{n_bool} | sharp edges: {n_sharp:,}")
+    if n_ok < n_bool:
+        # a cut that did not go through leaves the material it was meant to
+        # remove -- the intake aperture, a gear bay, a loom's mouse-hole
+        raise SystemExit(f"{n_bool - n_ok} booleans failed")
     print(f"parts.csv -> {p}")
     blend = os.path.join(ROOT, "build", "rcjet.blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend)

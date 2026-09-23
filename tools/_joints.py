@@ -40,6 +40,8 @@ face has no vertex anywhere near the plate's own vertices.
 import fnmatch
 import math
 
+import numpy as np
+
 
 def _tris(verts, faces):
     for f in faces:
@@ -47,64 +49,102 @@ def _tris(verts, faces):
             yield verts[f[0]], verts[f[k]], verts[f[k + 1]]
 
 
-def _cells(verts, faces, h):
-    """Every grid cell this part's surface passes through.
+_BARY = {}
 
-    A triangle is walked at the grid pitch rather than tested exactly: the
-    result is a superset of the cells it truly crosses only by rounding, and
-    contact is a proximity question anyway.
+
+def _bary(n):
+    """Barycentric (u, v) samples of a triangle at n steps a side."""
+    b = _BARY.get(n)
+    if b is None:
+        uv = [(i / n, j / n) for i in range(n + 1) for j in range(n + 1 - i)]
+        b = _BARY[n] = np.array(uv, dtype=np.float64)
+    return b
+
+
+def _cell_keys(verts, faces, h):
+    """Every grid cell this part's surface passes through, as int64 keys.
+
+    The same sampling as before -- each triangle walked at the grid pitch,
+    at most 40 steps a side -- done a whole batch of equally sampled
+    triangles at a time instead of one point at a time.
     """
-    out = set()
+    tris = [(f[0], f[k], f[k + 1]) for f in faces for k in range(1, len(f) - 1)]
+    if not tris:
+        return np.empty(0, dtype=np.int64)
+    V = np.asarray(verts, dtype=np.float64)
+    T = np.asarray(tris, dtype=np.int64)
+    a, b, c = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
+    e = np.max(np.stack([np.abs(a - b), np.abs(a - c), np.abs(b - c)]), axis=(0, 2))
     inv = 1.0 / h
-    for a, b, c in _tris(verts, faces):
-        e = max(max(abs(a[i] - b[i]), abs(a[i] - c[i]), abs(b[i] - c[i]))
-                for i in range(3))
-        # 40, not 16. The cap is there to stop one enormous triangle
-        # costing everything, but at 16 a 300 mm triangle is sampled every
-        # 19 mm on a 2 mm grid -- so the rasterisation has holes in it and
-        # two parts that genuinely touch can be reported as separate. That
-        # is a false PASS on the assembly check and a false failure on a
-        # circuit, which is the worst way for this tool to be wrong.
-        n = min(40, int(e * inv) + 1)
-        for i in range(n + 1):
-            for j in range(n + 1 - i):
-                u, v = i / n, j / n
-                w = 1.0 - u - v
-                out.add((int(math.floor((a[0] * w + b[0] * u + c[0] * v) * inv)),
-                         int(math.floor((a[1] * w + b[1] * u + c[1] * v) * inv)),
-                         int(math.floor((a[2] * w + b[2] * u + c[2] * v) * inv))))
-    return out
+    n = np.minimum(40, (e * inv).astype(np.int64) + 1)
+    keys = []
+    for nn in np.unique(n):
+        sel = n == nn
+        uv = _bary(int(nn))
+        u, v = uv[:, 0][None, :, None], uv[:, 1][None, :, None]
+        w = 1.0 - u - v
+        p = a[sel][:, None, :] * w + b[sel][:, None, :] * u + c[sel][:, None, :] * v
+        q = np.floor(p.reshape(-1, 3) * inv).astype(np.int64)
+        keys.append(_pack(q))
+    return np.unique(np.concatenate(keys))
+
+
+_OFF = 1 << 20
+
+
+def _pack(q):
+    q = q + _OFF
+    return (q[:, 0] << 42) | (q[:, 1] << 21) | q[:, 2]
 
 
 def contact_graph(parts, tol):
     """name -> set of names whose surface comes within about `tol`.
 
-    Cells are dilated by one step along each axis before they are compared, so
-    two surfaces that fall either side of a cell boundary still meet. Without
-    that the answer depends on where the origin happens to be -- and the
-    dilation is done once per occupied cell rather than once per surface
-    sample, which is the difference between eight lookups and eight inserts
-    for every triangle in the model.
+    Two parts touch when some 2 x 2 x 2 block of cells holds surface of both
+    -- the dilation the per-cell version did, written as: each occupied cell
+    belongs to the eight blocks that contain it, and parts sharing a block
+    are neighbours.
     """
-    occ = {}
-    for name, (v, f) in parts.items():
-        for cell in _cells(v, f, tol):
-            occ.setdefault(cell, set()).add(name)
-    graph = {k: set() for k in parts}
-    for (cx, cy, cz) in occ:
-        near = None
-        for dx in (0, 1):
-            for dy in (0, 1):
-                for dz in (0, 1):
-                    got = occ.get((cx + dx, cy + dy, cz + dz))
-                    if got:
-                        near = set(got) if near is None else near | got
-        if near is None or len(near) < 2:
+    names = list(parts)
+    anchors, owners = [], []
+    step = [(dx << 42) | (dy << 21) | dz
+            for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)]
+    cells = [_cell_keys(*parts[name], tol) for name in names]
+    # a block is anchored at an occupied cell, as it always was
+    occupied = np.unique(np.concatenate(cells)) if cells else np.empty(0, np.int64)
+    for i, k in enumerate(cells):
+        if not k.size:
             continue
-        for a in near:
-            graph[a] |= near
-    for k in graph:
-        graph[k].discard(k)
+        # the blocks containing cell c are anchored at c - d, d in {0,1}^3
+        blk = np.unique(np.concatenate([k - s for s in step]))
+        blk = blk[np.isin(blk, occupied, assume_unique=True)]
+        anchors.append(blk)
+        owners.append(np.full(blk.size, i, dtype=np.int64))
+    graph = {k: set() for k in names}
+    if not anchors:
+        return graph
+    A = np.concatenate(anchors)
+    O = np.concatenate(owners)
+    # each (block, part) once, sorted by block then part
+    order = np.lexsort((O, A))
+    A, O = A[order], O[order]
+    keep = np.r_[True, (A[1:] != A[:-1]) | (O[1:] != O[:-1])]
+    A, O = A[keep], O[keep]
+    starts = np.flatnonzero(np.r_[True, A[1:] != A[:-1]])
+    size = np.diff(np.r_[starts, A.size])
+    # blocks shared by exactly two parts are nearly all of them: pair those
+    # in one go, and walk only the few that hold three or more
+    two = starts[size == 2]
+    pk = np.unique(O[two] * len(names) + O[two + 1])
+    pairs = {(int(k) // len(names), int(k) % len(names)) for k in pk}
+    for s0, m in zip(starts[size > 2], size[size > 2]):
+        g = O[s0:s0 + m].tolist()
+        for x in range(m):
+            for y in range(x + 1, m):
+                pairs.add((g[x], g[y]))
+    for x, y in pairs:
+        graph[names[x]].add(names[y])
+        graph[names[y]].add(names[x])
     return graph
 
 
