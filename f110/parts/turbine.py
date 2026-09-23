@@ -46,14 +46,16 @@ def _cooled_row(row):
                                 spec.RES["airfoil_chord_pts"],
                                 spec.RES["airfoil_span_pts"])]
     if row.rotor:
-        parts.append(airfoil.blade_platform(row, height=9.0))
+        parts.append(airfoil.blade_platform(
+            row, height=9.0, reach=spec.row_reach(row, 0.10)))
     else:
         parts.append(common._outer_band(row))
         parts.append(common._inner_shroud(row))
     if row.shrouded:
         parts.append(airfoil.tip_shroud(
             row, thickness=spec.SHROUD_THICKNESS,
-            standoff=spec.SHROUD_STANDOFF))
+            standoff=spec.SHROUD_STANDOFF,
+            reach=spec.row_reach(row, 0.06)))
 
     cutters = []
     for (p, d) in airfoil.cooling_hole_positions(row, n_rows=3, n_per_row=9):
@@ -89,9 +91,11 @@ def _discs():
     hpt = spec.HPT_ROWS[1]
     rim = min(hpt.r_hub_le, hpt.r_hub_te) - _platform_h(hpt)
     xc = hpt.x + hpt.chord * 0.5
+    # a bore 1.05 chords wide, not 1.45: the No.4 bearing is right behind
+    # this disc and its sump started where the wider bore ended
     parts_hp.append(common.disc(xc, hp["hp_outer_r"] + 22.0, rim,
                                 hpt.chord * 1.05, hpt.chord * 0.5,
-                                hpt.chord * 1.45))
+                                hpt.chord * 1.05))
     parts_hp.append(mesh.cone_tube(
         spec.STATION["combustor_exit"] - 60.0, xc - hpt.chord * 0.6,
         hp["hp_outer_r"], hp["hp_outer_r"] + 20.0,
@@ -105,15 +109,24 @@ def _discs():
         parts_lp.append(common.disc(xc, lp["lp_outer_r"] + 34.0, rim,
                                     row.chord * 1.0, row.chord * 0.46,
                                     row.chord * 1.4))
-    # drum linking the two LPT discs, and the cone down to the LP shaft
+    # Drum linking the two LPT discs, and the cone down to the LP shaft.
+    #
+    # The cone used to leave disc 2's rim and come down to the shaft at 2490,
+    # aft of the No.5 bearing. The turbine rear frame reaches that bearing
+    # from aft as well, so a turning cone and the static frame had to cross,
+    # and did -- through the sump and through each other. It leaves disc 2's
+    # bore now and meets the shaft forward of the sump.
     a, b = [r for r in spec.LPT_ROWS if r.rotor]
     ra = min(a.r_hub_le, a.r_hub_te) - _platform_h(a)
     rb = min(b.r_hub_le, b.r_hub_te) - _platform_h(b)
     parts_lp.append(mesh.cone_tube(a.x + a.chord, b.x,
                                    ra - 24.0, ra, rb - 24.0, rb, SEG))
+    bore = lp["lp_outer_r"] + 34.0
+    xb = b.x + b.chord * 0.5 + b.chord * 0.7 - 8.0     # inside disc 2's bore
+    x_sump = spec.BEARINGS[4][1] - 54.0
     parts_lp.append(mesh.cone_tube(
-        b.x + b.chord * 1.2, spec.STATION["lpt_exit"] + 90.0,
-        rb - 24.0, rb, lp["lp_outer_r"], lp["lp_outer_r"] + 26.0, SEG))
+        xb, x_sump - 20.0,
+        bore, bore + 26.0, lp["lp_outer_r"], lp["lp_outer_r"] + 26.0, SEG))
     out["lpt_disc_assembly"] = mesh.join(*parts_lp)
     return out
 

@@ -138,6 +138,20 @@ def _leading_edge_flaps():
     return out
 
 
+def flaperon_hinge(side):
+    """The flaperon's hinge line, as its inboard and outboard points: the one
+    line the surface turns about, the piano hinge is built on, and the viewer
+    pivots it on."""
+    sgn = -1.0 if side == "l" else 1.0
+    pts = []
+    for f in (FL["span_in"], FL["span_out"]):
+        chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
+        x_le = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"], f)
+        pts.append((x_le + chord * _hinge_u(), sgn * W["semi_span"] * f,
+                    W["z_root"]))
+    return tuple(pts)
+
+
 def _flaperons():
     """One flaperon per side, spanning the outer wing and shown deflected."""
     out = {}
@@ -155,7 +169,7 @@ def _flaperons():
         hinge_x = x_in + hu * c_in
         v, f = common.hinged_panel(
             FL["deflect"] * (1 if mir else -1),   # differential, as ailerons
-            hinge_x, W["z_root"],
+            hinge_x, W["z_root"], axis=flaperon_hinge(side),
             root_le=(x_in, W["semi_span"] * f_in * (-1 if mir else 1), W["z_root"]),
             root_chord=c_in, tip_chord=c_out, semi_span=span, sweep_le=sweep,
             dihedral=W["dihedral"], thickness=W["thickness"] * 0.80,
@@ -277,14 +291,13 @@ def pivots():
     it the way the servo does and feed the same angle to the aero solver.
     Without a pivot it would swing about the nose of the aircraft.
     """
-    hu = _hinge_u()
     out = {}
     for side, sgn in (("l", -1.0), ("r", 1.0)):
-        f_in = FL["span_in"]
-        c_in = common.local_chord(W["root_chord"], W["tip_chord"], f_in)
-        x_in = common.le_x_at(W["x_root_le"], W["semi_span"], W["sweep_le"],
-                              f_in)
-        out[f"flaperon_{side}"] = ((x_in + hu * c_in,
-                                    sgn * W["semi_span"] * f_in,
-                                    W["z_root"]), (0.0, 1.0, 0.0), sgn, "hinge")
+        p0, p1 = flaperon_hinge(side)
+        d = [p1[i] - p0[i] for i in range(3)]
+        n = math.sqrt(sum(c * c for c in d))
+        axis = tuple(c / n for c in d)
+        if axis[1] < 0:
+            axis = tuple(-c for c in axis)
+        out[f"flaperon_{side}"] = (p0, axis, sgn, "hinge")
     return out

@@ -1,4 +1,4 @@
-"""Rotating assembly: spinner, fan and HPC rotors, discs, drum, shafts, bearings."""
+"""Rotating assembly: fan and HPC rotors, discs, drum, shafts, bearings."""
 
 import math
 import sys, os
@@ -86,7 +86,6 @@ def _fir_tree_one(row, platform_h):
 
 def build():
     out = {}
-    out.update(_spinner())
     out.update(_fan_rotors())
     out.update(_hpc_rotor())
     out.update(_shafts())
@@ -95,34 +94,6 @@ def build():
 
 
 # --------------------------------------------------------------------------
-
-def _spinner():
-    s = spec.SPINNER
-    n = 30
-    prof = []
-    for i in range(n + 1):
-        f = i / n
-        x = s["x_nose"] + s["length"] * f
-        r = s["tip_radius"] + (s["base_radius"] - s["tip_radius"]) * (f ** s["ogive_power"])
-        prof.append((x, r))
-    # short cylindrical skirt where it bolts to the fan disc
-    prof.append((s["x_nose"] + s["length"] + 40.0, s["base_radius"]))
-    # A shell with a wall, closed at the aft rim.
-    #
-    # Left open at the back its rim was an edge with one face on it all the
-    # way round, so the spinner bounded no volume. Closed with a fan to the
-    # axis instead it became a solid cone, and a solid cone at the front of an
-    # engine contains the fan disc, the LP shaft and the front bearing sump --
-    # which the intersection audit then reported, correctly. A spinner is a
-    # 2 mm moulding bolted to the disc.
-    wall = 2.0
-    loop = list(prof) + [(x, max(r - wall, 0.8)) for (x, r) in reversed(prof)]
-    v, f = mesh.revolve_ring(loop, SEG)
-    skirt = mesh.tube(s["x_nose"] + s["length"] + 40.0 - 1.0,
-                      s["x_nose"] + s["length"] + 40.0,
-                      s["base_radius"] - 14.0, s["base_radius"], SEG)
-    return {"spinner": mesh.join((v, f), skirt)}
-
 
 def _platform_h(row):
     return max(4.0, min(12.0, (row.r_tip_le - row.r_hub_le) * 0.06))
@@ -231,6 +202,14 @@ def _slotted_disc(x_centre, r_bore, r_rim, width_rim, n_blades, row, platform_h,
     return mesh.join((core_v, core_f), (rim_verts, rim_faces),
                      (land_verts, land_faces))
 
+def _seal_span(a, b):
+    """Where the interstage seal between rotor rows a and b runs: from just
+    aft of a's trailing edge to just ahead of b's leading edge, at the radius
+    its fins clear the stator's inner shroud by."""
+    return (a.x + a.chord * 1.15, b.x - b.chord * 0.15,
+            min(a.r_hub_te, b.r_hub_le) - _platform_h(a) - 4.0)
+
+
 def _fan_rotors():
     """Three fan stages: blades, discs, and the conical arms tying them to the
     LP shaft. The spool is a drum-and-disc hybrid, as on the real engine."""
@@ -253,25 +232,44 @@ def _fan_rotors():
         disc_parts.append(_slotted_disc(xc, bore, rim, w_rim, row.count,
                                         row, ph, SEG))
 
-    # conical spacer arms between adjacent discs, carrying the interstage seals
+    # Spacer arms between adjacent discs, carrying the interstage seals.
+    #
+    # Each arm used to be a straight cone from one disc rim to the next. The
+    # rims climb with the flowpath hub, so the cone climbed too, and across
+    # the stator row between the two discs it rose through the vanes' inner
+    # platforms -- 13 mm into stage 1's: the rotor drum running through a
+    # stator. A drum rotor's arm drops under the stator instead, and the
+    # knife-edge seal it carries is what runs against the stator's inner
+    # shroud. So the arm rises from the rim to the seal land, runs level
+    # beneath the stator carrying the seal, and rises again to the next rim.
     for a, b in zip(rows, rows[1:]):
         xa = a.x + a.chord * 1.0
         xb = b.x
         ra = min(a.r_hub_le, a.r_hub_te) - _platform_h(a)
         rb = min(b.r_hub_le, b.r_hub_te) - _platform_h(b)
-        disc_parts.append(mesh.cone_tube(xa, xb, ra - 26.0, ra, rb - 26.0, rb, SEG))
+        sx0, sx1, sr = _seal_span(a, b)
+        land = sr - 4.0                   # the seal's land sits on the arm
+        t = 26.0
+        outer = [(xa, ra), (sx0, land), (sx1, land), (xb, rb)]
+        inner = [(x, r - t) for (x, r) in reversed(outer)]
+        disc_parts.append(mesh.revolve_closed(outer + inner, SEG))
 
-    # stub shaft forward of stage 1 to the No.1 bearing
-    r0 = min(rows[0].r_hub_le, rows[0].r_hub_te) - _platform_h(rows[0])
-    disc_parts.append(mesh.cone_tube(spec.STATION["igv"] - 30.0, rows[0].x,
-                                     lp_r, lp_r + 22.0, r0 - 26.0, r0, SEG))
+    # The fan's drive: a stub tube from the LP shaft into disc 1's bore, just
+    # aft of the No.1 bearing sump.
+    #
+    # It was a cone from the shaft at x -120 up to disc 1's rim, which ran
+    # through the whole sump -- a turning shell 24 mm deep in the housing of
+    # the bearing it turns in. The bearing's inner race is on the LP shaft
+    # itself; the fan only has to be tied to that shaft behind it.
+    x_sump_aft = spec.BEARINGS[0][1] + 54.0
+    disc_parts.append(mesh.tube(x_sump_aft + 4.0, rows[0].x + 10.0,
+                                lp_r, lp_r + 22.0, SEG))
     out["fan_disc_assembly"] = mesh.join(*disc_parts)
 
     # interstage labyrinth seals on the spool
     seals = []
     for a, b in zip(rows, rows[1:]):
-        xa, xb = a.x + a.chord * 1.15, b.x - b.chord * 0.15
-        r = min(a.r_hub_te, b.r_hub_le) - _platform_h(a) - 4.0
+        xa, xb, r = _seal_span(a, b)
         if xb > xa:
             seals.append(common.labyrinth_seal(xa, xb, r, 4, 6.0, 3.0, SEG))
     if seals:

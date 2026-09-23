@@ -152,7 +152,7 @@ def build():
 # Which of the engine's parts turn with which spool. The fan and the low
 # turbine share the LP shaft; the compressor and the high turbine share the
 # HP shaft, which turns faster and the other way. Everything else is static.
-LP_PARTS = ("blades_fan_", "fan_disc_assembly", "spinner", "shaft_lp",
+LP_PARTS = ("blades_fan_", "fan_disc_assembly", "shaft_lp",
             "lpt_disc_assembly", "blades_lpt_r")
 HP_PARTS = ("blades_hpc_", "hpc_drum", "hpc_front_cone", "hpc_rear_cone",
             "shaft_hp", "hpt_disc", "blades_hpt_r")

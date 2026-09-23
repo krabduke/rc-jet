@@ -220,10 +220,11 @@ export class WindTunnel {
         const sign = (c.sign && c.sign[i] !== undefined) ? c.sign[i] : 1;
         const ax = m.pivot.axis;
         // model axes are Blender's: x aft, y span, z up. The GLB is exported
-        // Y-up, so Blender z -> three y and Blender y -> three -z.
-        o.rotation.set(0, 0, 0);
-        if(Math.abs(ax[2]) > 0.5) o.rotation.y = ang * sign;      // vertical hinge
-        else o.rotation.z = -ang * sign;                          // spanwise hinge
+        // Y-up, so Blender (x, y, z) -> three (x, z, -y). The surface turns
+        // about its own hinge line, which is swept: turning it about the
+        // nearest principal axis swung the outboard end off its hinge.
+        const axis = new THREE.Vector3(ax[0], ax[2], -ax[1]).normalize();
+        o.quaternion.setFromAxisAngle(axis, ang * sign);
       });
     }
   }

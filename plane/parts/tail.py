@@ -49,37 +49,29 @@ def _pivots_hw():
     for side, sgn in (("l", -1.0), ("r", 1.0)):
         parts = []
         y_root = sgn * H["root_y"]
-        # trunnion shaft: from forward bearing out into the root rib, sized
-        # for a full-size hinge moment, not a 3 mm model wire
+        # Trunnion shaft: from the inboard bearing out into the root rib,
+        # sized for a full-size hinge moment, not a 3 mm model wire.
+        #
+        # The pivot axis runs a couple of units under the engine, so nothing
+        # round it can be inboard of the case's widest point: the shaft used
+        # to start at y 4, under the turbine, with its inboard bearing there
+        # too, and a frame-web box round both ran up into the LP turbine and
+        # down through the skin into the airflow. The case is round, so
+        # outboard of y 10 its underside is well above the pivot; that is
+        # where the bearings go, slimmed to what the pocket between the case
+        # and the skin can hold, and they bear on the fuselage structure
+        # round them instead of on a block of their own.
         shank_r = H["thickness"] * H["root_chord"] * 0.42
+        y_in = sgn * 10.0
         parts.append(mesh.pipe(
-            [(px, sgn * 4.0, pz), (px, y_root + sgn * 7.0, pz)], shank_r, 16))
-        # two spherical bearings, one either side of the tailpipe, pressed
-        # into bores in a fuselage frame
-        for yb in (sgn * 4.6, sgn * 11.0):
+            [(px, y_in, pz), (px, y_root + sgn * 7.0, pz)], shank_r, 16))
+        for yb in (sgn * 11.0, sgn * 14.0):
             bv, bf = mesh.revolve_ring(
-                [(0.0, shank_r * 1.12), (0.0, shank_r * 1.85),
-                 (shank_r * 1.55, shank_r * 1.85),
-                 (shank_r * 1.55, shank_r * 1.12)], 20)
-            # `px_ * sgn`, not `px_`. The ring's own axis runs 0 to 1.55
-            # shank radii, and unsigned it ran the same way in y on both
-            # sides -- outboard from the bore on one, inboard on the other.
-            # It was 2.8 mm from being a mirror, which is the whole width of
-            # a bearing race.
+                [(0.0, shank_r * 1.02), (0.0, shank_r * 1.35),
+                 (shank_r * 1.3, shank_r * 1.35),
+                 (shank_r * 1.3, shank_r * 1.02)], 20)
             parts.append(([(pz_ + px, px_ * sgn + yb, py_ + pz)
                            for (px_, py_, pz_) in bv], bf))
-        # The fuselage frame web the bearings sit in.
-        #
-        # It used to be centred 0.30 chord AFT of the pivot and run 0.72 of a
-        # chord, which put it at x 405-457 -- through the variable nozzle,
-        # whose flaps start at 423. Six of the twelve flaps, seals and
-        # external flaps came out inside it. A frame web carries the bearings
-        # and stops: forward of the pivot, and wide enough in y to bracket
-        # both races rather than passing between them.
-        frv, frf = mesh.box(px - H["root_chord"] * 0.24, sgn * 9.5, pz,
-                            H["root_chord"] * 0.44, 11.0,
-                            H["root_chord"] * 0.34)
-        parts.append((frv, frf))
         out[f"stab_pivot_{side}"] = mesh.join(*parts)
         out.update(_stab_servo(side, sgn, px, pz))
     return out

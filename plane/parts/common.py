@@ -186,15 +186,35 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
     return verts, faces
 
 
-def hinged_panel(deflect_deg, hinge_x, hinge_z, **kw):
-    """A control surface, rotated about its hinge line by the given angle."""
+def hinged_panel(deflect_deg, hinge_x, hinge_z, axis=None, **kw):
+    """A control surface, rotated about its hinge line by the given angle.
+
+    `axis`, when given, is the hinge line itself as two points. Without it
+    the surface turns about a line parallel to y through (hinge_x, hinge_z),
+    which is only the hinge when the hinge is unswept: on a swept hinge the
+    outboard end pivots about a point several units ahead of its own hinge,
+    and swings off it -- by 15 mm on one of the flaperons, which is how that
+    one came to be hanging in the air beside the wing."""
     v, f = panel(**kw)
-    a = math.radians(deflect_deg)
+    a = -math.radians(deflect_deg)
+    if axis is None:
+        p0, k = (hinge_x, 0.0, hinge_z), (0.0, 1.0, 0.0)
+    else:
+        p0, p1 = axis
+        d = [p1[i] - p0[i] for i in range(3)]
+        n = math.sqrt(sum(c * c for c in d))
+        k = tuple(c / n for c in d)
+        if k[1] < 0:                  # the same sense of rotation both sides
+            k = tuple(-c for c in k)
     ca, sa = math.cos(a), math.sin(a)
     out = []
-    for (x, y, z) in v:
-        dx, dz = x - hinge_x, z - hinge_z
-        out.append((hinge_x + dx * ca - dz * sa, y, hinge_z + dx * sa + dz * ca))
+    for q in v:
+        d = [q[i] - p0[i] for i in range(3)]
+        kd = sum(k[i] * d[i] for i in range(3))
+        kx = (k[1] * d[2] - k[2] * d[1], k[2] * d[0] - k[0] * d[2],
+              k[0] * d[1] - k[1] * d[0])
+        out.append(tuple(p0[i] + d[i] * ca + kx[i] * sa + k[i] * kd * (1 - ca)
+                         for i in range(3)))
     return out, f
 
 
@@ -220,13 +240,24 @@ def surface_z(W, f, u, upper=True):
     start at the skin. Guessing an offset from the mean line puts them either
     buried or floating, and the error grows towards the tip where the section
     is thinnest.
+
+    It is the loft's own sum (see `panel`): the section scaled by the
+    thickness taper, turned by the twist about the quarter chord, and raised
+    by the dihedral. Without the last three the answer was the root's section
+    at the tip station, which on this wing put the outboard vortex
+    generators up to 2 mm clear of the skin they are glued to.
     """
     import airfoil
     chord = local_chord(W["root_chord"], W["tip_chord"], f)
-    yt = airfoil.naca_thickness(u, W["thickness"])
+    t_tip = W.get("thickness_tip")
+    tv = 1.0 if t_tip is None else 1.0 + (t_tip / W["thickness"] - 1.0) * f
+    yt = airfoil.naca_thickness(u, W["thickness"]) * tv
     yc, _ = airfoil.camber_line(u, W.get("camber", 0.0))
     v = (yc + yt) if upper else (yc - yt)
-    return W["z_root"] + v * chord
+    tw = math.radians(W.get("incidence", 0.0) - W.get("washout", 0.0) * f)
+    du, dv = (u - 0.25) * chord, v * chord
+    rise = W["semi_span"] * f * math.tan(math.radians(W.get("dihedral", 0.0)))
+    return W["z_root"] + rise + du * math.sin(tw) + dv * math.cos(tw)
 
 
 def surface_z_frac(sect, u, upper=True):

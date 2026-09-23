@@ -174,16 +174,38 @@ def _screws():
     parts = []
     r = SD["screw_r"]
     per = max(SD["screws_per_panel"] // 2, 3)
-    for (_, x0, x1, a0, a1, h) in SD["panels"]:
+    for (_, x0, x1, a0, a1) in SD["panels"]:
         for i in range(per):
             f = i / (per - 1)
             for a in (a0, a1):
-                cx, cy, cz = fus.surface_point(x0 + (x1 - x0) * f, a, h)
-                parts.append(_dome(cx, cy, cz, r, 6, 2))
+                parts.append(_screw(x0 + (x1 - x0) * f, a, r))
             for x in (x0, x1):
-                cx, cy, cz = fus.surface_point(x, a0 + (a1 - a0) * f, h)
-                parts.append(_dome(cx, cy, cz, r, 6, 2))
+                parts.append(_screw(x, a0 + (a1 - a0) * f, r))
     return {"panel_screws": mesh.join(*parts)}
+
+
+def _screw(x, a, r):
+    """One screw head on a panel's face, square to the skin there.
+
+    The heads used to sit at the hatches' old standoff, 0.8 units out, over
+    panels that had become flush relief 0.15 out -- 80 of them hanging in the
+    air -- and they all faced +z, so on the panels under the aeroplane they
+    pointed into it. This one sits 0.02 into the panel's face, on the normal.
+    """
+    h = SD["relief"]
+    b = fus.surface_point(x, a, h - 0.02)
+    o = fus.surface_point(x, a, h + 1.0)
+    n = [o[i] - b[i] for i in range(3)]
+    ln = math.sqrt(sum(c * c for c in n))
+    n = [c / ln for c in n]
+    t1 = (0.0, -n[2], n[1])                      # n x (1, 0, 0)
+    l1 = math.sqrt(sum(c * c for c in t1)) or 1.0
+    t1 = [c / l1 for c in t1]
+    t2 = (n[1] * t1[2] - n[2] * t1[1], n[2] * t1[0] - n[0] * t1[2],
+          n[0] * t1[1] - n[1] * t1[0])
+    v, f = _dome(0.0, 0.0, 0.0, r, 6, 2)
+    return [tuple(b[i] + t1[i] * dx + t2[i] * dy + n[i] * dz for i in range(3))
+            for (dx, dy, dz) in v], f
 
 
 def _wing_seams():

@@ -27,17 +27,8 @@ TOL = 0.3            # mm, full size: further off than this is not touching
 DETACHED = {
     "duct_coupling": 5,
     "engine_blades_hpt_r1": 1,
-    "engine_vanes_fan_ogv": 72,
     "fcs_fcc_envelope": 11,
-    "flaperon_r": 1,
-    "panel_screws": 80,
     "tailpipe_shroud": 4,
-    "vg_l11": 1,
-    "vg_l12": 1,
-    "vg_l8": 1,
-    "vg_r11": 1,
-    "vg_r12": 1,
-    "vg_r8": 1,
 }
 # --- end DETACHED ---
 

@@ -54,7 +54,10 @@ STATION = {
     "igv":                 -90.0,
     "fan_face":              0.0,
     "fan_exit":            560.0,
-    "splitter":            580.0,
+    # Aft of the fan outlet guide vanes, which are full span. At 580 the
+    # splitter's nose was inside the third fan rotor (520 to 610), cutting the
+    # turning blades, and the guide vanes behind it crossed the core cowl.
+    "splitter":            715.0,
     "fan_frame":           700.0,
     "hpc_inlet":           760.0,
     "hpc_exit":           1540.0,
@@ -133,11 +136,22 @@ FAN_ROWS = [
              thickness=0.05, camber=0.065, rotor=False),
 ]
 
-SPINNER = {
-    "length":       400.0,
-    "base_radius":  232.0,
-    "tip_radius":     9.0,
+# The front frame's centre-body: the stationary nose the inlet guide vanes
+# stand on and bearing No.1 hangs from.
+#
+# This was a spinner -- a cone turning with the fan -- running from the nose
+# to the fan face. The F110's guide vanes are hub-mounted on a fixed front
+# frame, so a turning cone had them standing on nothing: their platforms
+# floated 46 mm above its surface, the flowpath ran on under them, and the
+# No.1 bearing sump sat inside a rotating shell with nothing static to hang
+# from. It is the frame's nose now, and it stops short of the fan.
+CENTRE_BODY = {
     "x_nose":      -400.0,
+    "tip_radius":     9.0,
+    "hub_radius":   224.0,   # the IGV platforms' underside: they sit on it
+    "x_shoulder":  -100.0,   # full radius just ahead of the IGV leading edge
+    "x_aft":         -3.0,   # 6.5 mm short of fan rotor 1's platform
+    "wall":           3.0,
     "ogive_power":    1.08,   # r = R * (x/L)^p -- sharp conical-ogive military nose
 }
 
@@ -255,12 +269,9 @@ SHAFTS = {
     "lp_outer_r":       96.0,
     "lp_inner_r":       74.0,
     "lp_x0":          -140.0,
-    # 2470, not 2420. The LP turbine's cone comes down to the shaft's own
-    # radius at station 2490, so at 2420 the low turbine and the fan it
-    # drives were two separate rotating assemblies with 70 mm of air between
-    # them -- and audit_intersect could not see it, because not touching is
-    # what it is looking for.
-    "lp_x1":          2496.0,
+    # Past the No.5 bearing in the turbine rear frame, which the shaft has to
+    # reach and carry.
+    "lp_x1":          2520.0,
     "hp_outer_r":      150.0,
     "hp_inner_r":      118.0,
     "hp_x0":           730.0,
@@ -273,7 +284,11 @@ BEARINGS = [
     ("brg_2_lp_roller",   690.0,  96.0, 148.0, "roller"),
     ("brg_3_hp_thrust",   745.0, 150.0, 214.0, "ball"),
     ("brg_4_hp_roller",  2128.0, 150.0, 212.0, "roller"),
-    ("brg_5_lp_roller",  2410.0,  96.0, 152.0, "roller"),
+    # In the turbine rear frame, where the frame hub can reach it from aft.
+    # At 2410 it sat forward of the hub, and the LP turbine's cone -- which has
+    # to get down to the shaft somewhere -- landed aft of it, so the rotating
+    # cone and the static frame crossed through the sump and each other.
+    ("brg_5_lp_roller",  2475.0,  96.0, 152.0, "roller"),
 ]
 
 # --------------------------------------------------------------------------
@@ -349,11 +364,32 @@ CASINGS = [
     # frame, and the frame's struts now end at 718 rather than running 62 mm
     # into the compressor drum. At 760 there was a 42 mm gap between the two
     # and the core gas path had no wall over it.
-    ("casing_hpc",        714.0, 1600.0, 471.0, 372.0, 14.0),
-    ("casing_combustor", 1600.0, 1990.0, 478.0, 420.0, 16.0),
+    # The HP compressor case ends at the compressor exit and the combustor
+    # case starts there. They used to meet at 1600 with nothing between r 398
+    # and r 478 -- a hole the width of the combustor in the pressure vessel --
+    # and the combustor case's front, at 478 to 508, stood through the core
+    # cowl into the bypass duct.
+    ("casing_hpc",        714.0, 1546.0, 471.0, 372.0, 14.0),
+    ("casing_combustor", 1540.0, 1990.0, 384.0, 420.0, 16.0),
     ("casing_turbine",   1990.0, 2520.0, 420.0, 462.0, 15.0),
     ("casing_augmentor", 2520.0, 3640.0, 470.0, 434.0, 11.0),
 ]
+
+# The largest outer radius a casing may reach. The HP compressor case's front
+# end is under the core cowl (the bypass duct's inner wall, r 479 to 486
+# there), where the fan frame bolts to it; with a 14 mm wall and its bolting
+# land it reached 497, through the cowl and 11 mm into the bypass air.
+CASING_CAP = {
+    "casing_hpc": BYPASS["inner_radius_fwd"] - 0.5,
+    "casing_combustor": 462.0,     # the cowl's bore over the combustor
+}
+
+# Stations a casing's bore must pass through, beyond its two ends and the
+# rotor tips it is pinned to. The combustor case steps out at its front
+# bulkhead, off the compressor case's end, to clear the diffuser and dome.
+CASING_STATIONS = {
+    "casing_combustor": [(1548.0, 442.0)],
+}
 
 # Running clearance from a rotor blade tip to the casing it turns inside.
 #
@@ -484,6 +520,8 @@ def casing_bore(name, x0, x1, r0, r1):
     # between their stations is what makes the casing follow the flowpath.
     rotors = pins([r for r in all_blade_rows() if r.rotor])
     stations = {x0: r0, x1: r1}
+    for x, r in CASING_STATIONS.get(name, ()):
+        stations[x] = r
     for x, r in rotors:
         stations[x] = max(stations.get(x, 0.0), r)
     table = sorted(stations.items())
@@ -527,13 +565,19 @@ def casing_inner(name, x):
 FLANGES = [
     ("flange_inlet",       0.0, 596.0, 626.0, 20.0, 36),
     ("flange_fan_rear",  580.0, 580.0, 612.0, 22.0, 36),
-    ("flange_hpc_fwd",   760.0, 466.0, 498.0, 20.0, 30),
+    # 485, not 498: this is the fan frame's inner ring bolting to the HP
+    # compressor case, under the core cowl, and at 498 it stood 12 mm out
+    # through the cowl into the bypass duct
+    ("flange_hpc_fwd",   760.0, 466.0, 485.0, 20.0, 30),
     # At the compressor exit, where the compressor casing bolts to the
     # combustor casing. It was at 1600, which is 60 mm downstream of the
     # exit -- out in the combustor, where the fuel nozzles come in through
     # the casing, and two of them ran through it.
-    ("flange_hpc_aft",  1534.0, 470.0, 504.0, 24.0, 30),
-    ("flange_comb_aft", 1990.0, 476.0, 510.0, 26.0, 32),
+    # On the cases they join. These two were at r 470 and 476, round the
+    # core cowl rather than the cases 90 and 50 mm inside it, bolting nothing.
+    # They are collars on the case now, clear of the vane bands inside it.
+    ("flange_hpc_aft",  1534.0, 381.0, 415.0, 24.0, 30),
+    ("flange_comb_aft", 1990.0, 422.0, 452.0, 26.0, 32),
     ("flange_turb_aft", 2520.0, 462.0, 496.0, 24.0, 32),
     ("flange_aug_aft",  3640.0, 434.0, 466.0, 20.0, 28),
 ]
@@ -600,7 +644,7 @@ MATERIAL_MAP = {
     "turbine_cooling_manifold": "steel",
     "bearing_sumps":       "steel",
 
-    "spinner":     "titanium",
+    "centre_body": "titanium",
     "fan_r":       "titanium",
     "fan_s":       "titanium",
     "fan_ogv":     "composite",
@@ -693,6 +737,29 @@ RES = {
 def all_blade_rows():
     """Every airfoil row in the engine, front to back."""
     return FAN_ROWS + HPC_ROWS + HPT_ROWS + LPT_ROWS
+
+
+def row_reach(row, frac):
+    """Axial extent (x0, x1) of a row's platform, band or shroud.
+
+    Each reaches `frac` of a chord past its airfoil at both ends, as before,
+    but never more than halfway to the neighbouring row, less 0.75 mm. At a
+    flat 10 % or 12 % the rotor platforms and stator bands of adjacent rows
+    overlapped wherever the rows are close -- 1 to 3.5 mm across the HP
+    compressor, where the gap between a stator's trailing edge and the next
+    rotor's leading edge is 6 to 8 mm -- so a turning platform ran through a
+    fixed one at every stage.
+    """
+    rows = sorted(all_blade_rows(), key=lambda r: r.x)
+    i = next(k for k, r in enumerate(rows) if r.name == row.name)
+    ahead = behind = frac * row.chord
+    if i > 0:
+        prev = rows[i - 1]
+        ahead = min(ahead, (row.x - (prev.x + prev.chord)) / 2.0 - 0.75)
+    if i + 1 < len(rows):
+        nxt = rows[i + 1]
+        behind = min(behind, (nxt.x - (row.x + row.chord)) / 2.0 - 0.75)
+    return row.x - max(ahead, 0.0), row.x + row.chord + max(behind, 0.0)
 
 
 def total_airfoil_count():

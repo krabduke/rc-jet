@@ -796,14 +796,28 @@ SKIN_DETAIL = {
     "seam_w":         1.5,
     "n_lengthwise":     4,
     "screws_per_panel": 12,
-    "screw_r":        0.75,
-    # (x0, x1, angle_from, angle_to, standoff) -- panels follow the section
+    # A countersunk head about 8 mm across at full size. It was 0.75 units,
+    # a 50 mm dome: the model's millimetres read as drawing units.
+    "screw_r":        0.12,
+    # How far a flush access panel's face stands proud of the skin, and so
+    # where its screws sit: 0.15 units, 5 mm at full size.
+    "relief":         0.15,
+    # (x0, x1, angle_from, angle_to) -- panels follow the section.
+    #
+    # The avionics bay is on the spine behind the canopy, from 182. It ran
+    # from 115, which is inside the cockpit: a plate across the canopy sill,
+    # through the pilot. The "receiver" hatch is gone -- a radio receiver is
+    # the model's, not the aeroplane's -- and the column that used to give
+    # each panel a hatch's standoff is gone with the hatches.
     "panels": [
-        ("battery",   188.0, 268.0,  58.0, 122.0, 0.9),
-        ("receiver",  166.0, 202.0,  16.0,  54.0, 0.8),
-        ("avionics",  115.0, 312.0,  58.0, 122.0, 0.9),
-        ("gearbay",   258.0, 300.0, 236.0, 304.0, 0.8),
-        ("fuel",      312.0, 352.0, 236.0, 304.0, 0.8),
+        ("avionics",  182.0, 248.0,  58.0, 122.0),
+        ("battery",   252.0, 300.0,  58.0, 122.0),   # short of the rudder servo
+        # Under the fuselage, forward of the engine bay doors, which take the
+        # whole underside from x 308. The main gear folds into the wings, so
+        # the hatch on the centre line is the hydraulic bay, not a "gearbay";
+        # the fuel hatch was aft of 308, on top of the bay doors.
+        ("fuel",      216.0, 254.0, 236.0, 304.0),
+        ("hydraulics", 258.0, 300.0, 236.0, 304.0),
     ],
 }
 

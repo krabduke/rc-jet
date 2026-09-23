@@ -139,13 +139,27 @@ class Model:
             self.box[n] = _box(v)
             self.isl[n] = [(BVHTree.FromPolygons(iv, if_, epsilon=0.0),) + _box(iv) + (iv,)
                            for iv, if_ in _islands(v, f)]
+        # Cutters are tested a closed piece at a time, like the parts: a
+        # cutter is often several solids joined -- the bores of a bank and
+        # the crank's swept space -- and where two of them overlap, parity
+        # against the whole mesh counts two surfaces and calls the point
+        # uncut.
         self.cut = {}
         for n, solids in cuts.items():
             L = []
             for tris, lo, hi in solids:
                 vs = [tuple(p) for t in tris for p in t]
                 fs = [(3 * i, 3 * i + 1, 3 * i + 2) for i in range(len(tris))]
-                L.append((BVHTree.FromPolygons(vs, fs, epsilon=0.0), lo, hi))
+                welded, idx = {}, []
+                for p in vs:
+                    k = (round(p[0], 6), round(p[1], 6), round(p[2], 6))
+                    idx.append(welded.setdefault(k, len(welded)))
+                wv = [None] * len(welded)
+                for k, i in welded.items():
+                    wv[i] = k
+                wf = [tuple(idx[j] for j in f) for f in fs]
+                for iv, if_ in _islands(wv, wf):
+                    L.append((BVHTree.FromPolygons(iv, if_, epsilon=0.0),) + _box(iv))
             self.cut[n] = L
         lo = [min(self.box[n][0][i] for n in self.names) for i in range(3)]
         hi = [max(self.box[n][1][i] for n in self.names) for i in range(3)]
@@ -399,6 +413,7 @@ def intersect_main(path, root, pkg, expected, known, tol_mm, unit):
         print(f"KNOWN shrunk to {len(kept)} entries ({len(known) - len(kept)} "
               f"removed); nothing was added")
         fixed = []
+        known = {k: v[0] for k, v in kept.items()}
     if new:
         print(f"\n{len(new)} pairs share material that nothing declared:")
         for (a, b), (mm, w) in sorted(new.items(), key=lambda kv: -kv[1][0]):
@@ -446,6 +461,7 @@ def support_main(path, root, pkg, detached_known, tol_mm, unit):
         rewrite_block(path, DET_START, DET_END, _fmt_detached(kept))
         print(f"DETACHED shrunk to {len(kept)} parts; nothing was added")
         fewer = {}
+        detached_known = kept
     if new:
         print(f"\n{len(new)} parts have more free-floating pieces than allowed:")
         for n, k in sorted(new.items()):

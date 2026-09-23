@@ -162,24 +162,26 @@ def _sector(prof, dphi, n_seg):
     return verts, faces
 
 
-def blade_platform(row, width_frac=1.0, height=9.0, n_seg=6):
+def blade_platform(row, width_frac=1.0, height=9.0, n_seg=6, reach=None):
     """The root platform the blade sits on -- one tangential sector of the
-    hub flowpath, spanning this blade's share of the circumference."""
+    hub flowpath, spanning this blade's share of the circumference.
+
+    `reach` is its axial extent (x0, x1); by default a tenth of a chord past
+    the airfoil each way. Callers that know the neighbouring rows pass
+    spec.row_reach so the platform stops short of them."""
     r0 = min(row.r_hub_le, row.r_hub_te)
     dphi = 2.0 * math.pi / row.count * 0.97 * width_frac
-    x0 = row.x - row.chord * 0.10
-    x1 = row.x + row.chord * 1.10
+    x0, x1 = reach or (row.x - row.chord * 0.10, row.x + row.chord * 1.10)
     return _sector([(x0, r0 - height), (x1, r0 - height), (x1, r0), (x0, r0)],
                    dphi, n_seg)
 
 
-def tip_shroud(row, thickness=6.0, standoff=4.0):
+def tip_shroud(row, thickness=6.0, standoff=4.0, reach=None):
     """Interlocking tip shroud for shrouded turbine rows: a short annular
-    sector sitting on the blade tip."""
+    sector sitting on the blade tip. `reach` as for blade_platform."""
     r0 = max(row.r_tip_le, row.r_tip_te)
     dphi = 2.0 * math.pi / row.count * 0.99
-    x0 = row.x - row.chord * 0.06
-    x1 = row.x + row.chord * 1.06
+    x0, x1 = reach or (row.x - row.chord * 0.06, row.x + row.chord * 1.06)
     r1 = r0 + standoff + thickness
     return _sector([(x0, r0), (x1, r0), (x1, r1), (x0, r1)], dphi, 5)
 

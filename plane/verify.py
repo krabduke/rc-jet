@@ -290,7 +290,7 @@ def main():
             "stab_servo_l", "panel_screws", "seam_lengthwise",
             "fcs_fcc_envelope", "fcs_loom_trunk_upper_l", "fcs_loom_tail_l",
             "pitot", "navlight_port", "navlight_tail", "antennas",
-            "panel_battery", "panel_avionics", "panel_gearbay",
+            "panel_battery", "panel_avionics", "panel_hydraulics",
             "vg_l1", "wing_strake_r", "nose_strakes",
             "fuel_tank", "fuel_pump", "naca_inlet_l", "mount_ring",
             "bypass_slots", "tailpipe_shroud",

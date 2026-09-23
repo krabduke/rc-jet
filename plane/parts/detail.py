@@ -26,7 +26,7 @@ FL = spec.FLAPERON
 # belongs in spec.py (next to SKIN_DETAIL): how far flush access relief may
 # stand proud of the skin. 0.15 units is 5 mm full size -- a panel line plus a
 # fastener row, which is all an inspection panel shows on a real airframe.
-SKIN_RELIEF = 0.15
+SKIN_RELIEF = spec.SKIN_DETAIL["relief"]
 
 
 def build():
@@ -110,15 +110,32 @@ def _skin_z(name, x, y, upper=True):
     Reading the part that is actually built cannot drift. This does mean the
     wing has to be built before the detail that lands on it, which is why the
     module is imported here and not at the top.
+
+    It is the surface under the point, off the triangle there, not the
+    highest vertex within 6 units: that is the crest of the section ahead of
+    or behind the point, and it stood the vortex generators on the outer wing
+    up to 2 mm clear of the skin sloping away beneath them.
     """
     if name not in _SKIN:
         from parts import wing
-        _SKIN[name] = wing.build()[name][0]
-    near = [pz for (px, py, pz) in _SKIN[name]
-            if (px - x) ** 2 + (py - y) ** 2 <= 36.0]
-    if not near:
-        return None
-    return max(near) if upper else min(near)
+        _SKIN[name] = wing.build()[name]
+    verts, faces = _SKIN[name]
+    best = None
+    for q in faces:
+        for k in range(1, len(q) - 1):
+            a, b, c = verts[q[0]], verts[q[k]], verts[q[k + 1]]
+            det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+            if abs(det) < 1e-12:
+                continue
+            l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det
+            l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det
+            l3 = 1.0 - l1 - l2
+            if min(l1, l2, l3) < -1e-9:
+                continue
+            z = l1 * a[2] + l2 * b[2] + l3 * c[2]
+            if best is None or (z > best if upper else z < best):
+                best = z
+    return best
 
 
 def _vg_rows():
@@ -163,8 +180,10 @@ def _vg_rows():
             # alternate the yaw so the pair sheds counter-rotating vortices
             a = math.radians(D["vg_yaw"] * (1 if k % 2 else -1))
             ca, sa = math.cos(a), math.sin(a)
+            # bedded 1 mm (full size) into the skin, so its straight foot
+            # still bears on a surface that curves under it
             vgs.append(([(x_le + chord * D["vg_x"] + px * ca - py * sa,
-                          y + px * sa + py * ca, z0 + h / 2 + pz)
+                          y + px * sa + py * ca, z0 - 0.03 + h / 2 + pz)
                          for (px, py, pz) in v], f))
     # a vortex generator is a separately bonded tab; there are 24 of them
     half = len(vgs) // 2
@@ -289,10 +308,7 @@ def _access_panels():
     """
     out = {}
     t = SKIN_RELIEF
-    for (name, x0, x1, a0, a1, _h) in spec.SKIN_DETAIL["panels"]:
-        if name == "receiver":
-            # no receiver on a full-size aeroplane, so no panel for one
-            continue
+    for (name, x0, x1, a0, a1) in spec.SKIN_DETAIL["panels"]:
         out[f"panel_{name}"] = _panel_relief(x0, x1, a0, a1, t)
     return out
 

@@ -475,7 +475,7 @@ def _rear_spar():
     f0 = _wing._root_span0() + 1.0 / W["semi_span"]
     # Two paths, one per panel. A single path from -tip to +tip would step
     # straight across the fuselage from y -23 to +23 at its middle point --
-    # through the engine's spinner, which is exactly where it went.
+    # through the engine's nose, which is exactly where it went.
     paths = []
     for sgn in (-1.0, 1.0):
         pts = []
@@ -562,15 +562,10 @@ def _hinges():
     out = {}
     r = ST["hinge_r"]
     kn = ST["hinge_knuckles"]
-    for side, sgn in (("l", -1.0), ("r", 1.0)):
-        pts = []
-        for f in (FL["span_in"], FL["span_out"]):
-            chord = common.local_chord(W["root_chord"], W["tip_chord"], f)
-            x_le = common.le_x_at(W["x_root_le"], W["semi_span"],
-                                  W["sweep_le"], f)
-            pts.append((x_le + chord * (1 - FL["chord_frac"]),
-                        sgn * W["semi_span"] * f, W["z_root"]))
-        out[f"hinge_flaperon_{side}"] = _piano_hinge(pts[0], pts[1], r, kn)
+    from parts.wing import flaperon_hinge
+    for side in ("l", "r"):
+        p0, p1 = flaperon_hinge(side)
+        out[f"hinge_flaperon_{side}"] = _piano_hinge(p0, p1, r, kn)
 
     x_h = V["x_root_le"] + V["root_chord"] * (1 - V["rudder_chord"])
     x_t = (V["x_root_le"] + V["height"] * math.tan(math.radians(V["sweep_le"]))

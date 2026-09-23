@@ -937,21 +937,48 @@ def _systems():
     out["turbine_cooling_manifold"] = mesh.join(*pieces)
 
     # ---- bearing sumps: the bearings were modelled without housings --------
+    def _scavenge_end(name, r_house, bx):
+        """(radius, clock, x) where a sump's scavenge line ends.
+
+        Every line used to run 60 mm straight out and 30 mm aft, whatever was
+        there. No.1's went out through the nose it sits in, and No.3's aft
+        into the compressor's front cone -- a static pipe through a rotor.
+        Each now ends in the frame that carries its sump."""
+        if name == "brg_1_lp_thrust":
+            # into the centre-body's skin, inside the guide vanes' hub
+            c = spec.CENTRE_BODY
+            return c["hub_radius"] - c["wall"] - 2.0, -90.0, bx + 30.0
+        if name == "brg_3_hp_thrust":
+            # forward into the fan frame hub, away from the HPC front cone
+            return r_house + 74.0, -90.0, bx - 30.0
+        return r_house + 74.0, -90.0, bx + 30.0
+
     pieces = []
     for (name, bx, r_shaft, r_house, kind) in spec.BEARINGS:
         # the sealed can around the bearing, with its scavenge boss
         # +11, not +3: the shafts now carry raised bearing journals (5.7 mm on
         # the LP spool, 8.3 on the HP), so a housing bore 3 mm off the nominal
         # shaft diameter closed on the journal it is supposed to run on
+        # No.4 sits right behind the HP turbine disc, whose bore reached 30 mm
+        # into a sump that ran 54 mm ahead of the bearing; its can starts
+        # just ahead of the race instead.
+        # And No.2, the LP bearing just ahead of the HP spool, ran 54 mm aft
+        # and closed round the first 14 mm of the HP shaft; it stops 4 mm
+        # short of it.
+        fore = 22.0 if name == "brg_4_hp_roller" else 54.0
+        aft = 54.0
+        if name == "brg_2_lp_roller":
+            aft = spec.SHAFTS["hp_x0"] - 4.0 - bx
         hv, hf = mesh.revolve_closed(
-            [(bx - 54.0, r_shaft + 11.0), (bx + 54.0, r_shaft + 11.0),
-             (bx + 54.0, r_house + 4.0), (bx + 40.0, r_house + 16.0),
-             (bx - 40.0, r_house + 16.0), (bx - 54.0, r_house + 4.0)],
+            [(bx - fore, r_shaft + 11.0), (bx + aft, r_shaft + 11.0),
+             (bx + aft, r_house + 4.0), (bx + aft - 14.0, r_house + 16.0),
+             (bx - fore + 14.0, r_house + 16.0), (bx - fore, r_house + 4.0)],
             segments=40)
         pieces.append((hv, hf))
-        # scavenge line off the bottom of the sump
+        # scavenge line off the bottom of the sump, out to the static
+        # structure the sump hangs from
         p0 = _at(r_house + 14.0, -90.0, bx)
-        p1 = _at(r_house + 74.0, -90.0, bx + 30.0)
+        p1 = _at(*_scavenge_end(name, r_house, bx))
         pieces.append(mesh.pipe([p0, p1], 8.0, segments=10))
     out["bearing_sumps"] = mesh.join(*pieces)
 

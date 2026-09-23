@@ -24,7 +24,8 @@ def build_row(row, platform=True):
     if platform:
         if row.rotor:
             h = max(4.0, min(12.0, (row.r_tip_le - row.r_hub_le) * 0.06))
-            parts.append(airfoil.blade_platform(row, height=h))
+            parts.append(airfoil.blade_platform(
+                row, height=h, reach=spec.row_reach(row, 0.10)))
         else:
             parts.append(_outer_band(row))
             parts.append(_inner_shroud(row))
@@ -32,7 +33,8 @@ def build_row(row, platform=True):
     if row.shrouded:
         parts.append(airfoil.tip_shroud(
             row, thickness=spec.SHROUD_THICKNESS,
-            standoff=spec.SHROUD_STANDOFF))
+            standoff=spec.SHROUD_STANDOFF,
+            reach=spec.row_reach(row, 0.06)))
 
     one_v, one_f = mesh.join(*parts)
     return mesh.replicate(one_v, one_f, row.count)
@@ -55,8 +57,7 @@ def _outer_band(row, height=None, n_seg=6):
     r0 = max(row.r_tip_le, row.r_tip_te)
     if height is not None:
         return _sector_band(row, r0, r0 + height, n_seg)
-    x0 = row.x - row.chord * 0.12
-    x1 = row.x + row.chord * 1.12
+    x0, x1 = spec.row_reach(row, 0.12)
     cas = spec.enclosing_casing(row.x + row.chord * 0.5, r0)
     xs = [x0 + (x1 - x0) * i / 5.0 for i in range(6)]
     low = [(x, spec.row_outer_r(row, x)) for x in xs]
@@ -76,19 +77,30 @@ def _inner_shroud(row, height=8.0, n_seg=6, clearance=3.0):
     """
     r1 = min(row.r_hub_le, row.r_hub_te)
     lo = r1 - height
-    floor = hpc_drum_radius_max(row.x - row.chord * 0.12,
-                                row.x + row.chord * 1.12)
+    x0, x1 = spec.row_reach(row, 0.12)
+    floor = hpc_drum_radius_max(x0, x1)
     if floor is not None:
         lo = max(lo, floor + clearance)
     if lo >= r1 - 0.5:
         lo = r1 - 0.5
-    return _sector_band(row, lo, r1, n_seg)
+
+    # The top follows the hub line along the chord, which is where the vane's
+    # root is. Held flat at the lower of the two hub radii it met the root at
+    # the leading edge only, and the vanes of six compressor rows stood clear
+    # of the shroud meant to carry them -- held on, until the platforms of the
+    # rotors either side stopped overlapping it, by nothing.
+    def hub(x):
+        t = min(max((x - row.x) / row.chord, 0.0), 1.0)
+        return row.r_hub_le + (row.r_hub_te - row.r_hub_le) * t
+    xs = [x0 + (x1 - x0) * i / 6.0 for i in range(7)]
+    low = [(x, lo) for x in xs]
+    top = [(x, hub(x)) for x in reversed(xs)]
+    return _sector_band(row, None, None, n_seg, prof=low + top)
 
 
 def _sector_band(row, r_lo, r_hi, n_seg=6, prof=None):
     dphi = 2.0 * math.pi / row.count * 0.98
-    x0 = row.x - row.chord * 0.12
-    x1 = row.x + row.chord * 1.12
+    x0, x1 = spec.row_reach(row, 0.12)
     if prof is None:
         prof = [(x0, r_lo), (x1, r_lo), (x1, r_hi), (x0, r_hi)]
     verts, faces = [], []
@@ -144,7 +156,7 @@ def labyrinth_seal(x0, x1, r, n_fins=4, fin_h=5.0, fin_w=2.5, segments=64):
 
 
 def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None,
-                  bore=None):
+                  bore=None, cap=None):
     """Meridional loop for a casing can or a flowpath shell.
 
     A casing is not a tube. It is a rolled and machined can with a thick
@@ -200,7 +212,12 @@ def shell_profile(x0, x1, r0, r1, wall, ribs=True, n_rib=None,
     prof = [(x, r_in(x)) for x in inner_x]
     for (f, extra) in reversed(outer):
         x = x0 + L * f
-        prof.append((x, r_in(x) + wall + extra))
+        r = r_in(x) + wall + extra
+        if cap is not None:
+            # nothing on the outside may stand past `cap`: a land or a rib
+            # that does is standing in whatever is outside this shell
+            r = max(r_in(x) + wall, min(r, cap))
+        prof.append((x, r))
     return prof
 
 
