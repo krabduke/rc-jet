@@ -466,6 +466,27 @@ def _towershaft():
     return {"towershaft": mesh.join(shaft, (gv, gf), (hv, hf))}
 
 
+# The engine control unit: a can on the fan case at 5 o'clock, with a bank of
+# connectors down its outboard face. The harness that serves it and the unit
+# itself both read this, so the wiring lands on the connectors.
+CONTROL = {"clock": 150.0, "x0": 306.0, "x1": 566.0, "r": 74.0}
+
+
+def _control_centre_r():
+    c = CONTROL
+    return _casing_outer(0.5 * (c["x0"] + c["x1"])) + c["r"] + 4.0
+
+
+def _connector_x(i):
+    return CONTROL["x0"] + 34.0 + i * 46.0
+
+
+def _connector_top(i):
+    """The outer end of connector i, on the unit's clock line."""
+    return _at(_control_centre_r() + CONTROL["r"] * 0.86 + 26.0,
+               CONTROL["clock"], _connector_x(i))
+
+
 def _casing_radius(x):
     """Outer radius of whatever casing is at station x -- so external lines can
     be routed to lie on the engine instead of floating beside it."""
@@ -578,12 +599,25 @@ def _plumbing():
     # and the branch down to the control unit, which sits at 7-8 o'clock on
     # the fan case. The trunks run along the top, so the FADEC was 292 mm
     # from the nearest wire on an engine whose every schedule it sets.
-    brc = [_at(_casing_radius(430.0) + 26.0, 84.0 + t * 56.0 / 10.0, 430.0)
-           for t in range(11)]
-    harness.append(mesh.pipe(brc, A["harness_r"] * 0.85, 10))
-    harness.append(mesh.pipe(
-        [_at(_casing_radius(430.0) + 26.0, 140.0, 430.0),
-         _at(735.0, 139.0, 430.0)], A["harness_r"] * 0.85, 10))
+    #
+    # Round the case to just short of the unit, out past its outboard face,
+    # and down onto the middle connector. It used to end in the air where
+    # the connectors had been drawn, 135 mm round the engine from the unit.
+    hr = A["harness_r"] * 0.85
+    top = _connector_top(2)
+    r_top = math.hypot(top[1], top[2])
+    clear = CONTROL["clock"] - 14.0
+    brc = [_at(_casing_radius(430.0) + 26.0, 84.0 + t * (clear - 84.0) / 10.0,
+               430.0) for t in range(11)]
+    brc += [_at(r_top + hr + 14.0, clear, 430.0),
+            _at(r_top + hr + 14.0, CONTROL["clock"], top[0]),
+            _at(r_top - 1.0, CONTROL["clock"], top[0])]
+    harness.append(mesh.pipe(brc, hr, 10))
+    # and the plug on its end, over the connector's shell: the connector is
+    # a ring, and a bare loom ended inside its bore touching nothing
+    harness.append(mesh.pipe([_at(r_top - 6.0, CONTROL["clock"], top[0]),
+                              _at(r_top + 10.0, CONTROL["clock"], top[0])],
+                             17.5, 16))
     out["harnesses"] = mesh.join(*harness)
 
     return out
@@ -668,16 +702,23 @@ def _systems():
          (xh1 - 18.0, rh * 0.81), (xh0 + 18.0, rh * 0.81)], ang, rh, xh0, xh1,
         seg=24)
     pieces = [cooler]
-    # inlet and outlet unions, out of each end cap along the engine
-    for ex, sgn in ((xh0 - 6.0, -1.0), (xh1 + 6.0, 1.0)):
+    # Inlet and outlet unions, out of each end cap along the engine. They
+    # were offset by turning the clock angle, which at this radius moved
+    # each one 80 mm round the engine and off the cooler, and each was stood
+    # up radially. They sit on the caps, either side of the cooler's axis,
+    # and point fore and aft.
+    a = math.radians(ang)
+    tang = (0.0, -math.sin(a), math.cos(a))
+    axis = _at(rh_ctr, ang, 0.0)
+    prof = [(0.0, 5.0), (22.0, 5.0), (22.0, 15.0), (30.0, 15.0),
+            (30.0, 11.0), (12.0, 11.0), (12.0, 13.0), (0.0, 13.0)]
+    for x_cap, sgn in ((xh0, -1.0), (xh1, 1.0)):
         for off in (-0.30, 0.30):
             uv, uf = mesh.revolve_closed(
-                [(0.0, 5.0), (22.0, 5.0), (22.0, 15.0), (30.0, 15.0),
-                 (30.0, 11.0), (12.0, 11.0), (12.0, 13.0), (0.0, 13.0)],
+                [(x_cap - sgn * 6.0 + sgn * px, pr) for (px, pr) in prof],
                 segments=14)
-            up = _at(rh_ctr, ang + off * 26.0, ex)
-            uv = radial(uv, ang + off * 26.0)
-            pieces.append((mesh.translate(uv, up[0], up[1], up[2]), uf))
+            dy, dz = axis[1] + tang[1] * off * rh, axis[2] + tang[2] * off * rh
+            pieces.append((mesh.translate(uv, 0.0, dy, dz), uf))
     for sx in (xh0 + 52.0, xh1 - 52.0):
         sv, sf = strap(sx, ang, rh_ctr + rh * 0.30,
                        _casing_outer(sx) + 2.0, 20.0)
@@ -685,9 +726,9 @@ def _systems():
     out["heat_exchanger"] = mesh.join(*pieces)
 
     # ---- engine control (AFTC): schedules fuel and nozzle area -------------
-    ang = 150.0
-    xc0, xc1 = 306.0, 566.0
-    rc_ = 74.0
+    ang = CONTROL["clock"]
+    xc0, xc1 = CONTROL["x0"], CONTROL["x1"]
+    rc_ = CONTROL["r"]
     ctl, rc_ctr = mount(
         [(xc0, 10.0), (xc0 + 12.0, rc_), (xc1 - 12.0, rc_), (xc1, 10.0),
          (xc1 - 22.0, rc_ * 0.81), (xc0 + 22.0, rc_ * 0.81)], ang, rc_,
@@ -699,9 +740,11 @@ def _systems():
             [(0.0, 7.0), (18.0, 7.0), (18.0, 19.0), (26.0, 19.0),
              (26.0, 15.0), (10.0, 15.0), (10.0, 17.0), (0.0, 17.0)],
             segments=12)
-        kx = xc0 + 34.0 + i * 46.0
-        kp = _at(rc_ctr + rc_ * 0.72, ang - 13.0, kx)
-        kv = radial(kv, ang - 13.0)
+        kx = _connector_x(i)
+        # out of the box's outboard face, seated in it. At `ang - 13` they
+        # were 135 mm round the engine from the box, in the air.
+        kp = _at(rc_ctr + rc_ * 0.86, ang, kx)
+        kv = radial(kv, ang)
         pieces.append((mesh.translate(kv, kp[0], kp[1], kp[2]), kf))
     for sx in (xc0 + 44.0, xc1 - 44.0):
         sv, sf = strap(sx, ang, rc_ctr + rc_ * 0.30,
@@ -838,7 +881,16 @@ def _systems():
     ang = -150.0
     path = [_at(_casing_outer(x) + 34.0, ang, x)
             for x in (1180.0, 900.0, 620.0, 300.0, 40.0, -180.0, -330.0)]
+    # and in through the inlet case to the manifold ring at the lip. The run
+    # used to stop outside the case, and the ring inside it was fed by
+    # nothing.
+    path.append(_at(556.0, ang, -352.0))
     pieces.append(mesh.pipe(path, 22.0, segments=16))
+    # through a hole in the inlet case, which is how it gets in
+    a, b = path[-2], path[-1]
+    lead = tuple(b[k] + (b[k] - a[k]) / math.dist(a, b) * 20.0 for k in range(3))
+    tail = tuple(a[k] - (b[k] - a[k]) / math.dist(a, b) * 20.0 for k in range(3))
+    out["cut:inlet_case"] = mesh.pipe([tail, lead], 22.5, segments=16)
     # the shutoff valve in the run, and the manifold ring at the lip
     vv, vf = mesh.revolve_closed(
         [(-30.0, 12.0), (30.0, 12.0), (30.0, 40.0), (16.0, 46.0),

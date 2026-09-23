@@ -362,6 +362,11 @@ def _exhaust_petals():
     plane, so this is a shroud around them, not a second nozzle.
     """
     T = spec.TAILPIPE
+    # round the thrust line, which is the engine's nozzle's axis and the
+    # fuselage's own centre here. It was built round z 0, a unit above
+    # both, so the top petals were in the skin and the bottom four hung a
+    # unit clear of it and of everything else.
+    zc = spec.ENGINE_Z
     parts = []
     n = T["petals"]
     step = 2 * math.pi / n
@@ -387,11 +392,11 @@ def _exhaust_petals():
             for j in range(n_a):
                 g = j / (n_a - 1)
                 a = a0 + (a1 - a0) * g
-                loop.append((x, r_o * math.cos(a), r_o * math.sin(a)))
+                loop.append((x, r_o * math.cos(a), zc + r_o * math.sin(a)))
             for j in range(n_a - 1, -1, -1):
                 g = j / (n_a - 1)
                 a = a0 + (a1 - a0) * g
-                loop.append((x, r_i * math.cos(a), r_i * math.sin(a)))
+                loop.append((x, r_i * math.cos(a), zc + r_i * math.sin(a)))
             rings.append(loop)
         m = len(rings[0])
         verts = [v for r in rings for v in r]

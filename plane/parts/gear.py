@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import spec
 import mesh
 import shapes
+from parts import common
 
 # these full-size gear and bay dimensions belong in spec.py.
 G = dict(spec.GEAR, nose_x=40.0, main_wheel_r=750.0 / (2 * spec.SCALE_TO_FULL),
@@ -183,7 +184,30 @@ def _mains():
         out.update(_bay(f"main_{side}", x, sgn * B["main_bay_y"],
                         B["main_bay_length"], B["main_bay_width"],
                         B["main_bay_floor"], B["main_roof"], sgn))
+        # A wing rib stops at a gear bay; the bay's walls are what carry its
+        # load round the hole. Rib 2 ran straight through each bay and the
+        # leg stowed in it. The cut runs down through the lower skin, which
+        # is where the bay opens to its doors and the leg comes out.
+        _cut_ribs(out, side, x, sgn * B["main_bay_y"],
+                  B["main_bay_length"], B["main_bay_width"],
+                  B["main_bay_floor"] - 30.0,
+                  B["main_roof"] + B["wall"] / 2 + 0.01)
     return out
+
+
+def _cut_ribs(out, side, x, y, length, width, z0, z1):
+    """Cut every wing rib that crosses the box of a bay, walls and roof
+    included: above the roof the rib carries on over the bay."""
+    from parts import wing as _wing
+    n = spec.STRUCTURE["n_wing_ribs"]
+    # a whisker wider than the bay, so the rib stops at the bay's walls
+    # rather than on them
+    box = mesh.box(x, y, (z0 + z1) / 2, length + 0.1, width + 0.1, z1 - z0)
+    t = spec.STRUCTURE["rib_t"]
+    for i, f in enumerate(_wing._rib_stations(*range(1, n + 1)), start=1):
+        yr = spec.WING["semi_span"] * f
+        if abs(abs(y) - yr) <= width / 2 + t:
+            common.add_cut(out, f"rib_{side}_{i:02d}", box)
 
 
 def _door_panel(cx, cy, cz, length, thick, depth, t, inboard):

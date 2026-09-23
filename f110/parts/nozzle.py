@@ -94,8 +94,12 @@ def _seals():
                            HINGE_X - 16.0, HINGE_R + 16.0,
                            EXT_GAP + math.radians(4.0), 5.0,
                            taper=1.35, crown=20.0)
-    aft = sector_plate(HINGE_X + 14.0, HINGE_R + 2.0,
-                       N["x_exit"] - 10.0, EXIT_R + 28.0,
+    # on the aft external flaps, which run from HINGE_R - 14 to EXIT_R + 12
+    # on their outer face: a seal rides the flaps either side of the gap it
+    # closes. At HINGE_R + 2 to EXIT_R + 28 it stood 11 mm clear of both,
+    # all the way along, and closed nothing.
+    aft = sector_plate(HINGE_X + 14.0, HINGE_R - 14.0 + 5.0,
+                       N["x_exit"] - 10.0, EXIT_R + 12.0 + 5.0,
                        math.radians(16.2), 5.0, taper=1.06, crown=14.0)
     ev, ef = mesh.join(forward, aft)
     external = mesh.replicate(ev, ef, N["n_ext_flaps"])

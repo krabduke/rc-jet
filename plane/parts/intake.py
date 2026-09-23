@@ -110,11 +110,15 @@ def _hardware():
          (x1 - 3.0, r + 5.5), (x1 - 3.0, r + 1.0)],
         SEG // 2)
     parts.append(([(px, py, pz + zc) for (px, py, pz) in fv], ff))
+    # Ten bolts through the flange, along the duct. The swizzle here turned
+    # each one on its side: a pin lying across the duct 0.9 mm in front of
+    # the flange, touching nothing.
     for k in range(10):
         a = 2 * math.pi * k / 10
-        bv, bf = mesh.cylinder(0.0, 3.4, 1.1, 8)
-        parts.append(([(pz + x1 - 12.0, px + (r + 3.4) * math.cos(a),
-                        py + zc + (r + 3.4) * math.sin(a))
+        bv, bf = mesh.cylinder(x1 - 11.0, x1 - 3.5, 1.1, 8)
+        # on the flange's outer band, clear of the bellows inside it
+        parts.append(([(px, py + (r + 4.4) * math.cos(a),
+                        pz + zc + (r + 4.4) * math.sin(a))
                        for (px, py, pz) in bv], bf))
     # the bellows itself: three convolutions between the flange and the case
     # Each convolution is a fold in a wall, so it has two sides. As a single

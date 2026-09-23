@@ -62,7 +62,6 @@ EXPECTED = [
     # their arms and the main gear retracts live in the wing root -- which is
     # 19.7 mm thick, empty, and where the leg they drive already is.
     ("gear_door_actuator_", "wing_"),
-    ("gear_door_actuator_", "rib_"),
     # an actuator is pinned to the door it opens, and a steering link runs
     # down into the well past the door hinged beside it
     ("gear_door_actuator_", "gear_door_"),
@@ -79,7 +78,7 @@ EXPECTED = [
     ("gear_main_side_stay_", "gear_main_"),
     ("gear_main_drag_stay_", "gear_main_"),
     ("gear_main_chrome_slider_", "gear_main_"),
-    ("gear_main_drag_stay_", "wing_"), ("gear_main_drag_stay_", "rib_"),
+    ("gear_main_drag_stay_", "wing_"),
     ("gear_main_downlock_", "wing_"),
     ("gear_nose_chrome_slider", "gear_nose_drag_stay"),
     # Six actuators on the unison ring and twelve links off it, so every
@@ -154,7 +153,6 @@ EXPECTED = [
     ("fin_tip_ecm_fairing", "hinge_rudder"),
     ("bay_mount_links_fwd", "mount_ring"),
     ("bay_mount_links_fwd", "engine_mount_pads"),
-    ("bay_mount_links_fwd", "engine_harnesses"),
     ("bay_mount_links_fwd", "engine_fan_cowl_door"),
     ("bay_bleed_offtake", "mount_ring"),
     ("bay_bleed_offtake", "engine_bleed_pipes"),
@@ -474,23 +472,9 @@ TOL = 0.3            # mm, full size: deeper than this is sharing material
 # --- KNOWN: rewritten by --shrink, never by hand to add ---
 KNOWN = {
     ("bl_diverter", "gear_nose_strut"): 239.0,   # at (42.0, -1.4, -14.2)
-    ("gear_bay_main_l", "rib_l_02"): 223.0,   # at (237.1, -48.1, -2.0)
-    ("gear_bay_main_r", "rib_r_02"): 223.0,   # at (237.1, 44.6, -2.0)
-    ("gear_bay_lining_main_l", "rib_l_02"): 221.5,   # at (242.8, -45.7, -2.8)
-    ("gear_bay_lining_main_r", "rib_r_02"): 221.5,   # at (242.8, 46.9, -2.8)
-    ("gear_bay_lining_main_l", "rib_l_03"): 212.0,   # at (243.2, -58.5, -2.8)
-    ("gear_bay_lining_main_r", "rib_r_03"): 212.0,   # at (243.2, 58.5, -2.8)
-    ("gear_bay_main_l", "rib_l_03"): 190.8,   # at (237.5, -58.5, -2.0)
-    ("gear_bay_main_r", "rib_r_03"): 190.8,   # at (237.5, 58.5, -2.0)
-    ("gear_main_side_stay_l", "rib_l_03"): 156.5,   # at (252.0, -59.6, -9.2)
-    ("gear_main_side_stay_r", "rib_r_03"): 156.5,   # at (252.0, 59.6, -9.2)
     ("gear_door_actuator_main_l", "gear_main_side_stay_l"): 149.5,   # at (252.1, -60.6, -8.1)
     ("gear_door_actuator_main_r", "gear_main_side_stay_r"): 149.5,   # at (252.1, 60.6, -8.1)
     ("rudder_servo", "seam_lengthwise"): 149.2,   # at (393.9, -0.1, 22.0)
-    ("gear_bay_main_l", "rib_l_01"): 148.2,   # at (239.5, -32.3, -2.3)
-    ("gear_bay_main_r", "rib_r_01"): 148.2,   # at (239.5, 32.3, -2.3)
-    ("gear_main_downlock_l", "rib_l_03"): 139.7,   # at (253.0, -61.0, -9.6)
-    ("gear_main_downlock_r", "rib_r_03"): 139.7,   # at (253.0, 61.0, -9.6)
     ("gear_door_actuator_main_l", "gear_main_downlock_l"): 136.8,   # at (252.2, -60.8, -8.3)
     ("gear_door_actuator_main_r", "gear_main_downlock_r"): 136.8,   # at (252.2, 60.8, -8.3)
     ("gear_bay_main_l", "spar_carbon"): 132.9,   # at (250.3, -67.0, -6.1)
@@ -516,8 +500,6 @@ KNOWN = {
     ("bay_doors", "stab_servo_l"): 69.3,   # at (399.2, -11.4, -20.7)
     ("bay_doors", "stab_servo_r"): 69.3,   # at (399.2, 11.1, -20.9)
     ("bhd_tail", "rudder_servo"): 68.6,   # at (382.0, 4.8, 21.9)
-    ("gear_main_l", "rib_l_02"): 67.9,   # at (253.8, -45.6, -13.6)
-    ("gear_main_r", "rib_r_02"): 67.9,   # at (253.8, 45.6, -13.6)
     ("gear_bay_lining_main_l", "spar_carbon"): 66.8,   # at (248.7, -66.3, -7.6)
     ("gear_bay_lining_main_r", "spar_carbon"): 66.8,   # at (248.7, 66.3, -7.6)
     ("gear_bay_lining_nose", "longeron_3"): 64.1,   # at (29.7, -5.3, -3.0)

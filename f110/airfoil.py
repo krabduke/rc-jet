@@ -179,10 +179,15 @@ def blade_platform(row, width_frac=1.0, height=9.0, n_seg=6, reach=None):
 def tip_shroud(row, thickness=6.0, standoff=4.0, reach=None):
     """Interlocking tip shroud for shrouded turbine rows: a short annular
     sector sitting on the blade tip. `reach` as for blade_platform."""
-    r0 = max(row.r_tip_le, row.r_tip_te)
+    # It sits ON the tip: from a millimetre into the lower end of it. Built
+    # from the higher end, it floated a millimetre over the rest of the tip,
+    # joined to its blade by nothing. Its outer face, which sets the running
+    # clearance to the case, is where it always was.
+    r_top = max(row.r_tip_le, row.r_tip_te)
+    r0 = min(row.r_tip_le, row.r_tip_te) - 1.0
     dphi = 2.0 * math.pi / row.count * 0.99
     x0, x1 = reach or (row.x - row.chord * 0.06, row.x + row.chord * 1.06)
-    r1 = r0 + standoff + thickness
+    r1 = r_top + standoff + thickness
     return _sector([(x0, r0), (x1, r0), (x1, r1), (x0, r1)], dphi, 5)
 
 

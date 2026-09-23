@@ -320,7 +320,7 @@
    "label": "Engine",
    "color": "#A8763E",
    "parts": 116,
-   "faces": 1422304,
+   "faces": 1422930,
    "x0": 300.0,
    "x1": 428.5
   },
@@ -338,7 +338,7 @@
    "label": "Structure",
    "color": "#9A7B4A",
    "parts": 50,
-   "faces": 39076,
+   "faces": 37674,
    "x0": 26.7,
    "x1": 433.7
   },
@@ -624,7 +624,7 @@
   "duct_coupling": {
    "g": "04 Intake and Duct",
    "mat": "duct",
-   "x0": 286.9,
+   "x0": 289.0,
    "x1": 299.6,
    "f": 3184
   },
@@ -1457,9 +1457,9 @@
   "engine_antiice_duct": {
    "g": "07 Engine",
    "mat": "engine",
-   "x0": 301.7,
+   "x0": 301.4,
    "x1": 348.5,
-   "f": 1006
+   "f": 1198
   },
   "engine_augmentor_liner": {
    "g": "07 Engine",
@@ -2138,7 +2138,7 @@
    "mat": "engine",
    "x0": 314.3,
    "x1": 419.6,
-   "f": 1170
+   "f": 1586
   },
   "engine_hpc_drum": {
    "g": "07 Engine",
@@ -2257,7 +2257,7 @@
    "mat": "engine",
    "x0": 300.0,
    "x1": 312.7,
-   "f": 1400
+   "f": 1418
   },
   "engine_inlet_lip": {
    "g": "07 Engine",
@@ -3013,21 +3013,21 @@
    "mat": "frame_alu",
    "x0": 178.7,
    "x1": 314.9,
-   "f": 772
+   "f": 490
   },
   "rib_l_02": {
    "g": "09 Structure",
    "mat": "frame_alu",
    "x0": 191.5,
    "x1": 319.4,
-   "f": 772
+   "f": 514
   },
   "rib_l_03": {
    "g": "09 Structure",
    "mat": "frame_alu",
    "x0": 205.5,
    "x1": 323.4,
-   "f": 772
+   "f": 514
   },
   "rib_l_04": {
    "g": "09 Structure",
@@ -3076,21 +3076,21 @@
    "mat": "frame_alu",
    "x0": 178.7,
    "x1": 314.9,
-   "f": 772
+   "f": 490
   },
   "rib_r_02": {
    "g": "09 Structure",
    "mat": "frame_alu",
    "x0": 191.5,
    "x1": 319.4,
-   "f": 772
+   "f": 514
   },
   "rib_r_03": {
    "g": "09 Structure",
    "mat": "frame_alu",
    "x0": 205.5,
    "x1": 323.4,
-   "f": 772
+   "f": 708
   },
   "rib_r_04": {
    "g": "09 Structure",

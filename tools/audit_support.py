@@ -25,10 +25,6 @@ TOL = 0.3            # mm, full size: further off than this is not touching
 
 # --- DETACHED: rewritten by --shrink, never by hand to add ---
 DETACHED = {
-    "duct_coupling": 5,
-    "engine_blades_hpt_r1": 1,
-    "fcs_fcc_envelope": 11,
-    "tailpipe_shroud": 4,
 }
 # --- end DETACHED ---
 
