@@ -1,3 +1,7 @@
+> **This is v1.** It is kept here as it was, tagged `v1`. Version 2 is **Nyx**, a new
+> full-size twin-engine canard-delta fighter designed from scratch around the Aether AX-1
+> engine: [github.com/Krabduke/nyx-jet](https://github.com/Krabduke/nyx-jet).
+
 # RC jet — parametric 3D model
 
 A complete RC jet airframe, generated procedurally in Blender from a single
