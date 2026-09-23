@@ -122,6 +122,20 @@ def _box(vs):
             [max(p[i] for p in vs) for i in range(3)])
 
 
+def _in_polygon(x, poly, n):
+    """Is x, lying in the plane of poly (normal n), inside it? Tested in
+    the coordinate plane the polygon is least foreshortened in."""
+    k = max(range(3), key=lambda i: abs(n[i]))
+    u, v = [i for i in range(3) if i != k]
+    inside = False
+    for i in range(len(poly)):
+        p, q = poly[i], poly[i - 1]
+        if (p[v] > x[v]) != (q[v] > x[v]):
+            if x[u] < p[u] + (q[u] - p[u]) * (x[v] - p[v]) / (q[v] - p[v]):
+                inside = not inside
+    return inside
+
+
 class Model:
     def __init__(self, root, pkg):
         from mathutils.bvhtree import BVHTree
@@ -257,11 +271,39 @@ class Model:
             s = min(straddle(va, fa[ia], pb), straddle(vb, fb[ib], pa))
             if s <= best:
                 continue
-            c = [sum(va[i][k] for i in fa[ia]) / len(fa[ia]) for k in range(3)]
-            if self.cut_away(a, c) or self.cut_away(b, c):
+            seg = self._meet_points(va, fa[ia], pa, vb, fb[ib], pb)
+            # Where the two faces actually cross, not the middle of face a:
+            # a bulkhead's face spans the hole cut in it for a swirler, and
+            # its centroid is outside the hole while the crossing is inside.
+            c = ([sum(p[k] for p in seg) / len(seg) for k in range(3)] if seg
+                 else [sum(va[i][k] for i in fa[ia]) / len(fa[ia])
+                       for k in range(3)])
+            if all(self.cut_away(a, q) or self.cut_away(b, q)
+                   for q in [c] + seg):
                 continue
             best, where = s, c
         return best, where
+
+    @staticmethod
+    def _meet_points(va, f, pa, vb, g, pb):
+        """The ends of the segment along which polygons f (of va) and g (of
+        vb) cross: each edge of one that passes through the other's plane,
+        where it does so inside the other polygon."""
+        def cuts(vs, poly, pl, ws, other):
+            n, d0 = pl
+            out = []
+            for i in range(len(poly)):
+                p, q = vs[poly[i]], vs[poly[(i + 1) % len(poly)]]
+                dp = n[0] * p[0] + n[1] * p[1] + n[2] * p[2] - d0
+                dq = n[0] * q[0] + n[1] * q[1] + n[2] * q[2] - d0
+                if (dp > 0) == (dq > 0) or dp == dq:
+                    continue
+                t = dp / (dp - dq)
+                x = [p[k] + (q[k] - p[k]) * t for k in range(3)]
+                if _in_polygon(x, [ws[j] for j in other], n):
+                    out.append(x)
+            return out
+        return cuts(va, f, pb, vb, g) + cuts(vb, g, pa, va, f)
 
     def interference(self, tol, declared=lambda a, b: False):
         """Every pair sharing material at least `tol` deep:

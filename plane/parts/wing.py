@@ -14,6 +14,8 @@ FL = spec.FLAPERON
 NS = spec.RES["wing_stations"]
 NC = spec.RES["airfoil_pts"]
 LE_HINGE_U = 0.15
+# the wing's skin, as thick as the fuselage's
+SKIN = spec.FUSELAGE_SKIN
 LE_SPAN_IN = 0.25
 LE_SPAN_OUT = 0.95
 LE_CRUISE_DEG = 1.0
@@ -97,6 +99,28 @@ def _panels():
             u0=LE_HINGE_U, u1=_hinge_u(), n_span=NS, n_chord=NC, mirror=mir,
             span0=_root_span0())
         out[f"wing_{side}"] = (v, f)
+        # A wing is a skin over ribs and spars. It was a solid, so the
+        # ribs, spars, stringers, tanks, looms and the main gear bay all
+        # sat inside a block of foam, and every one of them touched the
+        # wing wherever it happened to be. The inside is the same loft
+        # with the skin taken off it: thinner by twice the skin at each
+        # station, short of the root and the tip, and short of the two
+        # hinge lines it is trimmed at.
+        root_c, tip_c = W["root_chord"], W["tip_chord"]
+        span0 = _root_span0() + SKIN / W["semi_span"]
+        common.add_cut(out, f"wing_{side}", common.panel(
+            root_le=(W["x_root_le"], 0.0, W["z_root"]),
+            root_chord=root_c, tip_chord=tip_c,
+            semi_span=W["semi_span"], sweep_le=W["sweep_le"],
+            dihedral=W["dihedral"],
+            thickness=W["thickness"] - 2 * SKIN / root_c,
+            planform=spec.WING_PLANFORM,
+            thickness_tip=W["thickness_tip"] - 2 * SKIN / tip_c,
+            camber=W["camber"], twist_root=W["incidence"],
+            twist_tip=W["incidence"] - W["washout"],
+            u0=LE_HINGE_U + 0.012, u1=_hinge_u() - 0.012,
+            n_span=NS, n_chord=NC, mirror=mir,
+            span0=span0, span1=1.0 - SKIN / (W["semi_span"] * 0.9)))
     return out
 
 

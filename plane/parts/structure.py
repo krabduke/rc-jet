@@ -132,6 +132,15 @@ def _formers():
         # between them -- the web was solid before, which is the one thing a
         # former never is
         out[f"former_{i:02d}"] = common.lightened_ring(f, b, zc, k, k + 0.16, 6)
+    # The tail looms pass the formers through mouse-holes at the rim, the
+    # way a loom gets past any frame. They ran through the frames' rims.
+    F = spec.FCS
+    for pts in F.get("tail_runs", {}).values():
+        hole = mesh.pipe(pts, F["tail_r"] + 0.25, 12, subdiv=60)
+        lo, hi = min(p[0] for p in pts), max(p[0] for p in pts)
+        for i, x in enumerate(ST["former_x"], start=1):
+            if lo - t <= x <= hi + t:
+                common.add_cut(out, f"former_{i:02d}", hole)
     # the duct runs through the formers it passes; see intake.duct_solid
     from parts import intake as _intake
     cutter = None

@@ -72,7 +72,7 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
           twist_root=0.0, twist_tip=0.0, u0=0.0, u1=1.0,
           n_span=12, n_chord=40, pivot=0.25, vertical=False,
           mirror=False, planform=None, thickness_tip=None, tip_cap=0,
-          span0=0.0):
+          span0=0.0, span1=1.0):
     """Loft one lifting surface. Span runs +y, or +z when vertical.
 
     Twist is applied about `pivot` chord so washout does not also move the
@@ -85,6 +85,9 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
     that is where the spar has to be deep, and thin at the tip because that
     is where thickness is only drag. Constant thickness root to tip is the
     clearest sign a wing was extruded rather than designed.
+
+    `span1` stops it short of the tip, without a cap: the inside of a
+    skinned panel ends where the tip's own skin begins.
 
     `span0` starts the loft part-way out, so a wing can begin at the fuselage
     side instead of at the centreline. Lofted to the centreline the panels run
@@ -145,10 +148,10 @@ def panel(root_le, root_chord, tip_chord, semi_span, sweep_le,
 
     verts = []
     for j in range(n_span):
-        f = span0 + (1.0 - span0) * j / (n_span - 1)
+        f = span0 + (span1 - span0) * j / (n_span - 1)
         verts.extend(ring(f, (semi_span - bulge) * f))
 
-    if tip_cap:
+    if tip_cap and span1 >= 1.0:
         # a quarter-round over the tip: the section collapses towards its own
         # chord line as the span runs out to the tip station
         for k in range(1, tip_cap + 1):

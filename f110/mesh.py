@@ -192,27 +192,137 @@ def _cross(a, b):
             a[0] * b[1] - a[1] * b[0])
 
 
-def pipe(path, radius, segments=16, caps=True):
+def fillet_path(path, radii, bend):
+    """Round every corner of a polyline with an arc of radius `bend`.
+
+    Each corner is replaced by a circular arc tangent to both legs, as far
+    along each leg as the bend needs but never more than half of it, so two
+    corners never fight over one leg and the ends stay where they are. The
+    radii list is carried along, blended across each arc from the radius
+    where it leaves one leg to the radius where it joins the next -- giving
+    the whole arc the corner's radius put a step at each end of it, and a
+    step on the inside of a bend is a fold.
+    """
+    if len(path) < 3 or bend <= 0.0:
+        return list(path), list(radii)
+    out, rad = [tuple(path[0])], [radii[0]]
+    for i in range(1, len(path) - 1):
+        a, p, b = path[i - 1], path[i], path[i + 1]
+        u = _normalise(tuple(p[k] - a[k] for k in range(3)))
+        w = _normalise(tuple(b[k] - p[k] for k in range(3)))
+        c = max(-1.0, min(1.0, sum(u[k] * w[k] for k in range(3))))
+        turn = math.acos(c)
+        if turn < 1e-3:
+            out.append(tuple(p)); rad.append(radii[i])
+            continue
+        la = math.dist(a, p) * (0.5 if i > 1 else 0.9)
+        lb = math.dist(p, b) * (0.5 if i < len(path) - 2 else 0.9)
+        t = min(bend * math.tan(turn / 2.0), la, lb)
+        axis = _normalise(_cross(u, w))
+        start = tuple(p[k] - u[k] * t for k in range(3))
+        r_eff = t / math.tan(turn / 2.0)
+        # the arc's centre is r_eff from the start, on the inside of the turn
+        inward = _cross(axis, u)
+        centre = tuple(start[k] + inward[k] * r_eff for k in range(3))
+        n = max(2, int(math.ceil(turn / (math.pi / 24.0))))
+        fa, fb = t / math.dist(a, p), t / math.dist(p, b)
+        r0 = radii[i] + (radii[i - 1] - radii[i]) * fa
+        r1 = radii[i] + (radii[i + 1] - radii[i]) * fb
+        for j in range(n + 1):
+            ang = turn * j / n
+            d = tuple(start[k] - centre[k] for k in range(3))
+            ca, sa = math.cos(ang), math.sin(ang)
+            kd = sum(axis[k] * d[k] for k in range(3))
+            kx = _cross(axis, d)
+            q = tuple(centre[k] + d[k] * ca + kx[k] * sa + axis[k] * kd * (1 - ca)
+                      for k in range(3))
+            out.append(q); rad.append(r0 + (r1 - r0) * j / n)
+    out.append(tuple(path[-1])); rad.append(radii[-1])
+    return out, rad
+
+
+def pipe(path, radius, segments=16, caps=True, subdiv=1, bend=None):
     """Sweep a circular section along a 3D polyline using parallel transport,
-    so the tube does not twist around corners."""
+    so the tube does not twist around corners.
+
+    `radius` may be a number, or a list with one entry per path point, which
+    is how a tapered primary or a bellmouthed runner gets made -- a real pipe
+    on an engine is almost never a constant diameter.
+
+    Every corner is filleted with an arc of radius `bend`, by default one and
+    a half times the pipe's largest radius. A corner left as one vertex is a
+    ring in the bisecting plane at the pipe's own radius -- a pinch -- and
+    where the turn is tighter than the pipe is fat the rings either side
+    cross it and the tube folds through itself. A pipe that is meant to have
+    a sharp corner passes bend=0.
+
+    `subdiv` inserts extra rings between the given points so a swept curve is
+    smooth rather than faceted.
+    """
+    if len(path) >= 3:
+        rl = (list(radius) if isinstance(radius, (list, tuple))
+              else [radius] * len(path))
+        b = 1.5 * max(rl) if bend is None else bend
+        path, rl = fillet_path(path, rl, b)
+        radius = rl if isinstance(radius, (list, tuple)) else radius
+    if len(path) < 2:
+        return [], []
+    # drop repeated points: two fillets meeting mid-leg share one
+    keep = [0] + [i for i in range(1, len(path))
+                  if math.dist(path[i], path[i - 1]) > 1e-6]
+    path = [path[i] for i in keep]
+    if isinstance(radius, (list, tuple)):
+        radius = [radius[i] for i in keep]
     if len(path) < 2:
         return [], []
 
+    def _dir(a, b):
+        return _normalise(tuple(b[k] - a[k] for k in range(3)))
+
+    # a section at a vertex is square to the bisector of the legs either
+    # side of it, and the sections subdivision adds between two vertices
+    # swing steadily from one vertex's to the next. Taking every added
+    # section square to its own chord instead stepped the tilt at each
+    # vertex, and on a bend that is tight for the pipe's girth a step is
+    # enough to put one ring's inside edge behind its neighbour's.
     tangents = []
     for i in range(len(path)):
         if i == 0:
-            t = [path[1][k] - path[0][k] for k in range(3)]
+            t = _dir(path[0], path[1])
         elif i == len(path) - 1:
-            t = [path[-1][k] - path[-2][k] for k in range(3)]
+            t = _dir(path[-2], path[-1])
         else:
-            t = [path[i + 1][k] - path[i - 1][k] for k in range(3)]
-        tangents.append(_normalise(t))
+            u, w = _dir(path[i - 1], path[i]), _dir(path[i], path[i + 1])
+            t = _normalise(tuple(u[k] + w[k] for k in range(3)))
+        tangents.append(t)
+
+    if subdiv > 1:
+        dense, rad, tan = [], [], []
+        radii = radius if isinstance(radius, (list, tuple)) else None
+        for i in range(len(path) - 1):
+            for k in range(subdiv):
+                t = k / subdiv
+                dense.append(tuple(path[i][j] + (path[i + 1][j] - path[i][j]) * t
+                                   for j in range(3)))
+                tan.append(_normalise(tuple(
+                    tangents[i][j] + (tangents[i + 1][j] - tangents[i][j]) * t
+                    for j in range(3))))
+                if radii:
+                    rad.append(radii[i] + (radii[i + 1] - radii[i]) * t)
+        dense.append(tuple(path[-1]))
+        tan.append(tangents[-1])
+        if radii:
+            rad.append(radii[-1])
+        path, tangents = dense, tan
+        radius = rad if radii else radius
 
     seed = (0.0, 0.0, 1.0)
     if abs(sum(a * b for a, b in zip(seed, tangents[0]))) > 0.9:
         seed = (0.0, 1.0, 0.0)
     normal = _normalise(_cross(tangents[0], seed))
 
+    radii = (radius if isinstance(radius, (list, tuple))
+             else [radius] * len(path))
     verts = []
     for i, p in enumerate(path):
         t = tangents[i]
@@ -220,9 +330,10 @@ def pipe(path, radius, segments=16, caps=True):
         d = sum(a * b for a, b in zip(normal, t))
         normal = _normalise(tuple(normal[k] - d * t[k] for k in range(3)))
         binormal = _cross(t, normal)
+        rr = radii[min(i, len(radii) - 1)]
         for s in range(segments):
             a = 2.0 * math.pi * s / segments
-            ca, sa = math.cos(a) * radius, math.sin(a) * radius
+            ca, sa = math.cos(a) * rr, math.sin(a) * rr
             verts.append(tuple(p[k] + normal[k] * ca + binormal[k] * sa
                                for k in range(3)))
 

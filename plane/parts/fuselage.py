@@ -188,17 +188,32 @@ def outside_by(x, y, z, inset=0.0):
     two cannot disagree again: this is the same polygon, at the same station,
     with the same inset.
     """
-    # keyed on the exact station: the formers are cut at x +/- half their
-    # own thickness, so rounding the key to half a millimetre tested them
-    # against a section a millimetre away from the one they were cut to
-    key = (x, inset)
+    # Sections are built on a 0.1 mm grid of stations and the answer is
+    # interpolated between the two either side of x. Keyed on the exact
+    # station, nearly every vertex in the aeroplane built a section of its
+    # own -- the chin union makes each one a thousand ray casts -- and the
+    # check took twelve minutes. Rounding to the nearest station instead
+    # would test a former cut at x +/- half its thickness against a section
+    # up to half a step away from the one it was cut to; interpolating, the
+    # error is the skin's curvature over a tenth of a millimetre.
+    i = math.floor(x / _OUTSIDE_STEP)
+    t = x / _OUTSIDE_STEP - i
+    d0 = _outside_at(i, x, y, z, inset)
+    if t < 1e-9:
+        return d0
+    return d0 + (_outside_at(i + 1, x, y, z, inset) - d0) * t
+
+
+_OUTSIDE_STEP = 0.1
+
+
+def _outside_at(i, x, y, z, inset):
+    key = (i, inset)
     ring = _OUTSIDE_CACHE.get(key)
     if ring is None:
-        _, _, zc = station_at(key[0])[:3]
-        ring = [(p[1], p[2] - zc) for p in section_ring(key[0], inset)]
-        ring = (ring, zc)
-        if len(_OUTSIDE_CACHE) > 4000:
-            _OUTSIDE_CACHE.clear()
+        xs = i * _OUTSIDE_STEP
+        _, _, zc = station_at(xs)[:3]
+        ring = ([(p[1], p[2] - zc) for p in section_ring(xs, inset)], zc)
         _OUTSIDE_CACHE[key] = ring
     pts, zc = ring
     dy, dz = y, z - zc

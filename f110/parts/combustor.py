@@ -26,19 +26,32 @@ def build():
     return out
 
 
+# How far the dome's cowl stands forward of its bulkhead, and the gap between
+# the diffuser's exit and the cowl's nose that the air dumps across.
+COWL_DEPTH = 32.0
+DUMP_GAP = 8.0
+# The pins the dome hangs from, out to the combustor case.
+N_DOME_PINS = 10
+
+
 def _diffuser():
     """Dump diffuser: the compressor exit guide vanes discharge into a
     sudden-expansion cavity that feeds the liner and the cooling annuli."""
     # from the compressor's real exit to where the dump has always ended;
     # diffuser_len was measured from a station 62 mm too far forward
+    #
+    # It ends a dump gap short of the dome's cowl. Its walls used to diverge
+    # on to x 1640, to r 300 and 430 -- through the cowl and the bulkhead
+    # and onto the liners, so the diffuser was what held them up and the
+    # air it slowed had nowhere to dump into.
     x0 = spec.STATION["hpc_exit"]
-    x1 = spec.STATION["diffuser_exit"]
-    inner = mesh.cone_tube(x0, x1, 352.0, 358.0, 300.0, 308.0, SEG)
-    outer = mesh.cone_tube(x0, x1, 364.0, 372.0, 420.0, 430.0, SEG)
+    x1 = C["x_front"] - 3.0 - COWL_DEPTH - DUMP_GAP
+    inner = mesh.cone_tube(x0, x1, 352.0, 358.0, 350.0, 356.0, SEG)
+    outer = mesh.cone_tube(x0, x1, 364.0, 372.0, 368.0, 376.0, SEG)
     struts = []
     for k in range(24):
         a = 2 * math.pi * k / 24
-        v, f = mesh.box((x0 + x1) / 2, 362.0, 0.0, C["diffuser_len"] * 0.7, 12.0, 9.0)
+        v, f = mesh.box((x0 + x1) / 2, 362.0, 0.0, (x1 - x0) * 0.7, 12.0, 9.0)
         struts.append((mesh.rot_x(v, a), f))
     return {"diffuser": mesh.join(inner, outer, *struts)}
 
@@ -97,15 +110,44 @@ def _dome():
     rm = (ro + ri) / 2
     half = (ro - ri) / 2
 
-    prof = []
-    for i in range(17):
-        a = math.pi / 2 + math.pi * i / 16
-        prof.append((x - half * math.cos(a - math.pi / 2) * 1.15,
-                     rm + half * math.sin(a - math.pi / 2)))
-    prof = [(x - half * math.sin(math.pi * i / 16) * 1.15,
-             rm - half * math.cos(math.pi * i / 16)) for i in range(17)]
-    back = [(x + 26.0, ro), (x + 26.0, ri)]
-    dome = mesh.revolve_closed(prof + back, SEG)
+    # It was a solid half-round from r 308 to 420, reaching neither liner,
+    # with the twenty swirler cups sunk 42 mm into it. A combustor head is
+    # sheet metal: a bulkhead across the annulus from liner to liner with a
+    # hole for each swirler, and a cowl in front of it that splits the
+    # diffuser's flow -- through the slot in its nose to the swirlers, round
+    # its lips to the passages outside the liners.
+    t = 3.0
+    r_lo = C["liner_inner_r"] + t           # the liners' inside faces
+    r_hi = C["liner_outer_r"] - t
+    plate = mesh.revolve_closed([(x - t, r_lo), (x - t, r_hi),
+                                 (x, r_hi), (x, r_lo)], SEG)
+    parts = [plate]
+    slot = math.asin(min(0.9, C["swirler_r"] * 0.7 / half))
+    for a0, a1 in ((0.0, math.pi / 2 - slot), (math.pi / 2 + slot, math.pi)):
+        n = 12
+        arc = [a0 + (a1 - a0) * i / n for i in range(n + 1)]
+        outer = [(x - t - COWL_DEPTH * math.sin(q), rm + half * math.cos(q))
+                 for q in arc]
+        inner = [(x - t - (COWL_DEPTH - t) * math.sin(q),
+                  rm + (half - t) * math.cos(q)) for q in reversed(arc)]
+        parts.append(mesh.revolve_closed(outer + inner, SEG))
+    # and it hangs from the case on radial pins through the outer passage,
+    # which is what carries it and both liners
+    # -- off the cowl's outer lip just ahead of the bulkhead, clear of the
+    # liner's front edge
+    x_pin = x - t - 7.0
+    r_case = spec.casing_inner("casing_combustor", x_pin)
+    pv, pf = mesh.cylinder(rm + half - 7.0, r_case - 0.2, 6.0, 14)
+    pv = mesh.rot_z(pv, math.pi / 2)            # point radially
+    pv = mesh.translate(pv, x_pin, 0.0, 0.0)
+    parts.append(mesh.replicate(pv, pf, N_DOME_PINS, math.pi / N_DOME_PINS))
+    dome = mesh.join(*parts)
+    holes = []
+    for k in range(C["n_fuel_nozzles"]):
+        # the cup's own outside diameter where it passes the bulkhead
+        hv, hf = mesh.cylinder(x - 10.0, x + 6.0, C["swirler_r"] * 1.15, 20)
+        hv = [(px, py + C["nozzle_r"], pz) for (px, py, pz) in hv]
+        holes.append((mesh.rot_x(hv, 2 * math.pi * k / C["n_fuel_nozzles"]), hf))
 
     swirl = []
     for k in range(C["n_fuel_nozzles"]):
@@ -130,7 +172,26 @@ def _dome():
         ov, of = mesh.join((cup_v, cup_f), *vanes)
         swirl.append((mesh.rot_x(ov, a), of))
 
-    return {"combustor_dome": dome, "combustor_swirlers": mesh.join(*swirl)}
+    # and the cowl is pierced where each nozzle's stem comes through it
+    sv, sf = mesh.pipe(nozzle_path(), 12.5, 14, bend=NOZZLE_BEND)
+    for k in range(C["n_fuel_nozzles"]):
+        holes.append((mesh.rot_x(sv, 2 * math.pi * k / C["n_fuel_nozzles"]), sf))
+    return {"combustor_dome": dome, "cut:combustor_dome": mesh.join(*holes),
+            "combustor_swirlers": mesh.join(*swirl)}
+
+
+NOZZLE_BOSS_R = 520.0
+# the stem's bends, shared with the hole the dome's cowl has for it
+NOZZLE_BEND = 16.5
+
+
+def nozzle_path():
+    """Centreline of one fuel nozzle's stem, in from its boss on the case
+    and turning aft into its swirler, on the +y axis."""
+    x = C["x_front"] - 4.0
+    return [(x - 40.0, NOZZLE_BOSS_R, 0.0), (x - 40.0, 430.0, 0.0),
+            (x - 30.0, 392.0, 0.0), (x - 8.0, C["nozzle_r"] + 6.0, 0.0),
+            (x + 6.0, C["nozzle_r"], 0.0)]
 
 
 def _fuel_system():
@@ -138,13 +199,10 @@ def _fuel_system():
     each turning aft to spray into its swirler, plus the supply manifold."""
     out = {}
     x = C["x_front"] - 4.0
-    r_out = 520.0
+    r_out = NOZZLE_BOSS_R
     nozzles = []
 
-    path = [(x - 40.0, r_out, 0.0), (x - 40.0, 430.0, 0.0),
-            (x - 30.0, 392.0, 0.0), (x - 8.0, C["nozzle_r"] + 6.0, 0.0),
-            (x + 6.0, C["nozzle_r"], 0.0)]
-    stem = mesh.pipe(path, 11.0, 14)
+    stem = mesh.pipe(nozzle_path(), 11.0, 14, bend=NOZZLE_BEND)
     # a ring, so the orifice is a hole: capping it fanned a disc to the axis
     # and every nozzle came out blanked off at the tip
     tip = mesh.revolve_ring(

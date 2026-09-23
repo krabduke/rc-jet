@@ -239,7 +239,7 @@ def _fuel_system():
     out["fuel_lines"] = mesh.join(
         # hopper -> filter, forward along the tank's own saddle
         mesh.pipe([(hx - 4.0, hy, hz + 2.0),
-                   (210.0, hy + 2.0, 6.0),
+                   (210.0, hy + 2.5, 10.0),
                    (fil[0] - 14.0, fil[1], fil[2])], 1.8, 16, subdiv=3),
         # filter -> pump, aft of the cockpit rather than through it. The
         # dogleg used to cross at x 149 and the tub's aft wall is at 152, so
@@ -398,6 +398,16 @@ def _engine_bay():
     out["mount_ring"] = ([(px + x + 6.0, py, pz + spec.ENGINE_Z)
                                  for (px, py, pz) in out["mount_ring"][0]],
                                 out["mount_ring"][1])
+    # the tail looms pass its flange through mouse-holes at 6 o'clock, as
+    # they pass the formers
+    F = spec.FCS
+    for pts in F.get("tail_runs", {}).values():
+        # run on past the loom's start, which is inside the flange
+        a, b = pts[0], pts[1]
+        lead = [a[k] - (b[k] - a[k]) / math.dist(a, b) * 3.0 for k in range(3)]
+        common.add_cut(out, "mount_ring",
+                       mesh.pipe([tuple(lead)] + list(pts[1:]),
+                                 F["tail_r"] + 0.25, 12, subdiv=60))
     rails = []
     for sgn in (-1.0, 1.0):
         p0 = inside(x + 6.0, sgn * 0.62, -0.52, 4.0)

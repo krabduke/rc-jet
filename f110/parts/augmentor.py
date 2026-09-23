@@ -70,7 +70,11 @@ def _liner():
     """Augmentor screech liner: a perforated shell standing off the duct wall.
     The holes damp the high-frequency combustion instability that gives the
     part its name; the annulus behind them carries cooling air aft."""
-    x0, x1 = A["spraybar_x"] - 60.0, spec.STATION["augmentor_exit"]
+    # It starts 2 mm aft of the mixer's trailing edge. From spraybar_x - 60
+    # it began 20 mm ahead of it, and the last of the lobes, which stand out
+    # to r 438, ran 9 mm into the liner's leading edge.
+    x0 = max(A["spraybar_x"] - 60.0, A["mixer_x1"] + 2.0)
+    x1 = spec.STATION["augmentor_exit"]
     r = A["liner_r"]
     t = A["liner_thickness"]
     # A screech liner is not a plain tube. It is a corrugated sleeve hung off

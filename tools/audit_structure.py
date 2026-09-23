@@ -31,7 +31,11 @@ CFG = {
         # full-size engine -- checked there, at full size, where they pass.
         "engine_inlet_case": "concentric with the inlet casing at 1:33",
     },
-    "exempt_shape": {},
+    "exempt_shape": {
+        # a combustor's dome is the bulkhead across the head of the annulus;
+        # the full-size engine exempts it for the same reason
+        "engine_combustor_dome": "a combustor dome is a bulkhead, not a cap",
+    },
 
     # Things an aeroplane has exactly one of. It had two complete sets of
     # control pushrods -- `pushrods` in the fuselage module and
