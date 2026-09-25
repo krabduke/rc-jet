@@ -38,6 +38,7 @@ A pair fails when its depth is at least the tolerance. Flush faces, a nut on
 its washer and a pin in its bore meet at zero depth and pass.
 """
 
+import math
 import os
 import shutil
 import subprocess
@@ -518,4 +519,210 @@ def support_main(path, root, pkg, detached_known, tol_mm, unit):
     print("\n" + ("PASS  every piece is fastened to something, bar the known "
                   f"list ({sum(detached_known.values())} pieces)"
                   if ok else "FAIL  pieces are floating free"))
+    return 0 if ok else 1
+
+
+# --------------------------------------------------------------------------
+# Ports: every pipe end and every plug is connected to something
+# --------------------------------------------------------------------------
+
+OPEN_START = "# --- OPEN: rewritten by --shrink, never by hand to add ---"
+OPEN_END = "# --- end OPEN ---"
+
+
+def _fmt_open(entries):
+    lines = ['    "%s",' % k for k in sorted(entries)]
+    return "OPEN = {\n" + "\n".join(lines) + ("\n" if lines else "") + "}\n"
+
+
+def ports_main(path, root, pkg, open_known, unit, outlets=None):
+    """The gate for audit_ports.py. See that file for what it enforces."""
+    if not in_blender():
+        rerun_in_blender(path, script_args())
+    shrink = "--shrink" in script_args()
+    verbose = "-v" in script_args()
+    sys.path.insert(0, os.path.join(root, os.path.dirname(pkg)))
+    sys.path.insert(0, root)
+    import importlib
+    mesh = importlib.import_module("mesh")
+    ends, plugs = [], []
+    _pipe = mesh.pipe
+
+    def pipe(path_, radius, *a, **k):
+        pts = [tuple(p) for p in path_]
+        length = sum(sum((pts[i + 1][k] - pts[i][k]) ** 2 for k in range(3))
+                     ** 0.5 for i in range(len(pts) - 1))
+        rl = (list(radius) if isinstance(radius, (list, tuple))
+              else [radius] * len(pts))
+        # A pipe shorter than twice its radius is a boss, a pin or a piston,
+        # not something that runs from one place to another.
+        if len(pts) >= 2 and length >= 2.0 * max(rl):
+            straight = len(pts) == 2
+            for (p, q, r) in ((pts[0], pts[1], rl[0]),
+                              (pts[-1], pts[-2], rl[-1])):
+                d = [p[i] - q[i] for i in range(3)]
+                n = sum(c * c for c in d) ** 0.5 or 1.0
+                ends.append((p, tuple(c / n for c in d), r,
+                             (len(ends) // 2,
+                              straight and length < 10.0 * max(rl))))
+        return _pipe(path_, radius, *a, **k)
+    mesh.pipe = pipe
+    try:
+        shapes = importlib.import_module("shapes")
+    except ImportError:
+        shapes = None
+    if shapes is not None and hasattr(shapes, "connector"):
+        _conn = shapes.connector
+
+        def connector(cx, cy, cz, sx=26.0, sy=18.0, sz=14.0, *a, **k):
+            plugs.append(((cx, cy, cz), (sx, sy, sz)))
+            return _conn(cx, cy, cz, sx, sy, sz, *a, **k)
+        shapes.connector = connector
+
+    m = Model(root, pkg)
+    K = 1.0 / unit
+
+    def nearest(q, reach):
+        best = (None, None)
+        for n in m.names:
+            lo, hi = m.box[n]
+            if not all(lo[i] - reach <= q[i] <= hi[i] + reach for i in range(3)):
+                continue
+            hit = m.tree[n].find_nearest(m.V(q))
+            if hit[0] is not None and hit[3] < reach and \
+                    (best[0] is None or hit[3] < best[1]):
+                best = (n, hit[3])
+        return best
+
+    def material(q, reach):
+        for n in m.names:
+            lo, hi = m.box[n]
+            if not all(lo[i] - reach <= q[i] <= hi[i] + reach for i in range(3)):
+                continue
+            if m.inside(n, q):
+                return n
+            hit = m.tree[n].find_nearest(m.V(q))
+            if hit[0] is not None and hit[3] < reach:
+                return n
+        return None
+
+    # An end is only tested where the pipe actually is: its cap's centre is
+    # on its own part's surface. A pipe built in a local frame and moved into
+    # place afterwards, or one that became a cutter, is recorded where it was
+    # drawn, not where it ended up, and is left out.
+    placed, unplaced = [], 0
+    for (p, d, r, tag) in ends:
+        q = tuple(c * K for c in p)
+        owner, dist = nearest(q, 0.5 * K)
+        if owner is None:
+            unplaced += 1
+            continue
+        placed.append((p, d, r, owner, tag))
+    found, opened = {}, {}
+    for (p, d, r, owner, tag) in placed:
+        # 3 mm past the cap along the pipe: material there, or a surface
+        # within 2.5 mm, is what it runs into -- on its axis, or anywhere
+        # across its section, so a hose pushed into a bored boss or a strap
+        # into the eye of its fitting is on something
+        a = (1.0, 0.0, 0.0) if abs(d[0]) < 0.9 else (0.0, 1.0, 0.0)
+        u = (d[1] * a[2] - d[2] * a[1], d[2] * a[0] - d[0] * a[2],
+             d[0] * a[1] - d[1] * a[0])
+        un = sum(c * c for c in u) ** 0.5
+        u = tuple(c / un for c in u)
+        v = (d[1] * u[2] - d[2] * u[1], d[2] * u[0] - d[0] * u[2],
+             d[0] * u[1] - d[1] * u[0])
+        # (at 0.92 of the radius too: a duct bored to its own size has only
+        # its wall out there)
+        probes = [(0.0, 0.0)] + [(sx * k * r, sy * k * r) for k in (0.75, 0.92)
+                                  for (sx, sy) in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+        # or another pipe starts where this one stops: one run drawn as two
+        hit = any(math.dist(p, p2) <= max(r, r2) * 0.5 and p2 is not p
+                  for (p2, _d2, r2, _o2, _t2) in placed)
+        for (du, dv) in ([] if hit else probes):
+            q = tuple((p[i] + d[i] * 3.0 + u[i] * du + v[i] * dv) * K
+                      for i in range(3))
+            if material(q, 2.5 * K) is not None:
+                hit = True
+                break
+        if not hit:
+            key = "end %s @ %.0f,%.0f,%.0f" % (owner, p[0], p[1], p[2])
+            found[key] = r
+            opened.setdefault(tag[0], []).append((key, tag[1]))
+    # A short straight pipe (under ten radii) open at BOTH ends is a pin or
+    # a bolt through something -- a clevis pin, a rod end's eye -- and both
+    # its ends are meant to stand free. (A union with no hose on it is open at one end
+    # only: its other is on the part it comes out of.)
+    for runs in opened.values():
+        if len(runs) == 2 and all(pin for (_k, pin) in runs):
+            for (k, _pin) in runs:
+                found.pop(k, None)
+    # A plug is connected when a pipe -- its cable, hose or loom -- ends in
+    # or against its housing.
+    n_plugs = 0
+    seen = set()
+    for (c, s) in plugs:
+        # (a module that builds another to find its plugs records them twice)
+        key = tuple(round(v, 1) for v in c)
+        if key in seen:
+            continue
+        seen.add(key)
+        q = tuple(v * K for v in c)
+        owner, dist = nearest(q, max(s) * 0.5 * K)
+        if owner is None or not m.inside(owner, q):
+            continue
+        n_plugs += 1
+        # within half the housing's diagonal and 8 mm of its centre: a plug
+        # turned or mirrored after it was drawn has its box the other way
+        # round, and a mating half pushed onto its pins starts a little way
+        # past its face
+        reach = 0.5 * sum(v * v for v in s) ** 0.5 + 8.0
+        mated = any(math.dist(p, c) <= reach for (p, _d, _r, _o, _t) in placed)
+        if not mated:
+            found["plug %s @ %.0f,%.0f,%.0f" % (owner, c[0], c[1], c[2])] = 0.0
+            if verbose:
+                near = min((math.dist(p, c), p) for (p, _d, _r, _o, _t) in placed)
+                print("  plug %s: nearest end %.1f mm at %s" % (
+                    owner, near[0], tuple(round(v) for v in near[1])))
+    print(f"{len(m.names)} parts; {len(placed)} pipe ends and {n_plugs} plugs "
+          f"checked ({unplaced} ends drawn in a local frame, not tested)")
+    # ends that open to the air by design -- an exhaust's exit, a vent --
+    # are named with the reason, and a name that no longer matches an open
+    # end is stale and fails, like an audit rule that excuses nothing
+    # (a name ending in * covers every end it begins: a row of wicks, the
+    # muzzles of a rotary cannon)
+    outlets = outlets or {}
+
+    def covers(k, f):
+        return f.startswith(k[:-1]) if k.endswith("*") else f == k
+    stale = sorted(k for k in outlets if not any(covers(k, f) for f in found))
+    for f in [f for f in found if any(covers(k, f) for k in outlets)]:
+        found.pop(f)
+    known = set(open_known)
+    new = sorted(k for k in found if k not in known)
+    gone = sorted(k for k in known if k not in found)
+    if shrink:
+        kept = sorted(k for k in known if k in found)
+        rewrite_block(path, OPEN_START, OPEN_END, _fmt_open(kept))
+        print(f"OPEN shrunk to {len(kept)}; nothing was added")
+        gone = []
+    if new:
+        print(f"\n{len(new)} ports lead nowhere:")
+        for k in new:
+            print(f"  {k}" + (f"   r {found[k]:.1f}" if found[k] else ""))
+    if gone:
+        print(f"\n{len(gone)} listed as open are connected now -- run with "
+              f"--shrink:")
+        for k in gone:
+            print(f"  {k}")
+    if verbose:
+        for k in sorted(found):
+            print("  open", k)
+    if stale:
+        print(f"\n{len(stale)} FREE names no open end -- delete or update:")
+        for k in stale:
+            print(f"  {k}")
+    ok = not (new or gone or stale)
+    print("\n" + ("PASS  every pipe end and plug is connected, bar the known "
+                  f"list ({len(known)})" if ok
+                  else "FAIL  ports are left unconnected"))
     return 0 if ok else 1
